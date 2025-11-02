@@ -61,6 +61,10 @@ console.log("Acción completada: " + hiddenFields.length + " campos ahora son vi
 
 
 
+
+// mostrar cmapo Input
+id="RegresoOI"
+
 /**
  * --- Función: Analizar y Abrir Iframe en Nueva Ventana ---
  *
@@ -68,21 +72,19 @@ console.log("Acción completada: " + hiddenFields.length + " campos ahora son vi
  * extrae su información (src y #document) para mostrarla en la consola,
  * y luego abre el 'src' de ese iframe en una nueva ventana.
  */
-var data = document.getElementById('ArchivoPdf').value;
+// 1. Obtener el iframe
+var iframe = document.getElementById('IframeModalXL');
+
+// 2. Acceder al 'document' DENTRO del iframe
+var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+
+// 3. AHORA sí, buscar 'ArchivoPdf' DENTRO de ese documento
+var data = iframeDoc.getElementById('ArchivoPdf').value;
+
+// 4. El resto de tu código (que era perfecto)
 var a = document.createElement('a');
 a.href = 'data:application/pdf;base64,' + data;
 a.download = 'documento_completo.pdf';
-document.body.appendChild(a);
+document.body.appendChild(a); // Lo añade a la página principal
 a.click();
 document.body.removeChild(a);
-
-
-
-
-
-
-
-
-
-
-
