@@ -1,198 +1,189 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manuales</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="estilo.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DASHBOARD - Reporte Educativo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
 
-<div class="dashboard-container">
+<div class="container-fluid">
+    <div class="row">
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm">
+            <div class="text-center mb-4">
+                <h4 class="fw-bold" style="color: var(--azul-marino);">DASHBOARD</h4>
+                <hr>
+            </div>
+            <ul class="nav flex-column" id="mainMenu">
+                <li class="nav-item">
+                    <a class="nav-link active" href="index.html">
+                        <i class="bi bi-file-earmark-plus me-2"></i> Nueva Evaluación
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="convertidor.html">
+                        <i class="bi bi-image me-2"></i> Convertidor de Imágenes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" href="#">
+                        <i class="bi bi-lock me-2"></i> Próximamente
+                    </a>
+                </li>
+            </ul>
+        </nav>
 
-  <!-- Barra Lateral -->
-  <aside class="sidebar">
-    <div class="logo">
-      <i class="fas fa-graduation-cap"></i> DGTIC
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <div class="container">
+                <div class="card card-custom p-4 mb-5">
+                    <h3 class="fw-bold mb-4" style="color: var(--azul-marino);">Generador de Reportes</h3>
+                    
+                    <form id="evaluacionForm">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">NOMBRES DEL ALUMNO</label>
+                            <input type="text" id="nombre" class="form-control form-control-lg shadow-sm" placeholder="Escriba aquí..." required>
+                        </div>
+
+                        <div id="preguntasContainer">
+                            </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-outline-secondary px-4 shadow-sm" onclick="resetForm()">
+                                <i class="bi bi-arrow-counterclockwise me-2"></i>Limpiar
+                            </button>
+                            <button type="button" class="btn btn-outline-sucess px-5 shadow-sm" onclick="procesarYEvaluar()">
+                                <i class="bi bi-file-earmark-check me-2"></i>Generar 
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-container shadow-sm">
+                    <h4 class="fw-bold mb-4 text-primary">Histórico (Últimos 35)</h4>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 15%;">Fecha/Hora</th>
+                                    <th>Reporte Completo</th>
+                                    <th class="text-center">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historicoTabla">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
-    <nav class="sidebar-nav">
-      <a href="manuales.html" class="active">
-        <i class="fas fa-book-open"></i> Manuales
-      </a>
-      <a href="convertidor.html">
-        <i class="fas fa-image"></i> Convertidor de Imágenes
-      </a>
-    </nav>
-  </aside>
-
-  <!-- Contenido Principal -->
-  <main class="main-content">
-    <div class="topbar">
-      <h1><i class="fas fa-book-open"></i> Manuales por Tema</h1>
-    </div>
-
-    <div class="content-area p-4">
-
-      <!-- Filtro por tema -->
-      <div class="mb-4 d-flex gap-2 flex-wrap" id="filtros">
-        <button class="btn btn-primary btn-sm filtro-btn active" data-tema="todos">Todos</button>
-        <button class="btn btn-outline-secondary btn-sm filtro-btn" data-tema="ofimática">Ofimática</button>
-        <button class="btn btn-outline-secondary btn-sm filtro-btn" data-tema="programación">Programación</button>
-        <button class="btn btn-outline-secondary btn-sm filtro-btn" data-tema="diseño">Diseño</button>
-      </div>
-
-      <!-- Grid de módulos -->
-      <div class="row g-4" id="modulosGrid">
-
-        <!-- Módulo Word -->
-        <div class="col-12 col-md-6 col-xl-4 modulo-card" data-tema="ofimática">
-          <div class="card h-100 shadow-sm border-0">
-            <div class="card-body">
-              <div class="d-flex align-items-center mb-3 gap-2">
-                <div class="modulo-icon bg-primary text-white rounded-3 p-2">
-                  <i class="fas fa-file-word fa-lg"></i>
-                </div>
-                <div>
-                  <h5 class="mb-0 fw-bold">Módulo Word</h5>
-                  <span class="badge bg-primary-subtle text-primary">Ofimática</span>
-                </div>
-              </div>
-              <p class="text-muted small mb-3">Documentos, formato, estilos y combinación de correspondencia.</p>
-              <div class="d-flex gap-2 flex-wrap">
-                <a href="https://example.com/manual-word.pdf" target="_blank" class="pdf-link" title="Manual">
-                  <i class="fas fa-file-pdf text-danger fa-xl"></i>
-                  <span class="small d-block text-center">Manual</span>
-                </a>
-                <a href="https://example.com/temas-word.pdf" target="_blank" class="pdf-link" title="Temas">
-                  <i class="fas fa-file-pdf text-warning fa-xl"></i>
-                  <span class="small d-block text-center">Temas</span>
-                </a>
-                <a href="https://example.com/plan-word.pdf" target="_blank" class="pdf-link" title="Plan de estudios">
-                  <i class="fas fa-file-pdf text-success fa-xl"></i>
-                  <span class="small d-block text-center">Plan</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Módulo Excel -->
-        <div class="col-12 col-md-6 col-xl-4 modulo-card" data-tema="ofimática">
-          <div class="card h-100 shadow-sm border-0">
-            <div class="card-body">
-              <div class="d-flex align-items-center mb-3 gap-2">
-                <div class="modulo-icon bg-success text-white rounded-3 p-2">
-                  <i class="fas fa-file-excel fa-lg"></i>
-                </div>
-                <div>
-                  <h5 class="mb-0 fw-bold">Módulo Excel</h5>
-                  <span class="badge bg-success-subtle text-success">Ofimática</span>
-                </div>
-              </div>
-              <p class="text-muted small mb-3">Fórmulas, tablas dinámicas, macros y análisis de datos.</p>
-              <div class="d-flex gap-2 flex-wrap">
-                <a href="https://example.com/manual-excel.pdf" target="_blank" class="pdf-link" title="Manual">
-                  <i class="fas fa-file-pdf text-danger fa-xl"></i>
-                  <span class="small d-block text-center">Manual</span>
-                </a>
-                <a href="https://example.com/temas-excel.pdf" target="_blank" class="pdf-link" title="Temas">
-                  <i class="fas fa-file-pdf text-warning fa-xl"></i>
-                  <span class="small d-block text-center">Temas</span>
-                </a>
-                <!-- Sin plan de estudios: simplemente no se pone el tercer icono -->
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Módulo Python -->
-        <div class="col-12 col-md-6 col-xl-4 modulo-card" data-tema="programación">
-          <div class="card h-100 shadow-sm border-0">
-            <div class="card-body">
-              <div class="d-flex align-items-center mb-3 gap-2">
-                <div class="modulo-icon bg-warning text-dark rounded-3 p-2">
-                  <i class="fab fa-python fa-lg"></i>
-                </div>
-                <div>
-                  <h5 class="mb-0 fw-bold">Módulo Python</h5>
-                  <span class="badge bg-warning-subtle text-warning-emphasis">Programación</span>
-                </div>
-              </div>
-              <p class="text-muted small mb-3">Fundamentos, POO, manejo de archivos y librerías básicas.</p>
-              <div class="d-flex gap-2 flex-wrap">
-                <a href="https://example.com/manual-python.pdf" target="_blank" class="pdf-link" title="Manual">
-                  <i class="fas fa-file-pdf text-danger fa-xl"></i>
-                  <span class="small d-block text-center">Manual</span>
-                </a>
-                <a href="https://example.com/temas-python.pdf" target="_blank" class="pdf-link" title="Temas">
-                  <i class="fas fa-file-pdf text-warning fa-xl"></i>
-                  <span class="small d-block text-center">Temas</span>
-                </a>
-                <a href="https://example.com/plan-python.pdf" target="_blank" class="pdf-link" title="Plan de estudios">
-                  <i class="fas fa-file-pdf text-success fa-xl"></i>
-                  <span class="small d-block text-center">Plan</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Módulo Photoshop -->
-        <div class="col-12 col-md-6 col-xl-4 modulo-card" data-tema="diseño">
-          <div class="card h-100 shadow-sm border-0">
-            <div class="card-body">
-              <div class="d-flex align-items-center mb-3 gap-2">
-                <div class="modulo-icon bg-info text-white rounded-3 p-2">
-                  <i class="fas fa-paint-brush fa-lg"></i>
-                </div>
-                <div>
-                  <h5 class="mb-0 fw-bold">Módulo Photoshop</h5>
-                  <span class="badge bg-info-subtle text-info-emphasis">Diseño</span>
-                </div>
-              </div>
-              <p class="text-muted small mb-3">Retoque fotográfico, capas, máscaras y exportación.</p>
-              <div class="d-flex gap-2 flex-wrap">
-                <a href="https://example.com/manual-ps.pdf" target="_blank" class="pdf-link" title="Manual">
-                  <i class="fas fa-file-pdf text-danger fa-xl"></i>
-                  <span class="small d-block text-center">Manual</span>
-                </a>
-                <a href="https://example.com/temas-ps.pdf" target="_blank" class="pdf-link" title="Temas">
-                  <i class="fas fa-file-pdf text-warning fa-xl"></i>
-                  <span class="small d-block text-center">Temas</span>
-                </a>
-                <a href="https://example.com/plan-ps.pdf" target="_blank" class="pdf-link" title="Plan de estudios">
-                  <i class="fas fa-file-pdf text-success fa-xl"></i>
-                  <span class="small d-block text-center">Plan</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /row -->
-    </div>
-  </main>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-  // Filtro por tema
-  document.querySelectorAll('.filtro-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active', 'btn-primary'));
-      document.querySelectorAll('.filtro-btn').forEach(b => b.classList.add('btn-outline-secondary'));
-      btn.classList.add('active', 'btn-primary');
-      btn.classList.remove('btn-outline-secondary');
-
-      const tema = btn.dataset.tema;
-      document.querySelectorAll('.modulo-card').forEach(card => {
-        card.style.display = (tema === 'todos' || card.dataset.tema === tema) ? '' : 'none';
-      });
-    });
-  });
+<script id="preguntaTemplate" type="text/x-jsrender">
+    {{for preguntas}}
+    <div class="mb-3">
+        <label class="form-label small fw-bold">{{:label}}</label>
+        <select class="form-select respuesta shadow-sm">
+            <option value="">Seleccionar...</option>
+            <option value="25">Respuesta Correcta (25 pts)</option>
+            <option value="13">Respuesta Parcial (13 pts)</option>
+            <option value="0">Respuesta Incorrecta (0 pts)</option>
+        </select>
+    </div>
+    {{/for}}
 </script>
 
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsrender/1.0.15/jsrender.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    class RegistroManager {
+        constructor() {
+            this.key = 'historico_DASHBOARD';
+            this.limite = 35;
+        }
+
+        guardar(registro) {
+            let actual = this.obtener();
+            actual.unshift(registro);
+            if(actual.length > this.limite) actual = actual.slice(0, this.limite);
+            localStorage.setItem(this.key, JSON.stringify(actual));
+            this.render();
+        }
+
+        obtener() {
+            return JSON.parse(localStorage.getItem(this.key) || "[]");
+        }
+
+        render() {
+            const data = this.obtener();
+            const html = data.map(r => `
+                <tr>
+                    <td><span class="badge bg-light text-dark">${r.fecha}</span></td>
+                    <td><div class="texto-reporte">${r.textoCompleto}</div></td>
+                    <td class="text-center"><h4 class="fw-bold text-primary">${r.total}</h4></td>
+                </tr>
+            `).join('');
+            $("#historicoTabla").html(html || '<tr><td colspan="3" class="text-center">No hay registros aún.</td></tr>');
+        }
+    }
+
+    const manager = new RegistroManager();
+
+    $(document).ready(function() {
+        const data = {
+            preguntas: [
+                { label: "PREGUNTA 1" }, { label: "PREGUNTA 2" },
+                { label: "PREGUNTA 3" }, { label: "PREGUNTA 4" }
+            ]
+        };
+        $("#preguntasContainer").html($.templates("#preguntaTemplate").render(data));
+        manager.render();
+    });
+
+    function resetForm() {
+        $("#evaluacionForm")[0].reset();
+    }
+
+    function procesarYEvaluar() {
+        const nombre = $("#nombre").val().toUpperCase().trim();
+        const respuestas = $(".respuesta").map(function() { return $(this).val(); }).get();
+
+        if(!nombre || respuestas.includes("")) {
+            Swal.fire('Error', 'Por favor llena todos los campos.', 'error');
+            return;
+        }
+
+        const pts = respuestas.map(v => parseInt(v));
+        const total = pts.reduce((a, b) => a + b, 0);
+        const fecha = new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+
+        // CONSTRUCCIÓN DEL TEXTO EXACTO
+        let textoCompleto = `HOLA ${nombre}\n`;
+        respuestas.forEach((val, i) => {
+            textoCompleto += `PREGUNTA ${i+1} - ${val}\n`;
+        });
+        textoCompleto += `TOTAL ${total}`;
+
+        manager.guardar({
+            fecha,
+            textoCompleto,
+            total
+        });
+
+        Swal.fire({
+            title: 'Reporte Generado',
+            html: `<div class="text-start"><pre>${textoCompleto}</pre></div>`,
+            icon: 'success',
+            confirmButtonColor: '#0a192f'
+        });
+
+        resetForm();
+    }
+</script>
 </body>
 </html>

@@ -1,221 +1,223 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Convertidor de Imagen</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="estilo.css">
-  <style>
-    .image-preview {
-      border: 2px dashed #dee2e6;
-      border-radius: 10px;
-      min-height: 180px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-size: contain;
-      background-repeat: no-repeat;
-      background-position: center;
-      background-color: #f8f9fa;
-      transition: border-color .2s;
-    }
-    .image-preview.has-image {
-      border-color: #198754;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEQUIZ - Convertidor de Imágenes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="estilos.css">
+    <style>
+        .image-preview {
+            border: 2px dashed var(--dorado);
+            border-radius: 12px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-color: var(--azul-pastel-fondo);
+            transition: all 0.3s ease;
+        }
+        .image-preview.has-image {
+            border-style: solid;
+            background-color: #fff;
+        }
+        .preview-icon {
+            font-size: 3rem;
+            color: var(--azul-marino);
+            opacity: 0.2;
+        }
+    </style>
 </head>
 <body>
 
-<div class="dashboard-container">
+<nav class="navbar navbar-mobile border-bottom px-3 py-2 d-md-none bg-white sticky-top">
+    <button class="btn btn-outline-dark border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu">
+        <i class="bi bi-list fs-3"></i>
+    </button>
+    <span class="fw-bold" style="color: var(--dorado);">NEQUIZ</span>
+    <div></div>
+</nav>
 
-  <!-- ===== BARRA LATERAL ===== -->
-  <aside class="sidebar">
-    <div class="logo">
-      <i class="fas fa-graduation-cap"></i>
-      <span>EduPanel</span>
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title fw-bold">MENÚ</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
-    <nav class="sidebar-nav">
-      <a href="manuales.html">
-        <i class="fas fa-book-open"></i>
-        <span>Manuales</span>
-      </a>
-      <a href="convertidor.html" class="active">
-        <i class="fas fa-image"></i>
-        <span>Convertidor</span>
-      </a>
-      <!-- Agrega más páginas aquí siguiendo el mismo patrón -->
-    </nav>
-  </aside>
-
-  <!-- ===== CONTENIDO PRINCIPAL ===== -->
-  <main class="main-content">
-
-    <!-- Topbar -->
-    <div class="topbar">
-      <h1><i class="fas fa-image me-2 text-primary"></i>Redimensionador y Combinador de Imágenes</h1>
-    </div>
-
-    <div class="content-area p-4">
-
-      <p class="text-muted mb-4">
-        Sube el frente y el reverso de la INE para unirlos en una sola imagen.
-        También puedes redimensionar una selfie al formato requerido.
-      </p>
-
-      <div class="row g-4">
-
-        <!-- ===== TARJETA INE ===== -->
-        <div class="col-12 col-lg-6">
-          <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-primary text-white fw-semibold">
-              <i class="fas fa-id-card me-2"></i>INE Combinada — 1300 × 400 px
-            </div>
-            <div class="card-body d-flex flex-column gap-3">
-
-              <div>
-                <label for="ineFrontalInput" class="form-label fw-semibold">
-                  <i class="fas fa-arrow-right text-primary me-1"></i>INE Frontal
-                </label>
-                <input class="form-control" type="file" id="ineFrontalInput" accept="image/*">
-              </div>
-
-              <div>
-                <label for="ineLateralInput" class="form-label fw-semibold">
-                  <i class="fas fa-arrow-left text-primary me-1"></i>INE Reverso
-                </label>
-                <input class="form-control" type="file" id="ineLateralInput" accept="image/*">
-              </div>
-
-              <div class="image-preview" id="ineCombinedPreview">
-                <div class="text-center text-muted">
-                  <i class="fas fa-id-card fa-2x d-block mb-2 opacity-25"></i>
-                  <small>Vista previa INE combinada</small>
-                </div>
-              </div>
-
-              <a href="#" id="downloadIneBtn" class="btn btn-success d-none" download="folio-ine.jpg">
-                <i class="fas fa-download me-2"></i>Descargar INE Combinada
-              </a>
-
-            </div>
-          </div>
+    <div class="offcanvas-body" id="menuMobileContent">
         </div>
-
-        <!-- ===== TARJETA SELFIE ===== -->
-        <div class="col-12 col-lg-6">
-          <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-primary text-white fw-semibold">
-              <i class="fas fa-user-circle me-2"></i>Selfie — 265 × 320 px
-            </div>
-            <div class="card-body d-flex flex-column gap-3">
-
-              <div>
-                <label for="selfieInput" class="form-label fw-semibold">
-                  <i class="fas fa-camera text-primary me-1"></i>Subir selfie
-                </label>
-                <input class="form-control" type="file" id="selfieInput" accept="image/*">
-              </div>
-
-              <div class="image-preview" id="selfiePreview" style="min-height:240px;">
-                <div class="text-center text-muted">
-                  <i class="fas fa-portrait fa-2x d-block mb-2 opacity-25"></i>
-                  <small>Vista previa de la selfie</small>
-                </div>
-              </div>
-
-              <a href="#" id="downloadSelfieBtn" class="btn btn-success d-none" download="folio-foto.jpg">
-                <i class="fas fa-download me-2"></i>Descargar Selfie
-              </a>
-
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /row -->
-    </div><!-- /content-area -->
-  </main>
 </div>
 
-<!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<div class="container-fluid">
+    <div class="row">
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm">
+            <div class="text-center mb-4">
+                <h4 class="fw-bold" style="color: var(--azul-marino);">NEQUIZ</h4>
+                <hr>
+            </div>
+            <ul class="nav flex-column" id="mainMenu">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.html">
+                        <i class="bi bi-file-earmark-plus me-2"></i> Nueva Evaluación
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="convertidor.html">
+                        <i class="bi bi-image me-2"></i> Convertidor de Imágenes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" href="#">
+                        <i class="bi bi-lock me-2"></i> Próximamente
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <div class="container">
+                <header class="mb-4">
+                    <h2 class="fw-bold" style="color: var(--azul-marino);">Convertidor de Imágenes</h2>
+                    <p class="text-muted">Gestión de archivos INE y Fotos de Perfil.</p>
+                </header>
+
+                <div class="row g-4">
+                    <div class="col-12 col-xl-7">
+                        <div class="card card-custom p-4 h-100 shadow-sm">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-card-heading me-2"></i>Combinar INE (1300x400)</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label small fw-bold">FRENTE</label>
+                                    <input type="file" id="ineFrontalInput" class="form-control" accept="image/*">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label small fw-bold">REVERSO</label>
+                                    <input type="file" id="ineLateralInput" class="form-control" accept="image/*">
+                                </div>
+                            </div>
+                            
+                            <div class="image-preview mb-3" id="ineCombinedPreview">
+                                <div class="text-center" id="inePlaceholder">
+                                    <i class="bi bi-id-card preview-icon"></i>
+                                    <p class="small text-muted mb-0">Vista previa combinada</p>
+                                </div>
+                            </div>
+
+                            <a href="#" id="downloadIneBtn" class="btn btn-outline-marino w-100 d-none shadow-sm" download="ine-combinada.jpg">
+                                <i class="bi bi-download me-2"></i>Descargar INE
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-xl-5">
+                        <div class="card card-custom p-4 h-100 shadow-sm">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-person-bounding-box me-2"></i>Selfie (265x320)</h5>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">SUBIR IMAGEN</label>
+                                <input type="file" id="selfieInput" class="form-control" accept="image/*">
+                            </div>
+
+                            <div class="image-preview mb-3" id="selfiePreview" style="min-height: 200px;">
+                                <div class="text-center" id="selfiePlaceholder">
+                                    <i class="bi bi-person-square preview-icon"></i>
+                                    <p class="small text-muted mb-0">Vista previa selfie</p>
+                                </div>
+                            </div>
+
+                            <a href="#" id="downloadSelfieBtn" class="btn btn-outline-marino w-100 d-none shadow-sm" download="selfie-redimensionada.jpg">
+                                <i class="bi bi-download me-2"></i>Descargar Selfie
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-  let ineFrontalImage = null;
-  let ineLateralImage = null;
+    let ineFrontalImage = null;
+    let ineLateralImage = null;
 
-  // Carga genérica de imagen
-  function handleImageLoad(file, callback) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => callback(img);
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-
-  // Actualiza el preview de un contenedor
-  function setPreview(containerId, dataUrl) {
-    const el = document.getElementById(containerId);
-    el.style.backgroundImage = `url('${dataUrl}')`;
-    el.innerHTML = '';
-    el.classList.add('has-image');
-  }
-
-  // Combina frente y reverso de la INE
-  function combineIneImages() {
-    if (!ineFrontalImage || !ineLateralImage) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 1300;
-    canvas.height = 400;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 1300, 400);
-    ctx.drawImage(ineFrontalImage, 0, 0, 650, 400);
-    ctx.drawImage(ineLateralImage, 650, 0, 650, 400);
-
-    const url = canvas.toDataURL('image/jpeg', 0.92);
-    setPreview('ineCombinedPreview', url);
-
-    const btn = document.getElementById('downloadIneBtn');
-    btn.href = url;
-    btn.classList.remove('d-none');
-  }
-
-  // INE frontal
-  document.getElementById('ineFrontalInput').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (file) handleImageLoad(file, img => { ineFrontalImage = img; combineIneImages(); });
-  });
-
-  // INE reverso
-  document.getElementById('ineLateralInput').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (file) handleImageLoad(file, img => { ineLateralImage = img; combineIneImages(); });
-  });
-
-  // Selfie
-  document.getElementById('selfieInput').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    handleImageLoad(file, img => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 265;
-      canvas.height = 320;
-      canvas.getContext('2d').drawImage(img, 0, 0, 265, 320);
-
-      const url = canvas.toDataURL('image/jpeg', 0.92);
-      setPreview('selfiePreview', url);
-
-      const btn = document.getElementById('downloadSelfieBtn');
-      btn.href = url;
-      btn.classList.remove('d-none');
+    $(document).ready(function() {
+        // Clonar menú para móvil
+        $("#menuMobileContent").html($("#mainMenu").clone());
     });
-  });
-</script>
 
+    // Carga de imagen
+    function handleImageLoad(file, callback) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => callback(img);
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function setPreview(containerId, placeholderId, dataUrl) {
+        const el = document.getElementById(containerId);
+        const ph = document.getElementById(placeholderId);
+        el.style.backgroundImage = `url('${dataUrl}')`;
+        if(ph) ph.style.display = 'none';
+        el.classList.add('has-image');
+    }
+
+    // Lógica Combinar INE
+    function combineIneImages() {
+        if (!ineFrontalImage || !ineLateralImage) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 1300;
+        canvas.height = 400;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 1300, 400);
+        
+        // Dibujar ambas partes
+        ctx.drawImage(ineFrontalImage, 0, 0, 650, 400);
+        ctx.drawImage(ineLateralImage, 650, 0, 650, 400);
+
+        const url = canvas.toDataURL('image/jpeg', 0.90);
+        setPreview('ineCombinedPreview', 'inePlaceholder', url);
+
+        $("#downloadIneBtn").attr("href", url).removeClass("d-none");
+    }
+
+    $("#ineFrontalInput").on("change", function(e) {
+        const file = e.target.files[0];
+        if (file) handleImageLoad(file, img => { ineFrontalImage = img; combineIneImages(); });
+    });
+
+    $("#ineLateralInput").on("change", function(e) {
+        const file = e.target.files[0];
+        if (file) handleImageLoad(file, img => { ineLateralImage = img; combineIneImages(); });
+    });
+
+    // Lógica Selfie
+    $("#selfieInput").on("change", function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        handleImageLoad(file, img => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 265;
+            canvas.height = 320;
+            canvas.getContext('2d').drawImage(img, 0, 0, 265, 320);
+
+            const url = canvas.toDataURL('image/jpeg', 0.90);
+            setPreview('selfiePreview', 'selfiePlaceholder', url);
+
+            $("#downloadSelfieBtn").attr("href", url).removeClass("d-none");
+        });
+    });
+</script>
 </body>
 </html>
