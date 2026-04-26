@@ -3,107 +3,253 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Organizador de Prácticas SEIEM 2026</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>DASHBOARD - Organizador SEIEM</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
     <style>
-        body { background-color: #f8f9fa; color: #333; }
-        .card { border-radius: 15px; border: none; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-        .header-custom { background: linear-gradient(135deg, #003366 0%, #004080 100%); color: white; padding: 30px; border-radius: 15px 15px 0 0; }
-        #console { background: #121212; color: #00ff41; height: 450px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; padding: 20px; border-radius: 8px; border: 1px solid #333; line-height: 1.4; }
-        .log-info { color: #00d4ff; }
-        .log-success { color: #2ecc71; font-weight: bold; }
+        :root {
+            --azul-marino: #003366;
+            --azul-claro: #f4f7f6;
+            --verde-terminal: #00ff41;
+        }
+        body {
+            background-color: var(--azul-claro);
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        /* Sidebar Estático */
+        #sidebar {
+            min-height: 100vh;
+            background: white;
+            z-index: 1000;
+        }
+        .nav-link {
+            color: #333;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .nav-link:hover {
+            background-color: #e9ecef;
+        }
+        .nav-link.active {
+            background-color: var(--azul-marino) !important;
+            color: white !important;
+        }
+        /* Contenedor Principal */
+        .main-content {
+            margin-left: 16.666667%; /* Compensa el col-md-2 del sidebar */
+            padding: 30px;
+        }
+        @media (max-width: 768px) {
+            .main-content { margin-left: 0; padding: 15px; }
+        }
+        /* Tarjetas y Herramienta */
+        .tool-card {
+            background: white;
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .header-section {
+            background: var(--azul-marino);
+            color: white;
+            padding: 25px;
+        }
+        #console {
+            background: #121212;
+            color: var(--verde-terminal);
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.85rem;
+            padding: 20px;
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+        .log-success { color: #2ecc71; }
         .log-error { color: #e74c3c; }
         .log-warn { color: #f1c40f; }
+        .log-info { color: #00d4ff; }
     </style>
 </head>
 <body>
 
-<div class="container py-5">
-    <div class="card">
-        <div class="header-custom text-center">
-            <h2 class="mb-2">Organizador de Archivos SEIEM</h2>
-            <p class="mb-0 opacity-75">Procesamiento masivo de ZIPs de Moodle y organización por CURP</p>
+<nav class="navbar navbar-mobile border-bottom px-3 py-2 d-md-none bg-white sticky-top">
+    <button class="btn btn-outline-dark border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu">
+        <i class="bi bi-list fs-3"></i>
+    </button>
+    <span class="fw-bold text-primary">DASHBOARD SEIEM</span>
+</nav>
+
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title fw-bold">MENÚ</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body" id="menuMobileContent">
         </div>
-        <div class="card-body p-4">
-            <div class="row g-4">
-                <div class="col-md-5">
-                    <label class="form-label fw-bold text-uppercase small">1. Archivo de Datos (CSV)</label>
-                    <input type="file" id="csvFile" class="form-control" accept=".csv">
-                    <div class="form-text">Debe contener las columnas: <i>curp</i> y <i>apellidos</i>.</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold text-uppercase small">2. Modo de Organización</label>
-                    <select id="semanaSelect" class="form-select">
-                        <option value="ALL">Auto-detectar Semanas (S1-S4)</option>
-                        <option value="1">Solo Semana 1 (P1)</option>
-                        <option value="2">Solo Semana 2 (P2)</option>
-                        <option value="3">Solo Semana 3 (P3)</option>
-                        <option value="4">Solo Semana 4 (P4)</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold text-uppercase small">3. Archivos ZIP (Carga Múltiple)</label>
-                    <input type="file" id="zipFiles" class="form-control" accept=".zip" multiple>
-                    <div class="form-text">Puedes seleccionar varios archivos a la vez.</div>
-                </div>
-                <div class="col-12 mt-4">
-                    <button id="runBtn" class="btn btn-primary btn-lg w-100 shadow-sm" style="background-color: #003366; border: none;">
-                        Ejecutar Organización y Descargar ZIP
-                    </button>
+</div>
+
+<div class="container-fluid">
+    <div class="row">
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm position-fixed">
+            <div class="text-center mb-4">
+                <h4 class="fw-bold text-primary-emphasis">DASHBOARD</h4>
+                <hr>
+            </div>
+            <ul class="nav flex-column" id="mainMenu">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.html">
+                        <i class="bi bi-calendar3 me-2"></i> CALENDARIO
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="evaluacion.html">
+                        <i class="bi bi-chat-left-quote me-2"></i> FORO DE EVALUACIÓN
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="convertidor.html">
+                        <i class="bi bi-image me-2"></i> CONVERTIDOR IMAGENES
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="archivo_bat.html">
+                    <i class="bi bi-gear-fill me-2"></i> ORGANIZADOR ZIP</a>
+                </li>
+                
+                <hr class="text-muted">
+                <div class="small fw-bold text-muted mb-2 ps-3">GUÍAS SEMANALES</div>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="semana1.html">
+                        <i class="bi bi-1-square me-2"></i> SEMANA 1
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="semana2.html">
+                        <i class="bi bi-2-square me-2"></i> SEMANA 2
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="semana3.html">
+                        <i class="bi bi-3-square me-2"></i> SEMANA 3
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="semana4.html">
+                        <i class="bi bi-4-square me-2"></i> SEMANA 4
+                    </a>
+                </li>
+
+                <hr class="text-muted">
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="manual.html">
+                        <i class="bi bi-book me-2"></i> MANUAL ASESORES
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="col-md-9 ms-sm-auto col-lg-10 main-content">
+            <div class="row justify-content-center">
+                <div class="col-xl-11">
+                    <div class="tool-card shadow-lg">
+                        <div class="header-section text-center">
+                            <h2 class="fw-bold mb-1">Organizador de Prácticas SEIEM 2026</h2>
+                            <p class="mb-0 opacity-75">Procesamiento UTF-8 de archivos CSV y ZIP de Moodle</p>
+                        </div>
+                        
+                        <div class="card-body p-4 p-lg-5">
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-5">
+                                    <label class="form-label fw-bold">1. Datos Alumnos (SEIEM2026.csv)</label>
+                                    <input type="file" id="csvFile" class="form-control form-control-lg" accept=".csv">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold">2. Período</label>
+                                    <select id="semanaSelect" class="form-select form-select-lg">
+                                        <option value="ALL">Todo el curso (Auto)</option>
+                                        <option value="1">Semana 1 (P1)</option>
+                                        <option value="2">Semana 2 (P2)</option>
+                                        <option value="3">Semana 3 (P3)</option>
+                                        <option value="4">Semana 4 (P4)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">3. Archivos ZIP Moodle</label>
+                                    <input type="file" id="zipFiles" class="form-control form-control-lg" accept=".zip" multiple>
+                                </div>
+                            </div>
+
+                            <button id="runBtn" class="btn btn-lg w-100 text-white shadow" style="background: var(--azul-marino); border-radius: 10px;">
+                                <i class="bi bi-play-circle-fill me-2"></i> EJECUTAR ORGANIZACIÓN Y DESCARGAR
+                            </button>
+
+                            <div class="mt-5">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold mb-0 text-muted text-uppercase">Consola de Procesamiento</h6>
+                                    <span class="badge bg-dark">UTF-8 Enabled</span>
+                                </div>
+                                <div id="console">Esperando archivos para procesar...</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <hr class="my-4">
-            
-            <h6 class="fw-bold mb-2">Terminal de Procesamiento:</h6>
-            <div id="console">Lista de espera vacía. Por favor, cargue los archivos...</div>
-        </div>
+        </main>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
+    // Lógica de Menú Móvil
+    document.getElementById('menuMobileContent').innerHTML = document.getElementById('mainMenu').innerHTML;
+
     const consoleDiv = document.getElementById('console');
     const runBtn = document.getElementById('runBtn');
 
     function log(msg, cls = '') {
-        const span = document.createElement('div');
-        span.className = cls ? `log-${cls}` : '';
-        span.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
-        consoleDiv.appendChild(span);
+        const div = document.createElement('div');
+        div.className = cls ? `log-${cls}` : '';
+        div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        consoleDiv.appendChild(div);
         consoleDiv.scrollTop = consoleDiv.scrollHeight;
     }
 
-    // Función para detectar la semana basándose en el nombre largo del ZIP
     function detectarSemana(nombre) {
         const n = nombre.toUpperCase();
-        if (n.includes("EVALUACIÓN 1") || n.includes("SEMANA 1") || n.includes("S1") || n.includes("P1")) return "S1";
-        if (n.includes("EVALUACIÓN 2") || n.includes("SEMANA 2") || n.includes("S2") || n.includes("P2")) return "S2";
-        if (n.includes("EVALUACIÓN 3") || n.includes("SEMANA 3") || n.includes("S3") || n.includes("P3")) return "S3";
-        if (n.includes("EVALUACIÓN 4") || n.includes("SEMANA 4") || n.includes("S4") || n.includes("P4")) return "S4";
-        
-        // Si no hay etiquetas claras, buscamos números sueltos del 1 al 4
+        if (n.includes("EVALUACIÓN 1") || n.includes("SEMANA 1") || n.includes("S1") || n.includes("P1") || n.includes("-1")) return "S1";
+        if (n.includes("EVALUACIÓN 2") || n.includes("SEMANA 2") || n.includes("S2") || n.includes("P2") || n.includes("-2")) return "S2";
+        if (n.includes("EVALUACIÓN 3") || n.includes("SEMANA 3") || n.includes("S3") || n.includes("P3") || n.includes("-3")) return "S3";
+        if (n.includes("EVALUACIÓN 4") || n.includes("SEMANA 4") || n.includes("S4") || n.includes("P4") || n.includes("-4")) return "S4";
         const match = n.match(/\d/);
-        if (match) {
-            const num = match[0];
-            if (num >= 1 && num <= 4) return "S" + num;
-        }
-        return null;
+        return (match && match[0] >= 1 && match[0] <= 4) ? "S" + match[0] : null;
     }
 
     runBtn.addEventListener('click', async () => {
-        const csv = document.getElementById('csvFile').files[0];
-        const zips = document.getElementById('zipFiles').files;
-        const targetSemana = document.getElementById('semanaSelect').value;
+        const csvFile = document.getElementById('csvFile').files[0];
+        const zipFiles = document.getElementById('zipFiles').files;
+        const target = document.getElementById('semanaSelect').value;
 
-        if (!csv || zips.length === 0) {
-            alert("Por favor, selecciona el archivo CSV y los ZIPs de entrada.");
-            return;
+        if (!csvFile || zipFiles.length === 0) {
+            alert("Por favor carga el CSV y los ZIPs."); return;
         }
 
         consoleDiv.innerHTML = "";
-        log("Iniciando motor de organización masiva...", "info");
+        log("Iniciando procesamiento con soporte UTF-8...", "info");
         runBtn.disabled = true;
 
         const masterZip = new JSZip();
@@ -111,96 +257,74 @@
         const faltantes = { S1: "", S2: "", S3: "", S4: "" };
 
         try {
-            // 1. Clasificar todos los ZIPs cargados
-            for (const file of zips) {
-                const detect = detectarSemana(file.name);
-                if (detect) {
+            for (const file of zipFiles) {
+                const s = detectarSemana(file.name);
+                if (s) {
                     const content = await JSZip.loadAsync(file);
-                    mapZips[detect].push(content);
-                    log(`ZIP Identificado como ${detect}: ${file.name.substring(0, 40)}...`, "success");
-                } else {
-                    log(`ZIP Ignorado (Semana no detectada): ${file.name}`, "warn");
+                    mapZips[s].push(content);
+                    log(`ZIP asignado a ${s}: ${file.name}`, "success");
                 }
             }
 
-            // 2. Leer CSV
-            Papa.parse(csv, {
+            // Lectura UTF-8 del CSV
+            Papa.parse(csvFile, {
                 header: true,
                 skipEmptyLines: true,
+                encoding: "UTF-8",
                 complete: async (results) => {
                     const data = results.data;
-                    log(`Total alumnos en CSV: ${data.length}`, "info");
-
-                    const semanas = targetSemana === "ALL" ? ["S1", "S2", "S3", "S4"] : ["S" + targetSemana];
+                    const semanas = target === "ALL" ? ["S1", "S2", "S3", "S4"] : ["S" + target];
 
                     for (const sKey of semanas) {
-                        const pNum = sKey.replace("S", "P");
-                        const zipsSemana = mapZips[sKey];
+                        const pKey = sKey.replace("S", "P");
+                        if (mapZips[sKey].length === 0) continue;
 
-                        if (zipsSemana.length === 0) {
-                            log(`No hay archivos cargados para la ${sKey}. Continuando...`, "warn");
-                            continue;
-                        }
-
-                        log(`--- PROCESANDO ${sKey} (${pNum}) ---`, "info");
+                        log(`>>> PROCESANDO ${sKey}...`, "info");
 
                         for (const row of data) {
                             const curp = (row.curp || "").trim();
                             const nombre = (row.apellidos || "").trim();
                             if (!curp) continue;
 
-                            let encontrado = false;
-
-                            // Buscar en cada ZIP que pertenezca a esta semana
-                            for (const zip of zipsSemana) {
+                            let found = false;
+                            for (const zip of mapZips[sKey]) {
                                 for (const path in zip.files) {
-                                    // Comprobamos si el path contiene la CURP (formato Moodle)
                                     if (path.toUpperCase().includes(curp.toUpperCase())) {
                                         const entry = zip.files[path];
                                         if (!entry.dir) {
                                             const blob = await entry.async("blob");
-                                            const pureFileName = path.split('/').pop();
-                                            // Estructura exacta solicitada
-                                            masterZip.file(`2026_CURPS/${curp}/${pNum}/${pureFileName}`, blob);
-                                            encontrado = true;
+                                            const fileName = path.split('/').pop();
+                                            masterZip.file(`2026_CURPS/${curp}/${pKey}/${fileName}`, blob);
+                                            found = true;
                                         }
                                     }
                                 }
                             }
-
-                            if (encontrado) {
-                                log(`ENCONTRADO: ${curp} (${nombre.substring(0, 20)})`, "success");
-                            } else {
+                            if (found) log(`OK: ${curp}`, "success");
+                            else {
                                 log(`FALTA: ${curp}`, "error");
                                 faltantes[sKey] += `PARTICIPANTE no encontrado: '${curp} ${nombre}', Curso: '${row.nomcurso}', Asesor: '${row.asesor}'\n`;
                             }
                         }
-
-                        // Guardar log de faltantes si existen
-                        if (faltantes[sKey]) {
-                            masterZip.file(`faltan${sKey}_${pNum}.txt`, faltantes[sKey]);
-                        }
+                        if (faltantes[sKey]) masterZip.file(`faltan${sKey}_${pKey}.txt`, faltantes[sKey]);
                     }
 
-                    // 3. Empaquetar y Descargar
-                    log("Generando descarga final... Por favor espere.", "info");
+                    log("Generando archivo maestro...", "info");
                     const content = await masterZip.generateAsync({ type: "blob" });
                     const url = URL.createObjectURL(content);
                     const a = document.createElement("a");
                     a.href = url;
-                    a.download = "ORGANIZACION_2026_TOTAL.zip";
+                    a.download = "PROCESADO_SEIEM_2026.zip";
                     a.click();
-
-                    log("¡PROCESO COMPLETADO!", "success");
+                    log("¡ÉXITO! El archivo ha sido generado.", "success");
                     runBtn.disabled = false;
                 }
             });
         } catch (e) {
-            log(`ERROR CRÍTICO: ${e.message}`, "error");
+            log(`ERROR: ${e.message}`, "error");
             runBtn.disabled = false;
         }
     });
 </script>
-
 </body>
 </html>
