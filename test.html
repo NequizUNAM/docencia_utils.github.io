@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Guía de Actividades</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --azul-marino: #003366;
+            --azul-claro: #f4f7f6;
+        }
+        body {
+            background-color: var(--azul-claro);
+            font-family: 'Segoe UI', sans-serif;
+        }
+        /* Estilos del Sidebar extraídos de tu página */
+        #sidebar {
+            min-height: 100vh;
+            background: white;
+        }
+        .nav-link {
+            color: #333;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        .nav-link.active {
+            background-color: var(--azul-marino) !important;
+            color: white !important;
+        }
+        /* Estilos de la Infografía */
+        .card-custom {
+            border-radius: 8px;
+            border: none;
+            border-left: 5px solid var(--azul-marino);
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .card-custom:hover {
+            transform: translateY(-5px);
+        }
+        .header-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-bottom: 3px solid var(--azul-marino);
+        }
+        .icon-box {
+            font-size: 1.5rem;
+            color: var(--azul-marino);
+            margin-right: 10px;
+        }
+        .highlight-red { color: #d9534f; font-weight: bold; }
+        .url-banner {
+            background: #eef2f7;
+            border: 1px dashed var(--azul-marino);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm">
+            <div class="text-center mb-4">
+                <h4 class="fw-bold" style="color: var(--azul-marino);">DASHBOARD</h4>
+                <hr>
+            </div>
+            <ul class="nav flex-column" id="mainMenu">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.html">
+                        <i class="bi bi-file-earmark-plus me-2"></i> Nueva Evaluación
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="convertidor.html">
+                        <i class="bi bi-image me-2"></i> Convertidor de Imágenes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="pagina3.html">
+                        <i class="bi bi-info-circle me-2"></i> Información Visual
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            
+            <div class="header-section mb-4 shadow-sm">
+                <h2 class="fw-bold text-center" style="color: var(--azul-marino);">
+                    <i class="bi bi-journal-check me-2"></i>GUÍA DE ACTIVIDADES - TEMA 1
+                </h2>
+                <p class="text-center text-muted mb-0">Semana: Lunes 20 de abril al Sábado 25 de abril de 2026</p>
+            </div>
+
+            <div class="url-banner p-3 mb-4 text-center shadow-sm">
+                <span class="fw-bold">🌐 URL Plataforma:</span> 
+                <a href="http://cursosenlinea.tic.unam.mx/sep.php" target="_blank" class="text-decoration-none">http://cursosenlinea.tic.unam.mx/sep.php</a>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card card-custom shadow-sm p-3">
+                        <h5 class="fw-bold"><i class="bi bi-envelope-paper icon-box"></i>Mensajes y Calendario</h5>
+                        <ul class="list-unstyled">
+                            <li>📬 <strong>Envíos:</strong> 1 de Bienvenida y 1 de Apertura.</li>
+                            <li>📅 <strong>Configuración:</strong> Domingo o lunes previo al turno.</li>
+                            <li>⚠️ <span class="highlight-red">¡Atención!</span> Personalizar textos en amarillo. No usar plantillas viejas para evitar confusiones.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card card-custom shadow-sm p-3">
+                        <h5 class="fw-bold"><i class="bi bi-shield-lock icon-box"></i>Bloqueo de Prácticas</h5>
+                        <ul class="list-unstyled">
+                            <li>🔒 <strong>Inmediato:</strong> Bloquear al recibir archivos para evitar ediciones.</li>
+                            <li>👀 <strong>Verificación:</strong> Confirmar que el archivo exista aunque diga "Enviado".</li>
+                            <li>⏰ <strong>Límite:</strong> Domingo 00:00 hrs se bloquea todo el grupo.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card card-custom shadow-sm p-3">
+                        <h5 class="fw-bold"><i class="bi bi-clock-history icon-box"></i>Horarios y Asesoría</h5>
+                        <ul class="list-unstyled">
+                            <li>☀️ <strong>Vespertino:</strong> L-V 16:00 a 00:00 hrs.</li>
+                            <li>🎧 <strong>Asesoría:</strong> 2 horas diarias de conexión obligatoria.</li>
+                            <li>🎯 <strong>Desempeño:</strong> Responder todas las dudas es evaluable.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card card-custom shadow-sm p-3">
+                        <h5 class="fw-bold"><i class="bi bi-chat-dots icon-box"></i>Configuración de Foros</h5>
+                        <ul class="list-unstyled">
+                            <li>💬 <strong>3 Foros requeridos:</strong> Evaluación, Dudas y Conclusiones.</li>
+                            <li>🔢 <strong>Dinámica:</strong> Alumnos deben numerar respuestas.</li>
+                            <li>🥇 <strong>Regla:</strong> Solo se evalúa la 1ra participación.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="card card-custom shadow-sm p-4" style="background: #fff8e1; border-left-color: #ffc107;">
+                        <h5 class="fw-bold text-dark"><i class="bi bi-calendar-event icon-box text-warning"></i>Fechas Críticas de Calificación</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <p class="mb-1"><strong>📂 Evidencias (Drive):</strong></p>
+                                <p class="small"><i class="bi bi-cloud-arrow-up"></i> Lunes antes de las 12:00 hrs (Mediodía).</p>
+                            </div>
+                            <div class="col-md-4">
+                                <p class="mb-1"><strong>⭐ Calificar Prácticas:</strong></p>
+                                <p class="small"><i class="bi bi-pencil-square"></i> Inicia Dom 00:00 / Fin Mar 12:00 hrs.</p>
+                            </div>
+                            <div class="col-md-4">
+                                <p class="mb-1"><strong>🗣️ Calificar Foros:</strong></p>
+                                <p class="small"><i class="bi bi-calendar-check"></i> Lun 27 Abr (14:00) a Mar 28 Abr.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card card-custom shadow-sm p-3">
+                        <h5 class="fw-bold"><i class="bi bi-bell icon-box"></i>Aviso de Resultados</h5>
+                        <ul class="list-unstyled">
+                            <li>📢 <strong>Mensaje:</strong> Enviar a más tardar el martes.</li>
+                            <li>🚫 <strong>Cierre:</strong> Miércoles 00:00 hrs se ocultan calificaciones.</li>
+                            <li>📝 <strong>Recomendación:</strong> Pedir al alumno que lleve su propio registro.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card card-custom shadow-sm p-3">
+                        <h5 class="fw-bold"><i class="bi bi-people icon-box"></i>Supervisión Externa</h5>
+                        <ul class="list-unstyled">
+                            <li>👥 <strong>Integrantes:</strong> 2 alumnos genéricos por grupo.</li>
+                            <li>🔇 <strong>No Evaluar:</strong> Enviarles mensajes pero no asignar nota.</li>
+                            <li>📂 <strong>Limpieza:</strong> No crear carpetas en Drive para ellos.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

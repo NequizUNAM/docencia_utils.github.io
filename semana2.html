@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Guía de Actividades</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+          <style>
+        :root {
+            --azul-marino: #003366;
+            --azul-claro: #f4f7f6;
+        }
+        body {
+            background-color: var(--azul-claro);
+            font-family: 'Segoe UI', sans-serif;
+        }
+        /* Estilos del Sidebar extraídos de tu página */
+        #sidebar {
+            min-height: 100vh;
+            background: white;
+        }
+        .nav-link {
+            color: #333;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        .nav-link.active {
+            background-color: var(--azul-marino) !important;
+            color: white !important;
+        }
+        /* Estilos de la Infografía */
+        .card-custom {
+            border-radius: 8px;
+            border: none;
+            border-left: 5px solid var(--azul-marino);
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .card-custom:hover {
+            transform: translateY(-5px);
+        }
+        .header-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-bottom: 3px solid var(--azul-marino);
+        }
+        .icon-box {
+            font-size: 1.5rem;
+            color: var(--azul-marino);
+            margin-right: 10px;
+        }
+        .highlight-red { color: #d9534f; font-weight: bold; }
+        .url-banner {
+            background: #eef2f7;
+            border: 1px dashed var(--azul-marino);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+         <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm position-fixed">
+            <div class="text-center mb-4">
+                <h4 class="fw-bold text-primary-emphasis">DASHBOARD</h4>
+                <hr>
+            </div>
+            <ul class="nav flex-column" id="mainMenu">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.html">
+                        <i class="bi bi-calendar3 me-2"></i> CALENDARIO
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="evaluacion.html">
+                        <i class="bi bi-chat-left-quote me-2"></i> FORO DE EVALUACIÓN
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="convertidor.html">
+                        <i class="bi bi-image me-2"></i> CONVERTIDOR IMAGENES
+                    </a>
+                </li>
+                
+                <hr class="text-muted">
+                <div class="small fw-bold text-muted mb-2 ps-3">GUÍAS SEMANALES</div>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="semana1.html">
+                        <i class="bi bi-1-square me-2"></i> SEMANA 1
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="semana2.html">
+                        <i class="bi bi-2-square me-2"></i> SEMANA 2
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="semana3.html">
+                        <i class="bi bi-3-square me-2"></i> SEMANA 3
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="semana4.html">
+                        <i class="bi bi-4-square me-2"></i> SEMANA 4
+                    </a>
+                </li>
+
+                <hr class="text-muted">
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="manual.html">
+                        <i class="bi bi-book me-2"></i> MANUAL ASESORES
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+    <div class="header-section mb-4 shadow-sm">
+        <h2 class="fw-bold text-center" style="color: var(--azul-marino);">
+            <i class="bi bi-journal-check me-2"></i>ACTIVIDADES SEMANA 2
+        </h2>
+        <p class="text-center text-muted mb-0">Del lunes 27 de abril al sábado 02 de mayo de 2026</p>
+    </div>
+
+    <div class="url-banner p-3 mb-4 text-center shadow-sm">
+        <span class="fw-bold">🌐 URL de Plataforma:</span> 
+        <a href="http://cursosenlinea.tic.unam.mx/sep.php" class="text-decoration-none fw-bold">http://cursosenlinea.tic.unam.mx/sep.php</a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card card-custom p-4">
+                <h5 class="fw-bold"><i class="bi bi-calendar-check icon-box"></i>Configuración de Inicio</h5>
+                <ul class="list-unstyled">
+                    <li>📅 <strong>Calendario:</strong> Configurar domingo o lunes previo al turno (Tema 2).</li>
+                    <li>✉️ <strong>Mensajes:</strong> Enviar 1 mensaje de Apertura del Tema 2.</li>
+                    <li>⚠️ <span class="highlight-red">Nota:</span> Personalizar textos según la plantilla; no usar versiones anteriores para evitar confusión.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card card-custom p-4">
+                <h5 class="fw-bold"><i class="bi bi-lock icon-box"></i>Gestión de Prácticas</h5>
+                <ul class="list-unstyled">
+                    <li>🔒 <strong>Bloqueo:</strong> Bloquear entrega en cuanto el alumno suba su archivo.</li>
+                    <li>⌛ <strong>Límite:</strong> Domingo 00:00 hrs se bloquean todas las prácticas del grupo.</li>
+                    <li>🔍 <strong>Verificación:</strong> Asegurar que exista un archivo subido antes de bloquear (si dice "Enviado" pero está vacío, esperar al domingo).</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card card-custom p-4" style="border-left: 5px solid var(--azul-marino);">
+                <h5 class="fw-bold"><i class="bi bi-exclamation-triangle icon-box"></i>Fechas Importantes de Evaluación (Semana 2)</h5>
+                <div class="row text-center mt-3">
+                    <div class="col-md-4">
+                        <div class="p-2 border rounded bg-light">
+                            <strong><i class="bi bi-file-earmark-arrow-up"></i> Evidencias (Drive)</strong><br>
+                            Lunes 04 Mayo - 12:00 hrs
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 border rounded bg-light">
+                            <strong><i class="bi bi-pencil-square"></i> Calificar Práctica 2</strong><br>
+                            Terminar Martes 05 Mayo - 12:00 hrs
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 border rounded bg-light">
+                            <strong><i class="bi bi-chat-left-dots"></i> Calificar Foro 2</strong><br>
+                            Lunes 04 y Martes 05 Mayo
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card card-custom p-4">
+                <h5 class="fw-bold"><i class="bi bi-clock-history icon-box"></i>Asesoría y Turnos</h5>
+                <ul class="list-unstyled">
+                    <li>☀️ <strong>Vespertino:</strong> L-V 16:00 a 00:00 hrs.</li>
+                    <li>🎧 <strong>Conexión:</strong> Diario (L-V) por 2 horas en su horario indicado.</li>
+                    <li>💬 <strong>Dudas:</strong> Responder todas las dudas es parte de su evaluación de desempeño.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card card-custom p-4">
+                <h5 class="fw-bold"><i class="bi bi-chat-dots icon-box"></i>Foros de Evaluación</h5>
+                <ul class="list-unstyled">
+                    <li>🔢 <strong>Orden:</strong> Indicar a alumnos responder y numerar según aparecen en plataforma.</li>
+                    <li>🥇 <strong>Evaluación:</strong> Solo se tomará en cuenta la primera participación.</li>
+                    <li>🏁 <strong>Cierre:</strong> Foro de Conclusiones Tema 2 (Domingo 00:00 hrs).</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card card-custom p-4">
+                <h5 class="fw-bold"><i class="bi bi-bell icon-box"></i>Disponibilidad de Notas</h5>
+                <ul class="list-unstyled">
+                    <li>📢 <strong>Mensaje:</strong> Enviar antes o durante el martes de cada semana.</li>
+                    <li>🚫 <strong>Cierre de Tema:</strong> Miércoles 00:00 hrs se ocultan tema y calificaciones.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card card-custom p-4">
+                <h5 class="fw-bold"><i class="bi bi-people icon-box"></i>Participantes de Supervisión</h5>
+                <ul class="list-unstyled">
+                    <li>👥 <strong>Mensajería:</strong> Incluirlos en todos los correos del grupo.</li>
+                    <li>🔇 <strong>Evaluación:</strong> No evaluarlos, pero sí bloquear su entrega de práctica en la fecha límite.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

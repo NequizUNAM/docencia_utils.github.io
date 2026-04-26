@@ -3,34 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DASHBOARD - Reporte Educativo</title>
+    <title>DASHBOARD - Visualización</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="estilos.css">
+    <style>
+        :root {
+            --azul-marino: #003366;
+            --azul-claro: #f4f7f6;
+        }
+        body {
+            background-color: var(--azul-claro);
+            font-family: 'Segoe UI', sans-serif;
+        }
+        /* Estilos del Sidebar extraídos de tu página */
+        #sidebar {
+            min-height: 100vh;
+            background: white;
+        }
+        .nav-link {
+            color: #333;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        .nav-link.active {
+            background-color: var(--azul-marino) !important;
+            color: white !important;
+        }
+        /* Estilos de la Infografía */
+        .card-custom {
+            border-radius: 8px;
+            border: none;
+            border-left: 5px solid var(--azul-marino);
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .card-custom:hover {
+            transform: translateY(-5px);
+        }
+        .header-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-bottom: 3px solid var(--azul-marino);
+        }
+        .icon-box {
+            font-size: 1.5rem;
+            color: var(--azul-marino);
+            margin-right: 10px;
+        }
+        .highlight-red { color: #d9534f; font-weight: bold; }
+        .url-banner {
+            background: #eef2f7;
+            border: 1px dashed var(--azul-marino);
+            border-radius: 8px;
+        }
+        /* Estilo específico para resaltar la imagen */
+        .image-container {
+            position: relative;
+            background: white;
+            padding: 15px;
+            border-radius: 20px;
+            /* Sombra suave y profunda para efecto de elevación */
+            box-shadow: 0 20px 40px rgba(10, 25, 47, 0.12);
+            transition: transform 0.3s ease;
+        }
+
+        .image-container:hover {
+            transform: translateY(-5px);
+        }
+
+        .img-hero {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            display: block;
+            /* Filtro suave para que los colores se integren */
+            filter: saturate(1.1);
+        }
+
+        .glass-badge {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: var(--azul-marino);
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
 <body>
 
+<nav class="navbar navbar-mobile border-bottom px-3 py-2 d-md-none bg-white sticky-top">
+    <button class="btn btn-outline-dark border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu">
+        <i class="bi bi-list fs-3"></i>
+    </button>
+    <span class="fw-bold" style="color: var(--dorado);">DASHBOARD</span>
+</nav>
+
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title fw-bold">MENÚ</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body" id="menuMobileContent"></div>
+</div>
+
 <div class="container-fluid">
     <div class="row">
-        <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm">
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm position-fixed">
             <div class="text-center mb-4">
-                <h4 class="fw-bold" style="color: var(--azul-marino);">DASHBOARD</h4>
+                <h4 class="fw-bold text-primary-emphasis">DASHBOARD</h4>
                 <hr>
             </div>
             <ul class="nav flex-column" id="mainMenu">
                 <li class="nav-item">
                     <a class="nav-link active" href="index.html">
-                        <i class="bi bi-file-earmark-plus me-2"></i> Nueva Evaluación
+                        <i class="bi bi-calendar3 me-2"></i> CALENDARIO
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="evaluacion.html">
+                        <i class="bi bi-chat-left-quote me-2"></i> FORO DE EVALUACIÓN
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="convertidor.html">
-                        <i class="bi bi-image me-2"></i> Convertidor de Imágenes
+                        <i class="bi bi-image me-2"></i> CONVERTIDOR IMAGENES
+                    </a>
+                </li>
+                
+                <hr class="text-muted">
+                <div class="small fw-bold text-muted mb-2 ps-3">GUÍAS SEMANALES</div>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="semana1.html">
+                        <i class="bi bi-1-square me-2"></i> SEMANA 1
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="pagina3.html">
-                        <i class="bi bi-info-circle me-2"></i> Información Visual
+                    <a class="nav-link" href="semana2.html">
+                        <i class="bi bi-2-square me-2"></i> SEMANA 2
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="semana3.html">
+                        <i class="bi bi-3-square me-2"></i> SEMANA 3
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="semana4.html">
+                        <i class="bi bi-4-square me-2"></i> SEMANA 4
+                    </a>
+                </li>
+
+                <hr class="text-muted">
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="manual.html">
+                        <i class="bi bi-book me-2"></i> MANUAL ASESORES
                     </a>
                 </li>
             </ul>
@@ -38,43 +175,25 @@
 
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
             <div class="container">
-                <div class="card card-custom p-4 mb-5">
-                    <h3 class="fw-bold mb-4" style="color: var(--azul-marino);">Generador de Reportes</h3>
-                    
-                    <form id="evaluacionForm">
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">NOMBRES DEL ALUMNO</label>
-                            <input type="text" id="nombre" class="form-control form-control-lg shadow-sm" placeholder="Escriba aquí..." required>
-                        </div>
+                <header class="mb-5 text-center">
+                    <h2 class="fw-bold display-6" style="color: var(--azul-marino);">Galería de Recursos</h2>
+                    <p class="text-muted">Visualización de contenido institucional</p>
+                </header>
 
-                        <div id="preguntasContainer">
+                <div class="row justify-content-center">
+                    <div class="col-lg-12">
+                        <div class="image-container">
+                            <img src="images/calendarioIEBM_Abril.jpeg" alt="Imagen Institucional" class="img-hero shadow-inner">
+                            
+                            <div class="glass-badge">
+                                <i class="bi bi-stars me-2" style="color: var(--dorado);"></i>
+                                Recurso Educativo v1.0
                             </div>
-
-                        <div class="d-flex justify-content-between mt-4">
-                            <button type="button" class="btn btn-outline-secondary px-4 shadow-sm" onclick="resetForm()">
-                                <i class="bi bi-arrow-counterclockwise me-2"></i>Limpiar
-                            </button>
-                            <button type="button" class="btn btn-outline-sucess px-5 shadow-sm" onclick="procesarYEvaluar()">
-                                <i class="bi bi-file-earmark-check me-2"></i>Generar 
-                            </button>
                         </div>
-                    </form>
-                </div>
-
-                <div class="table-container shadow-sm">
-                    <h4 class="fw-bold mb-4 text-primary">Histórico (Últimos 35)</h4>
-                    <div class="table-responsive">
-                        <table class="table align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 15%;">Fecha/Hora</th>
-                                    <th>Reporte Completo</th>
-                                    <th class="text-center">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody id="historicoTabla">
-                                </tbody>
-                        </table>
+                        
+                        <div class="mt-4 text-center">
+                            <p class="small text-muted">Usa este espacio para proyectar o consultar material gráfico de apoyo.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -82,108 +201,12 @@
     </div>
 </div>
 
-<script id="preguntaTemplate" type="text/x-jsrender">
-    {{for preguntas}}
-    <div class="mb-3">
-        <label class="form-label small fw-bold">{{:label}}</label>
-        <select class="form-select respuesta shadow-sm">
-            <option value="">Seleccionar...</option>
-            <option value="25">Respuesta Correcta (25 pts)</option>
-            <option value="13">Respuesta Parcial (13 pts)</option>
-            <option value="0">Respuesta Incorrecta (0 pts)</option>
-        </select>
-    </div>
-    {{/for}}
-</script>
-
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsrender/1.0.15/jsrender.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    class RegistroManager {
-        constructor() {
-            this.key = 'historico_DASHBOARD';
-            this.limite = 35;
-        }
-
-        guardar(registro) {
-            let actual = this.obtener();
-            actual.unshift(registro);
-            if(actual.length > this.limite) actual = actual.slice(0, this.limite);
-            localStorage.setItem(this.key, JSON.stringify(actual));
-            this.render();
-        }
-
-        obtener() {
-            return JSON.parse(localStorage.getItem(this.key) || "[]");
-        }
-
-        render() {
-            const data = this.obtener();
-            const html = data.map(r => `
-                <tr>
-                    <td><span class="badge bg-light text-dark">${r.fecha}</span></td>
-                    <td><div class="texto-reporte">${r.textoCompleto}</div></td>
-                    <td class="text-center"><h4 class="fw-bold text-primary">${r.total}</h4></td>
-                </tr>
-            `).join('');
-            $("#historicoTabla").html(html || '<tr><td colspan="3" class="text-center">No hay registros aún.</td></tr>');
-        }
-    }
-
-    const manager = new RegistroManager();
-
     $(document).ready(function() {
-        const data = {
-            preguntas: [
-                { label: "PREGUNTA 1" }, { label: "PREGUNTA 2" },
-                { label: "PREGUNTA 3" }, { label: "PREGUNTA 4" }
-            ]
-        };
-        $("#preguntasContainer").html($.templates("#preguntaTemplate").render(data));
-        manager.render();
+        $("#menuMobileContent").html($("#mainMenu").clone());
     });
-
-    function resetForm() {
-        $("#evaluacionForm")[0].reset();
-    }
-
-    function procesarYEvaluar() {
-        const nombre = $("#nombre").val().toUpperCase().trim();
-        const respuestas = $(".respuesta").map(function() { return $(this).val(); }).get();
-
-        if(!nombre || respuestas.includes("")) {
-            Swal.fire('Error', 'Por favor llena todos los campos.', 'error');
-            return;
-        }
-
-        const pts = respuestas.map(v => parseInt(v));
-        const total = pts.reduce((a, b) => a + b, 0);
-        const fecha = new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
-
-        // CONSTRUCCIÓN DEL TEXTO EXACTO
-        let textoCompleto = `HOLA ${nombre}\n`;
-        respuestas.forEach((val, i) => {
-            textoCompleto += `PREGUNTA ${i+1} - ${val}\n`;
-        });
-        textoCompleto += `TOTAL ${total}`;
-
-        manager.guardar({
-            fecha,
-            textoCompleto,
-            total
-        });
-
-        Swal.fire({
-            title: 'Reporte Generado',
-            html: `<div class="text-start"><pre>${textoCompleto}</pre></div>`,
-            icon: 'success',
-            confirmButtonColor: '#0a192f'
-        });
-
-        resetForm();
-    }
 </script>
 </body>
 </html>

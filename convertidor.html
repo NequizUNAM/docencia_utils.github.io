@@ -9,6 +9,56 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="estilos.css">
     <style>
+        :root {
+            --azul-marino: #003366;
+            --azul-claro: #f4f7f6;
+        }
+        body {
+            background-color: var(--azul-claro);
+            font-family: 'Segoe UI', sans-serif;
+        }
+        /* Estilos del Sidebar extraídos de tu página */
+        #sidebar {
+            min-height: 100vh;
+            background: white;
+        }
+        .nav-link {
+            color: #333;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        .nav-link.active {
+            background-color: var(--azul-marino) !important;
+            color: white !important;
+        }
+        /* Estilos de la Infografía */
+        .card-custom {
+            border-radius: 8px;
+            border: none;
+            border-left: 5px solid var(--azul-marino);
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .card-custom:hover {
+            transform: translateY(-5px);
+        }
+        .header-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-bottom: 3px solid var(--azul-marino);
+        }
+        .icon-box {
+            font-size: 1.5rem;
+            color: var(--azul-marino);
+            margin-right: 10px;
+        }
+        .highlight-red { color: #d9534f; font-weight: bold; }
+        .url-banner {
+            background: #eef2f7;
+            border: 1px dashed var(--azul-marino);
+            border-radius: 8px;
+        }
         .image-preview {
             border: 2px dashed var(--dorado);
             border-radius: 12px;
@@ -54,25 +104,57 @@
 
 <div class="container-fluid">
     <div class="row">
-        <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm">
+                 <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm position-fixed">
             <div class="text-center mb-4">
-                <h4 class="fw-bold" style="color: var(--azul-marino);">DASHBOARD</h4>
+                <h4 class="fw-bold text-primary-emphasis">DASHBOARD</h4>
                 <hr>
             </div>
             <ul class="nav flex-column" id="mainMenu">
                 <li class="nav-item">
                     <a class="nav-link" href="index.html">
-                        <i class="bi bi-file-earmark-plus me-2"></i> Nueva Evaluación
+                        <i class="bi bi-calendar3 me-2"></i> CALENDARIO
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="evaluacion.html">
+                        <i class="bi bi-chat-left-quote me-2"></i> FORO DE EVALUACIÓN
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link active" href="convertidor.html">
-                        <i class="bi bi-image me-2"></i> Convertidor de Imágenes
+                        <i class="bi bi-image me-2"></i> CONVERTIDOR IMAGENES
+                    </a>
+                </li>
+                
+                <hr class="text-muted">
+                <div class="small fw-bold text-muted mb-2 ps-3">GUÍAS SEMANALES</div>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="semana1.html">
+                        <i class="bi bi-1-square me-2"></i> SEMANA 1
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="pagina3.html">
-                        <i class="bi bi-info-circle me-2"></i> Información Visual
+                    <a class="nav-link" href="semana2.html">
+                        <i class="bi bi-2-square me-2"></i> SEMANA 2
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="semana3.html">
+                        <i class="bi bi-3-square me-2"></i> SEMANA 3
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="semana4.html">
+                        <i class="bi bi-4-square me-2"></i> SEMANA 4
+                    </a>
+                </li>
+
+                <hr class="text-muted">
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="manual.html">
+                        <i class="bi bi-book me-2"></i> MANUAL ASESORES
                     </a>
                 </li>
             </ul>

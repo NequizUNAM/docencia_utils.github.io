@@ -1,62 +1,62 @@
 :root {
-    --azul-marino: #0a192f;
-    --azul-pastel-fondo: #f0f7ff;
-    --azul-celeste: #e3f2fd;
-    --dorado: #c5a059;
+    --azul-marino: #003366;
+    --azul-claro: #f4f7f6;
     --blanco: #ffffff;
 }
 
 body {
-    background-color: var(--azul-pastel-fondo);
-    color: var(--azul-marino);
-    font-family: 'Inter', sans-serif;
+    background-color: var(--azul-claro);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Sidebar */
 #sidebar {
-    background-color: var(--blanco);
     min-height: 100vh;
-    border-right: 1px solid var(--azul-celeste);
+    background: var(--blanco);
+    border-right: 1px solid #e0e0e0;
 }
 
-.card-custom {
-    background-color: var(--blanco);
-    border: none;
-    border-radius: 15px;
-    box-shadow: 0 10px 25px rgba(10, 25, 47, 0.08);
-}
-
-/* Botones Outline */
-.btn-outline-marino {
-    border: 2px solid var(--azul-marino);
-    color: var(--azul-marino);
-    font-weight: 600;
-}
-.btn-outline-marino:hover {
-    background-color: var(--azul-marino);
-    color: var(--dorado);
-}
-
-/* Estilo para el bloque de texto en la tabla */
-.texto-reporte {
-    white-space: pre-line; /* Mantiene saltos de línea */
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.85rem;
-    background-color: var(--azul-pastel-fondo);
-    padding: 10px;
+.nav-link {
+    color: #333;
+    padding: 12px 15px;
     border-radius: 8px;
-    border-left: 3px solid var(--dorado);
+    margin-bottom: 5px;
+    transition: all 0.3s;
+}
+
+.nav-link:hover {
+    background-color: #f8f9fa;
+    color: var(--azul-marino);
+}
+
+.nav-link.active {
+    background-color: var(--azul-marino) !important;
+    color: var(--blanco) !important;
+    box-shadow: 0 4px 10px rgba(0, 51, 102, 0.2);
+}
+
+/* Cards y Contenedores */
+.card-custom {
+    background: var(--blanco);
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .table-container {
-    background: white;
+    background: var(--blanco);
     padding: 25px;
-    border-radius: 15px;
-    margin-top: 30px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    border-radius: 12px;
+    margin-top: 2rem;
 }
 
-.form-control, .form-select {
-    border: 1px solid #d1d9e6;
-    border-radius: 8px;
+.texto-reporte {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+    max-height: 100px;
+    overflow-y: auto;
 }
-
