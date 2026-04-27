@@ -39,13 +39,6 @@
         .card-custom:hover {
             transform: translateY(-5px);
         }
-        .header-section {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            border-bottom: 3px solid var(--azul-marino);
-        }
-        /* Estilo para el reporte en la tabla */
         .texto-reporte {
             white-space: pre-wrap;
             font-family: monospace;
@@ -129,12 +122,13 @@
 
 <script id="preguntaTemplate" type="text/x-jsrender">
     {{for preguntas}}
-    <div class="col-12 mb-3"> <label class="form-label small fw-bold text-secondary">{{:label}}</label>
+    <div class="col-12 mb-3">
+        <label class="form-label small fw-bold text-secondary">{{:label}}</label>
         <select class="form-select respuesta shadow-sm border-secondary-subtle">
             <option value="">Seleccionar...</option>
-            <option value="Correcta">Correcta</option>
-            <option value="Parcial">Parcial</option>
-            <option value="Incorrecta">Incorrecta</option>
+            <option value="Correcta (25 pts)">Correcta (25 pts)</option>
+            <option value="Parcial (13 pts)">Parcial (13 pts)</option>
+            <option value="Incorrecta (0 pts)">Incorrecta (0 pts)</option>
         </select>
     </div>
     {{/for}}
@@ -165,19 +159,22 @@
 
         render() {
             const data = this.obtener();
-            const html = data.map((r, index) => `
+            const html = data.map((r, index) => {
+                // SOLUCIÓN AL ERROR: Validación de textoCopiable
+                const textoSeguro = r.textoCopiable ? r.textoCopiable.replace(/\n/g, '\\n') : "";
+                return `
                 <tr>
                     <td><small class="text-muted">${r.fecha}</small></td>
-                    <td><div class="texto-reporte" id="text-${index}">${r.textoCopiable}</div></td>
-                    <td class="text-center"><span class="badge bg-primary">${r.total}</span></td>
+                    <td><div class="texto-reporte">${r.textoCopiable || ""}</div></td>
+                    <td class="text-center"><span class="badge bg-primary">${r.total || 0}</span></td>
                     <td class="text-center">
-                        <button class="btn btn-sm btn-outline-primary" onclick="copiarTextoIndividual('${r.textoCopiable.replace(/\n/g, '\\n')}')">
+                        <button class="btn btn-sm btn-outline-primary" onclick="copiarTextoIndividual('${textoSeguro}')">
                             <i class="bi bi-clipboard"></i>
                         </button>
                     </td>
-                </tr>
-            `).join('');
-            $("#historicoTabla").html(html || '<tr><td colspan="4" class="text-center p-4">No hay registros.</td></tr>');
+                </tr>`;
+            }).join('');
+            $("#historicoTabla").html(html || '<tr><td colspan="4" class="text-center p-4 text-muted">No hay registros.</td></tr>');
         }
     }
 
@@ -199,6 +196,7 @@
     }
 
     async function copiarAlPortapapeles(texto) {
+        if (!texto) return;
         try {
             await navigator.clipboard.writeText(texto);
         } catch (err) {
@@ -207,8 +205,9 @@
     }
 
     function copiarTextoIndividual(texto) {
-        copiarAlPortapapeles(texto.replace(/\\n/g, '\n'));
-        Swal.fire({ title: 'Copiado', text: 'Texto enviado al portapapeles', icon: 'success', timer: 1000, showConfirmButton: false });
+        const textoLimpio = texto.replace(/\\n/g, '\n');
+        copiarAlPortapapeles(textoLimpio);
+        Swal.fire({ title: 'Copiado', icon: 'success', timer: 800, showConfirmButton: false });
     }
 
     function procesarYEvaluar() {
@@ -216,31 +215,30 @@
         const respuestas = $(".respuesta").map(function() { return $(this).val(); }).get();
 
         if(!nombre || respuestas.includes("")) {
-            Swal.fire('Atención', 'Por favor completa el nombre y todas las preguntas.', 'warning');
+            Swal.fire('Atención', 'Completa el nombre y todas las preguntas.', 'warning');
             return;
         }
 
-        // Lógica de puntos (opcional, para el total visual)
-        const puntosMap = { "Correcta": 25, "Parcial": 13, "Incorrecta": 0 };
-        const total = respuestas.reduce((acc, val) => acc + puntosMap[val], 0);
-
-        // Estructura solicitada para copiar
+        // Obtener puntaje numérico extrayendo el número del texto del dropdown
+        let total = 0;
         let textoCopiable = `HOLA ${nombre}\n`;
+        
         respuestas.forEach((val, i) => {
             textoCopiable += `pregunta${i+1} + ${val}\n`;
+            // Extrae el número dentro del paréntesis
+            const puntos = parseInt(val.match(/\d+/)) || 0;
+            total += puntos;
         });
 
-        // Guardar en tabla (con total) y copiar a portapapeles (sin total)
         const fecha = new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+        
         manager.guardar({ fecha, textoCopiable, total });
-
-        // Copia automática
         copiarAlPortapapeles(textoCopiable);
 
         Swal.fire({
             title: '¡Reporte Generado!',
-            html: `<p class="small text-success">Copiado automáticamente al portapapeles</p>
-                   <div class="text-start bg-light p-3 rounded mt-2"><pre class="m-0">${textoCopiable}\nTOTAL: ${total}</pre></div>`,
+            html: `<p class="small text-success">Copiado al portapapeles automáticamente</p>
+                   <div class="text-start bg-light p-3 rounded mt-2"><pre class="m-0">${textoCopiable}\nTOTAL: ${total} PTS</pre></div>`,
             icon: 'success',
             confirmButtonColor: '#003366'
         });
