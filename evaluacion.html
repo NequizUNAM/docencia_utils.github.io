@@ -211,34 +211,40 @@
     }
 
     function procesarYEvaluar() {
-        const nombre = $("#nombre").val().toUpperCase().trim();
+        const nombreRaw = $("#nombre").val().trim();
         const respuestas = $(".respuesta").map(function() { return $(this).val(); }).get();
 
-        if(!nombre || respuestas.includes("")) {
+        if(!nombreRaw || respuestas.includes("")) {
             Swal.fire('Atención', 'Completa el nombre y todas las preguntas.', 'warning');
             return;
         }
 
-        // Obtener puntaje numérico extrayendo el número del texto del dropdown
+        // Formatear nombre: Primera Mayúscula, resto minúsculas (ej: Test)
+        const nombre = nombreRaw.charAt(0).toUpperCase() + nombreRaw.slice(1).toLowerCase();
+
         let total = 0;
-        let textoCopiable = `HOLA ${nombre}\n`;
+        // CONSTRUCCIÓN DEL MENSAJE SEGÚN TU EJEMPLO
+        let textoCopiable = `Hola ${nombre}:\n`;
         
         respuestas.forEach((val, i) => {
-            textoCopiable += `pregunta${i+1} + ${val}\n`;
-            // Extrae el número dentro del paréntesis
+            textoCopiable += `Pregunta ${i+1}: ${val}\n`;
+            // Extraer puntaje para el cálculo interno del total
             const puntos = parseInt(val.match(/\d+/)) || 0;
             total += puntos;
         });
 
         const fecha = new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
         
+        // Guardar y copiar
         manager.guardar({ fecha, textoCopiable, total });
-        copiarAlPortapapeles(textoCopiable);
+        copiarAlPortapapeles(textoCopiable.trim()); // .trim() para evitar el último salto de línea al copiar
 
         Swal.fire({
             title: '¡Reporte Generado!',
             html: `<p class="small text-success">Copiado al portapapeles automáticamente</p>
-                   <div class="text-start bg-light p-3 rounded mt-2"><pre class="m-0">${textoCopiable}\nTOTAL: ${total} PTS</pre></div>`,
+                   <div class="text-start bg-light p-3 rounded mt-2">
+                        <pre class="m-0" style="font-family: inherit;">${textoCopiable}<strong>Total: ${total} pts</strong></pre>
+                   </div>`,
             icon: 'success',
             confirmButtonColor: '#003366'
         });
