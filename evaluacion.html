@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="estilos.css">
-        <style>
+    <style>
         :root {
             --azul-marino: #003366;
             --azul-claro: #f4f7f6;
@@ -16,7 +16,6 @@
             background-color: var(--azul-claro);
             font-family: 'Segoe UI', sans-serif;
         }
-        /* Estilos del Sidebar extraídos de tu página */
         #sidebar {
             min-height: 100vh;
             background: white;
@@ -30,7 +29,6 @@
             background-color: var(--azul-marino) !important;
             color: white !important;
         }
-        /* Estilos de la Infografía */
         .card-custom {
             border-radius: 8px;
             border: none;
@@ -47,16 +45,14 @@
             border-radius: 8px;
             border-bottom: 3px solid var(--azul-marino);
         }
-        .icon-box {
-            font-size: 1.5rem;
-            color: var(--azul-marino);
-            margin-right: 10px;
-        }
-        .highlight-red { color: #d9534f; font-weight: bold; }
-        .url-banner {
-            background: #eef2f7;
-            border: 1px dashed var(--azul-marino);
-            border-radius: 8px;
+        /* Estilo para el reporte en la tabla */
+        .texto-reporte {
+            white-space: pre-wrap;
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
         }
     </style>
 </head>
@@ -64,63 +60,24 @@
 
 <div class="container-fluid">
     <div class="row">
-       <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm position-fixed">
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-none d-md-block p-3 shadow-sm position-fixed">
             <div class="text-center mb-4">
                 <h4 class="fw-bold text-primary-emphasis">DASHBOARD</h4>
                 <hr>
             </div>
             <ul class="nav flex-column" id="mainMenu">
-                <li class="nav-item">
-                    <a class="nav-link" href="index.html">
-                        <i class="bi bi-calendar3 me-2"></i> CALENDARIO
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="evaluacion.html">
-                        <i class="bi bi-chat-left-quote me-2"></i> FORO DE EVALUACIÓN
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="convertidor.html">
-                        <i class="bi bi-image me-2"></i> CONVERTIDOR IMAGENES
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="archivo_bat.html">
-                    <i class="bi bi-gear-fill me-2"></i> ORGANIZADOR ZIP</a>
-                </li>
-                
+                <li class="nav-item"><a class="nav-link" href="index.html"><i class="bi bi-calendar3 me-2"></i> CALENDARIO</a></li>
+                <li class="nav-item"><a class="nav-link active" href="evaluacion.html"><i class="bi bi-chat-left-quote me-2"></i> FORO DE EVALUACIÓN</a></li>
+                <li class="nav-item"><a class="nav-link" href="convertidor.html"><i class="bi bi-image me-2"></i> CONVERTIDOR IMAGENES</a></li>
+                <li class="nav-item"><a class="nav-link" href="archivo_bat.html"><i class="bi bi-gear-fill me-2"></i> ORGANIZADOR ZIP</a></li>
                 <hr class="text-muted">
                 <div class="small fw-bold text-muted mb-2 ps-3">GUÍAS SEMANALES</div>
-
-                <li class="nav-item">
-                    <a class="nav-link" href="semana1.html">
-                        <i class="bi bi-1-square me-2"></i> SEMANA 1
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="semana2.html">
-                        <i class="bi bi-2-square me-2"></i> SEMANA 2
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="semana3.html">
-                        <i class="bi bi-3-square me-2"></i> SEMANA 3
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="semana4.html">
-                        <i class="bi bi-4-square me-2"></i> SEMANA 4
-                    </a>
-                </li>
-
+                <li class="nav-item"><a class="nav-link" href="semana1.html"><i class="bi bi-1-square me-2"></i> SEMANA 1</a></li>
+                <li class="nav-item"><a class="nav-link" href="semana2.html"><i class="bi bi-2-square me-2"></i> SEMANA 2</a></li>
+                <li class="nav-item"><a class="nav-link" href="semana3.html"><i class="bi bi-3-square me-2"></i> SEMANA 3</a></li>
+                <li class="nav-item"><a class="nav-link" href="semana4.html"><i class="bi bi-4-square me-2"></i> SEMANA 4</a></li>
                 <hr class="text-muted">
-                
-                <li class="nav-item">
-                    <a class="nav-link" href="manual.html">
-                        <i class="bi bi-book me-2"></i> MANUAL ASESORES
-                    </a>
-                </li>
+                <li class="nav-item"><a class="nav-link" href="manual.html"><i class="bi bi-book me-2"></i> MANUAL ASESORES</a></li>
             </ul>
         </nav>
 
@@ -135,7 +92,7 @@
                             <input type="text" id="nombre" class="form-control form-control-lg border-2" placeholder="Ej. Juan Pérez" required>
                         </div>
 
-                        <div id="preguntasContainer" class="row g-3">
+                        <div id="preguntasContainer" class="row">
                             </div>
 
                         <div class="d-flex justify-content-between mt-5 pt-3 border-top">
@@ -149,22 +106,19 @@
                     </form>
                 </div>
 
-                <div class="table-container shadow-sm">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h4 class="fw-bold m-0" style="color: var(--azul-marino);">Histórico Reciente</h4>
-                        <span class="badge bg-light text-dark border">Últimos 35 registros</span>
-                    </div>
+                <div class="table-container shadow-sm bg-white p-4 rounded shadow-sm">
+                    <h4 class="fw-bold mb-4" style="color: var(--azul-marino);">Histórico Reciente</h4>
                     <div class="table-responsive">
                         <table class="table align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 18%;">Fecha/Hora</th>
-                                    <th>Reporte Detallado</th>
+                                    <th>Fecha</th>
+                                    <th>Reporte</th>
                                     <th class="text-center">Total</th>
+                                    <th class="text-center">Acción</th>
                                 </tr>
                             </thead>
-                            <tbody id="historicoTabla">
-                                </tbody>
+                            <tbody id="historicoTabla"></tbody>
                         </table>
                     </div>
                 </div>
@@ -175,13 +129,12 @@
 
 <script id="preguntaTemplate" type="text/x-jsrender">
     {{for preguntas}}
-    <div class="col-md-6 mb-3">
-        <label class="form-label small fw-bold text-secondary">{{:label}}</label>
+    <div class="col-12 mb-3"> <label class="form-label small fw-bold text-secondary">{{:label}}</label>
         <select class="form-select respuesta shadow-sm border-secondary-subtle">
             <option value="">Seleccionar...</option>
-            <option value="25">Correcta (25 pts)</option>
-            <option value="13">Parcial (13 pts)</option>
-            <option value="0">Incorrecta (0 pts)</option>
+            <option value="Correcta">Correcta</option>
+            <option value="Parcial">Parcial</option>
+            <option value="Incorrecta">Incorrecta</option>
         </select>
     </div>
     {{/for}}
@@ -192,8 +145,6 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    // Tu lógica de RegistroManager y funciones se mantienen igual, 
-    // solo asegúrate de que el render use las clases del nuevo CSS.
     class RegistroManager {
         constructor() {
             this.key = 'historico_DASHBOARD';
@@ -214,14 +165,19 @@
 
         render() {
             const data = this.obtener();
-            const html = data.map(r => `
+            const html = data.map((r, index) => `
                 <tr>
-                    <td><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">${r.fecha}</span></td>
-                    <td><div class="texto-reporte">${r.textoCompleto}</div></td>
-                    <td class="text-center"><h4 class="fw-bold text-primary m-0">${r.total}</h4></td>
+                    <td><small class="text-muted">${r.fecha}</small></td>
+                    <td><div class="texto-reporte" id="text-${index}">${r.textoCopiable}</div></td>
+                    <td class="text-center"><span class="badge bg-primary">${r.total}</span></td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-primary" onclick="copiarTextoIndividual('${r.textoCopiable.replace(/\n/g, '\\n')}')">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </td>
                 </tr>
             `).join('');
-            $("#historicoTabla").html(html || '<tr><td colspan="3" class="text-center p-5 text-muted">No hay registros disponibles.</td></tr>');
+            $("#historicoTabla").html(html || '<tr><td colspan="4" class="text-center p-4">No hay registros.</td></tr>');
         }
     }
 
@@ -242,6 +198,19 @@
         $("#evaluacionForm")[0].reset();
     }
 
+    async function copiarAlPortapapeles(texto) {
+        try {
+            await navigator.clipboard.writeText(texto);
+        } catch (err) {
+            console.error('Error al copiar: ', err);
+        }
+    }
+
+    function copiarTextoIndividual(texto) {
+        copiarAlPortapapeles(texto.replace(/\\n/g, '\n'));
+        Swal.fire({ title: 'Copiado', text: 'Texto enviado al portapapeles', icon: 'success', timer: 1000, showConfirmButton: false });
+    }
+
     function procesarYEvaluar() {
         const nombre = $("#nombre").val().toUpperCase().trim();
         const respuestas = $(".respuesta").map(function() { return $(this).val(); }).get();
@@ -251,21 +220,27 @@
             return;
         }
 
-        const pts = respuestas.map(v => parseInt(v));
-        const total = pts.reduce((a, b) => a + b, 0);
-        const fecha = new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+        // Lógica de puntos (opcional, para el total visual)
+        const puntosMap = { "Correcta": 25, "Parcial": 13, "Incorrecta": 0 };
+        const total = respuestas.reduce((acc, val) => acc + puntosMap[val], 0);
 
-        let textoCompleto = `ALUMNO: ${nombre}\n`;
+        // Estructura solicitada para copiar
+        let textoCopiable = `HOLA ${nombre}\n`;
         respuestas.forEach((val, i) => {
-            textoCompleto += `P${i+1}: ${val} pts\n`;
+            textoCopiable += `pregunta${i+1} + ${val}\n`;
         });
-        textoCompleto += `TOTAL: ${total} PTS`;
 
-        manager.guardar({ fecha, textoCompleto, total });
+        // Guardar en tabla (con total) y copiar a portapapeles (sin total)
+        const fecha = new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+        manager.guardar({ fecha, textoCopiable, total });
+
+        // Copia automática
+        copiarAlPortapapeles(textoCopiable);
 
         Swal.fire({
-            title: '¡Reporte Listo!',
-            html: `<div class="text-start bg-light p-3 rounded mt-2"><pre class="m-0">${textoCompleto}</pre></div>`,
+            title: '¡Reporte Generado!',
+            html: `<p class="small text-success">Copiado automáticamente al portapapeles</p>
+                   <div class="text-start bg-light p-3 rounded mt-2"><pre class="m-0">${textoCopiable}\nTOTAL: ${total}</pre></div>`,
             icon: 'success',
             confirmButtonColor: '#003366'
         });
