@@ -126,9 +126,9 @@
         <label class="form-label small fw-bold text-secondary">{{:label}}</label>
         <select class="form-select respuesta shadow-sm border-secondary-subtle">
             <option value="">Seleccionar...</option>
-            <option value="Correcta (25 pts)">Correcta (25 pts)</option>
-            <option value="Parcial (13 pts)">Parcial (13 pts)</option>
-            <option value="Incorrecta (0 pts)">Incorrecta (0 pts)</option>
+            <option value="Respuesta Correcta. 25 puntos">Respuesta Correcta 25 puntos</option>
+            <option value="Respuesta Parcial. 13 puntos">Respuesta Parcial 13 puntos</option>
+            <option value="Respuesta Incorrecta. 0 puntos">Respuesta Incorrecta 0 puntos</option>
         </select>
     </div>
     {{/for}}
@@ -226,8 +226,9 @@
         // CONSTRUCCIÓN DEL MENSAJE SEGÚN TU EJEMPLO
         let textoCopiable = `Hola ${nombre}:\n`;
         
+        // Aqui se construye el Mensaje
         respuestas.forEach((val, i) => {
-            textoCopiable += `Pregunta ${i+1}: ${val}\n`;
+            textoCopiable += `${i+1}: ${val}\n`;
             // Extraer puntaje para el cálculo interno del total
             const puntos = parseInt(val.match(/\d+/)) || 0;
             total += puntos;
