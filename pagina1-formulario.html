@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Formulario</title>
+  <title>Generador de Reportes</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <style>
@@ -16,6 +16,14 @@
       transition: transform 0.2s;
     }
     .card-custom:hover { transform: translateY(-5px); }
+    .texto-reporte {
+      white-space: pre-wrap;
+      font-family: monospace;
+      background: #f8f9fa;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
   </style>
 </head>
 <body>
@@ -23,51 +31,178 @@
 
   <!-- col-md-9 offset para dejar espacio al sidebar en desktop -->
   <main class="flex-grow-1 col-md-9 ms-md-auto col-lg-10 py-5 px-4">
-    <div class="container" style="max-width:600px;">
-      <div class="card card-custom p-4 shadow-sm">
-        <h2 class="fw-bold mb-4" style="color: var(--azul-marino);">Formulario de Contacto</h2>
-        <form id="contactForm" novalidate>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Nombre completo</label>
-            <input type="text" class="form-control" id="nombre" placeholder="Juan Pérez" required>
+    <div class="container">
+      <div class="card card-custom p-4 mb-5 shadow-sm">
+        <h3 class="fw-bold mb-4" style="color: var(--azul-marino);">Generador de Reportes</h3>
+
+        <form id="evaluacionForm">
+          <div class="mb-4">
+            <label class="form-label fw-bold small text-muted">NOMBRES DEL ALUMNO</label>
+            <input type="text" id="nombre" class="form-control form-control-lg border-2" placeholder="Ej. Juan Pérez" required>
           </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Correo electrónico</label>
-            <input type="email" class="form-control" id="correo" placeholder="correo@ejemplo.com" required>
+
+          <div id="preguntasContainer" class="row"></div>
+
+          <div class="d-flex justify-content-between mt-5 pt-3 border-top">
+            <button type="button" class="btn btn-outline-secondary px-4" onclick="resetForm()">
+              <i class="bi bi-arrow-counterclockwise me-2"></i>Limpiar
+            </button>
+            <button type="button" class="btn btn-primary px-5 fw-bold" onclick="procesarYEvaluar()" style="background-color: var(--azul-marino);">
+              <i class="bi bi-file-earmark-check me-2"></i>Generar Reporte
+            </button>
           </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Asunto</label>
-            <select class="form-select" id="asunto">
-              <option value="">Selecciona...</option>
-              <option>Información general</option>
-              <option>Inscripciones</option>
-              <option>Actividades escolares</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Mensaje</label>
-            <textarea class="form-control" id="mensaje" rows="4" placeholder="Escribe tu mensaje..."></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary w-100 fw-bold" style="background-color: var(--azul-marino); border-color: var(--azul-marino);">Enviar</button>
-          <div id="formMsg" class="mt-3"></div>
         </form>
+      </div>
+
+      <div class="table-container shadow-sm bg-white p-4 rounded shadow-sm">
+        <h4 class="fw-bold mb-4" style="color: var(--azul-marino);">Histórico Reciente</h4>
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Reporte</th>
+                <th class="text-center">Total</th>
+                <th class="text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="historicoTabla"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </main>
 
   <div id="footer-container"></div>
 
+  <script id="preguntaTemplate" type="text/x-jsrender">
+    {{for preguntas}}
+    <div class="col-12 mb-3">
+        <label class="form-label small fw-bold text-secondary">{{:label}}</label>
+        <select class="form-select respuesta shadow-sm border-secondary-subtle">
+            <option value="">Seleccionar...</option>
+            <option value="Respuesta correcta. 25 puntos">Respuesta correcta 25 puntos</option>
+            <option value="Respuesta parcial. 13 puntos">Respuesta parcial 13 puntos</option>
+            <option value="Respuesta incorrecta. 0 puntos">Respuesta incorrecta 0 puntos</option>
+        </select>
+    </div>
+    {{/for}}
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsrender@1.0.14/jsrender.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="js/app.js"></script>
+
   <script>
-    $('#contactForm').on('submit', function(e) {
-      e.preventDefault();
-      // Controller: aquí conectarías con PHP controller vía fetch/POST
-      $('#formMsg').html('<div class="alert alert-success">¡Mensaje enviado correctamente!</div>');
-      this.reset();
+    class RegistroManager {
+      constructor() {
+        this.key = 'historico_DASHBOARD';
+        this.limite = 60;
+      }
+
+      guardar(registro) {
+        let actual = this.obtener();
+        actual.unshift(registro);
+        if (actual.length > this.limite) actual = actual.slice(0, this.limite);
+        localStorage.setItem(this.key, JSON.stringify(actual));
+        this.render();
+      }
+
+      obtener() {
+        return JSON.parse(localStorage.getItem(this.key) || "[]");
+      }
+
+      render() {
+        const data = this.obtener();
+        const html = data.map((r) => {
+          const textoSeguro = r.textoCopiable ? r.textoCopiable.replace(/\n/g, '\\n') : "";
+          return `
+          <tr>
+              <td><small class="text-muted">${r.fecha}</small></td>
+              <td><div class="texto-reporte">${r.textoCopiable || ""}</div></td>
+              <td class="text-center"><span class="badge bg-primary">${r.total || 0}</span></td>
+              <td class="text-center">
+                  <button class="btn btn-sm btn-outline-primary" onclick="copiarTextoIndividual('${textoSeguro}')">
+                      <i class="bi bi-clipboard"></i>
+                  </button>
+              </td>
+          </tr>`;
+        }).join('');
+        $("#historicoTabla").html(html || '<tr><td colspan="4" class="text-center p-4 text-muted">No hay registros.</td></tr>');
+      }
+    }
+
+    const manager = new RegistroManager();
+
+    $(document).ready(function() {
+      const data = {
+        preguntas: [
+          { label: "PREGUNTA 1" }, { label: "PREGUNTA 2" },
+          { label: "PREGUNTA 3" }, { label: "PREGUNTA 4" }
+        ]
+      };
+      $("#preguntasContainer").html($.templates("#preguntaTemplate").render(data));
+      manager.render();
     });
+
+    function resetForm() {
+      $("#evaluacionForm")[0].reset();
+    }
+
+    async function copiarAlPortapapeles(texto) {
+      if (!texto) return;
+      try {
+        await navigator.clipboard.writeText(texto);
+      } catch (err) {
+        console.error('Error al copiar: ', err);
+      }
+    }
+
+    function copiarTextoIndividual(texto) {
+      const textoLimpio = texto.replace(/\\n/g, '\n');
+      copiarAlPortapapeles(textoLimpio);
+      Swal.fire({ title: 'Copiado', icon: 'success', timer: 800, showConfirmButton: false });
+    }
+
+    function procesarYEvaluar() {
+      const nombreRaw = $("#nombre").val().trim();
+      const respuestas = $(".respuesta").map(function() { return $(this).val(); }).get();
+
+      if (!nombreRaw || respuestas.includes("")) {
+        Swal.fire('Atención', 'Completa el nombre y todas las preguntas.', 'warning');
+        return;
+      }
+
+      const nombre = nombreRaw.charAt(0).toUpperCase() + nombreRaw.slice(1).toLowerCase();
+
+      let total = 0;
+      let textoCopiable = `Hola ${nombre}:\n`;
+
+      respuestas.forEach((val, i) => {
+        textoCopiable += `${i + 1}: ${val}\n`;
+        const puntos = parseInt(val.match(/\d+/)) || 0;
+        total += puntos;
+      });
+
+      const fecha = new Date().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+
+      manager.guardar({ fecha, textoCopiable, total });
+      copiarAlPortapapeles(textoCopiable.trim());
+
+      Swal.fire({
+        title: '¡Reporte Generado!',
+        html: `<p class="small text-success">Copiado al portapapeles automáticamente</p>
+               <div class="text-start bg-light p-3 rounded mt-2">
+                    <pre class="m-0" style="font-family: inherit;">${textoCopiable}<strong>Total: ${total} pts</strong></pre>
+               </div>`,
+        icon: 'success',
+        confirmButtonColor: '#003366'
+      });
+
+      resetForm();
+    }
   </script>
 </body>
 </html>
