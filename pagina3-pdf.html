@@ -20,7 +20,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="fw-bold mb-0" style="color:#001f5b;">Documento Oficial</h2>
         <!-- ↓ Reemplaza PDF_URL con la ruta real de tu PDF -->
-        <a id="pdf-download" href="assets/docs/Capacitación 2026_v1.pdf" download
+        <a id="pdf-download" href="/docs/Capacitacion_2026_v1.pdf" download
            class="btn btn-outline-primary btn-sm fw-semibold">
           ⬇ Descargar PDF
         </a>
@@ -28,10 +28,10 @@
       <!-- Controller: puedes pasar la URL del PDF desde PHP como parámetro GET -->
       <iframe id="pdf-viewer"
               class="pdf-frame shadow"
-              src="assets/docs/Capacitación 2026_v1.pdf"
+              src="/docs/Capacitacion_2026_v1.pdf"
               title="Visor de documento PDF">
-        <p>Tu navegador no soporta iframes.
-           <a href="assets/docs/Capacitación 2026_v1.pdf">Descarga el PDF aquí</a>.
+           <p>Tu navegador no soporta iframes.
+           <a href="/docs/Capacitacion_2026_v1.pdf">Descarga el PDF aquí</a>.
         </p>
       </iframe>
     </div>
@@ -48,7 +48,7 @@
     // Controller: leer PDF desde query param  ?pdf=ruta/al/archivo.pdf
     $(function () {
       const params = new URLSearchParams(window.location.search);
-      const pdfUrl = params.get('pdf') || 'assets/docs/Capacitación.pdf';
+      const pdfUrl = params.get('pdf') || '/docs/Capacitacion_2026_v1.pdf';
       $('#pdf-viewer').attr('src', pdfUrl);
       $('#pdf-download').attr('href', pdfUrl);
     });
