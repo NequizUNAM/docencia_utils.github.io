@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Documento PDF</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    body { background:#fff; color:#1a1a2e; display:flex; flex-direction:column; min-height:100vh; }
+    .pdf-frame { width:100%; height:75vh; border:none; border-radius:8px; }
+  </style>
+</head>
+<body>
+  <div id="header-container"></div>
+
+    <!-- col-md-9 offset para dejar espacio al sidebar en desktop -->
+  <main class="flex-grow-1 col-md-9 ms-md-auto col-lg-10 py-5 px-4">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fw-bold mb-0" style="color:#001f5b;">Documento Oficial</h2>
+        <!-- ↓ Reemplaza PDF_URL con la ruta real de tu PDF -->
+        <a id="pdf-download" href="assets/docs/documento.pdf" download
+           class="btn btn-outline-primary btn-sm fw-semibold">
+          ⬇ Descargar PDF
+        </a>
+      </div>
+      <!-- Controller: puedes pasar la URL del PDF desde PHP como parámetro GET -->
+      <iframe id="pdf-viewer"
+              class="pdf-frame shadow"
+              src="assets/docs/documento.pdf"
+              title="Visor de documento PDF">
+        <p>Tu navegador no soporta iframes.
+           <a href="assets/docs/documento.pdf">Descarga el PDF aquí</a>.
+        </p>
+      </iframe>
+    </div>
+  </main>
+
+  <div id="footer-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    // Controller: leer PDF desde query param  ?pdf=ruta/al/archivo.pdf
+    $(function () {
+      const params = new URLSearchParams(window.location.search);
+      const pdfUrl = params.get('pdf') || 'assets/docs/documento.pdf';
+      $('#pdf-viewer').attr('src', pdfUrl);
+      $('#pdf-download').attr('href', pdfUrl);
+    });
+  </script>
+</body>
+</html>
