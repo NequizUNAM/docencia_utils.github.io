@@ -45,10 +45,26 @@
   <!-- col-md-9 offset para dejar espacio al sidebar en desktop -->
   <main class="flex-grow-1 col-md-9 ms-md-auto col-lg-10 py-5 px-4">
     <div class="container">
-      <header class="mb-4">
-        <h2 class="fw-bold" style="color: var(--azul-marino);">Convertidor de Imágenes</h2>
-        <p class="text-muted">Gestión de archivos INE y Fotos de Perfil.</p>
+      
+      <header class="mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+          <h2 class="fw-bold" style="color: var(--azul-marino);">Convertidor de Imágenes</h2>
+          <p class="text-muted mb-0">Gestión de archivos INE y Fotos de Perfil.</p>
+        </div>
+        <div>
+          <button class="btn btn-outline-marino" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise me-2"></i>Recargar
+          </button>
+        </div>
       </header>
+
+      <!-- Nueva sección para el Folio -->
+      <div class="row mb-4">
+        <div class="col-12 col-md-6 col-xl-4">
+          <label for="folioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio (opcional)</label>
+          <input type="text" id="folioInput" class="form-control" placeholder="Ej. 105952">
+        </div>
+      </div>
 
       <div class="row g-4">
         <div class="col-12 col-xl-7">
@@ -72,7 +88,7 @@
               </div>
             </div>
 
-            <a href="#" id="downloadIneBtn" class="btn btn-outline-marino w-100 d-none shadow-sm" download="ine-combinada.jpg">
+            <a href="#" id="downloadIneBtn" class="btn btn-outline-marino w-100 d-none shadow-sm">
               <i class="bi bi-download me-2"></i>Descargar INE
             </a>
           </div>
@@ -93,7 +109,7 @@
               </div>
             </div>
 
-            <a href="#" id="downloadSelfieBtn" class="btn btn-outline-marino w-100 d-none shadow-sm" download="selfie-redimensionada.jpg">
+            <a href="#" id="downloadSelfieBtn" class="btn btn-outline-marino w-100 d-none shadow-sm">
               <i class="bi bi-download me-2"></i>Descargar Selfie
             </a>
           </div>
@@ -112,6 +128,19 @@
   <script>
     let ineFrontalImage = null;
     let ineLateralImage = null;
+
+    // Función para obtener el folio ingresado o el valor por defecto
+    function getFolioName() {
+      let folio = $("#folioInput").val().trim();
+      return folio !== "" ? folio : "folio";
+    }
+
+    // Actualiza los nombres de descarga cuando el usuario escribe en el input
+    $("#folioInput").on("input", function() {
+      let folio = getFolioName();
+      $("#downloadIneBtn").attr("download", folio + "-ine.jpg");
+      $("#downloadSelfieBtn").attr("download", folio + "-foto.jpg");
+    });
 
     function handleImageLoad(file, callback) {
       const reader = new FileReader();
@@ -148,7 +177,11 @@
       const url = canvas.toDataURL('image/jpeg', 0.90);
       setPreview('ineCombinedPreview', 'inePlaceholder', url);
 
-      $("#downloadIneBtn").attr("href", url).removeClass("d-none");
+      // Asigna URL y nombre dinámico
+      $("#downloadIneBtn")
+        .attr("href", url)
+        .attr("download", getFolioName() + "-ine.jpg")
+        .removeClass("d-none");
     }
 
     $("#ineFrontalInput").on("change", function(e) {
@@ -173,7 +206,11 @@
         const url = canvas.toDataURL('image/jpeg', 0.90);
         setPreview('selfiePreview', 'selfiePlaceholder', url);
 
-        $("#downloadSelfieBtn").attr("href", url).removeClass("d-none");
+        // Asigna URL y nombre dinámico
+        $("#downloadSelfieBtn")
+          .attr("href", url)
+          .attr("download", getFolioName() + "-foto.jpg")
+          .removeClass("d-none");
       });
     });
   </script>
