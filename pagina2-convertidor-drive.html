@@ -127,7 +127,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jsrender@1.0.14/jsrender.min.js"></script>
   <script src="js/app.js"></script>
 
-  <script>
+<script>
     // URL desplegada de Google Apps Script
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
 
@@ -142,7 +142,6 @@
       return folio !== "" ? folio : "folio";
     }
 
-    // Actualiza el nombre del folio si el usuario interactúa con el input
     $("#folioInput").on("input", function() {
       getFolioName();
     });
@@ -182,7 +181,13 @@
       currentIneDataUrl = canvas.toDataURL('image/jpeg', 0.90);
       setPreview('ineCombinedPreview', 'inePlaceholder', currentIneDataUrl);
 
-      $("#downloadIneBtn").removeClass("d-none");
+      // Si vuelve a generar la imagen, se habilita el botón con su estado inicial
+      $("#downloadIneBtn")
+        .removeClass("d-none btn-success")
+        .addClass("btn-outline-marino")
+        .prop("disabled", false)
+        .html('<i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive');
+      $("#ineStatus").empty();
     }
 
     $("#ineFrontalInput").on("change", function(e) {
@@ -207,7 +212,13 @@
         currentSelfieDataUrl = canvas.toDataURL('image/jpeg', 0.90);
         setPreview('selfiePreview', 'selfiePlaceholder', currentSelfieDataUrl);
 
-        $("#downloadSelfieBtn").removeClass("d-none");
+        // Si vuelve a cargar selfie, se habilita el botón con su estado inicial
+        $("#downloadSelfieBtn")
+          .removeClass("d-none btn-success")
+          .addClass("btn-outline-marino")
+          .prop("disabled", false)
+          .html('<i class="bi bi-cloud-upload me-2"></i>Subir Selfie a Drive');
+        $("#selfieStatus").empty();
       });
     });
 
@@ -228,27 +239,48 @@
         fileName: fileName
       };
 
+      // Bloquear botón durante el envío y mostrar spinner
       $btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...');
       $status.html('<span class="text-info">Enviando archivo a Google Drive...</span>');
 
       fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
         body: JSON.stringify(payload)
       })
       .then(res => res.json())
       .then(data => {
         if (data.status === "success") {
+          // Éxito: Bloqueo permanente del botón y cambio de texto a "Archivo subido"
+          $btn.prop("disabled", true)
+              .removeClass("btn-outline-marino")
+              .addClass("btn-success")
+              .html('<i class="bi bi-check-circle-fill me-2"></i>Archivo subido');
+
           $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Subido con éxito! <a href="${data.fileUrl}" target="_blank">Ver en Drive</a></span>`);
         } else {
-          $status.html(`<span class="text-danger">Error: ${data.message}</span>`);
+          throw new Error(data.message || "Error desconocido en el servidor");
         }
       })
       .catch(err => {
         console.error(err);
-        $status.html('<span class="text-danger">Error de conexión al subir la imagen.</span>');
-      })
-      .finally(() => {
-        $btn.prop("disabled", false).html(`<i class="bi bi-cloud-upload me-2"></i>Subir a Drive`);
+        $status.html(`<span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Error al subir: ${err.message || "No se pudo conectar"}. Intente de nuevo.</span>`);
+
+        // Error: Bloqueo temporal de 5 segundos antes de reorientar el botón para reintentar
+        let countdown = 5;
+        $btn.prop("disabled", true).html(`<i class="bi bi-clock me-2"></i>Espere (${countdown}s)...`);
+        
+        const timer = setInterval(() => {
+          countdown--;
+          if (countdown > 0) {
+            $btn.html(`<i class="bi bi-clock me-2"></i>Espere (${countdown}s)...`);
+          } else {
+            clearInterval(timer);
+            $btn.prop("disabled", false).html('<i class="bi bi-arrow-counterclockwise me-2"></i>Reintentar subida');
+          }
+        }, 1000);
       });
     }
 
