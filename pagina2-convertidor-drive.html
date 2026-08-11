@@ -329,7 +329,7 @@
       currentIneDataUrl = canvas.toDataURL('image/jpeg', 0.90);
       setPreview('ineCombinedPreview', 'inePlaceholder', currentIneDataUrl);
 
-      // Si vuelve a generar la imagen, se habilita el botón con su estado inicial
+      // Habilitar el botón de subir INE con su estado inicial
       $("#downloadIneBtn")
         .removeClass("d-none btn-success")
         .addClass("btn-outline-marino")
@@ -360,7 +360,7 @@
         currentSelfieDataUrl = canvas.toDataURL('image/jpeg', 0.90);
         setPreview('selfiePreview', 'selfiePlaceholder', currentSelfieDataUrl);
 
-        // Si vuelve a cargar selfie, se habilita el botón con su estado inicial
+        // Habilitar el botón de subir Selfie con su estado inicial
         $("#downloadSelfieBtn")
           .removeClass("d-none btn-success")
           .addClass("btn-outline-marino")
@@ -445,7 +445,7 @@
       uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus");
     });
 
-    // --- LÓGICA DE BÚSQUEDA DE FOLIO EN DRIVE ---
+    // --- LÓGICA DE BÚSQUEDA DE FOLIO EN DRIVE Y CARGA AUTOMÁTICA EN PREVISUALIZADORES ---
     $("#btnBuscarFolio").on("click", function() {
       const folio = $("#folioInput").val().trim();
       const $label = $("#resultadoBusquedaLabel");
@@ -470,6 +470,33 @@
             $label.removeClass("bg-info bg-warning bg-danger")
                   .addClass("bg-success text-white")
                   .html(`<i class="bi bi-check-circle me-1"></i> ${data.message}`);
+
+            // Cargar INE encontrada en la vista previa
+            if (data.ineUrl || data.ineBase64) {
+              const srcIne = data.ineBase64 ? `data:image/jpeg;base64,${data.ineBase64}` : data.ineUrl;
+              currentIneDataUrl = srcIne;
+              setPreview('ineCombinedPreview', 'inePlaceholder', currentIneDataUrl);
+              $("#downloadIneBtn")
+                .removeClass("d-none btn-success")
+                .addClass("btn-outline-marino")
+                .prop("disabled", false)
+                .html('<i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive');
+              $("#ineStatus").empty();
+            }
+
+            // Cargar Selfie encontrada en la vista previa
+            if (data.selfieUrl || data.selfieBase64) {
+              const srcSelfie = data.selfieBase64 ? `data:image/jpeg;base64,${data.selfieBase64}` : data.selfieUrl;
+              currentSelfieDataUrl = srcSelfie;
+              setPreview('selfiePreview', 'selfiePlaceholder', currentSelfieDataUrl);
+              $("#downloadSelfieBtn")
+                .removeClass("d-none btn-success")
+                .addClass("btn-outline-marino")
+                .prop("disabled", false)
+                .html('<i class="bi bi-cloud-upload me-2"></i>Subir Selfie a Drive');
+              $("#selfieStatus").empty();
+            }
+
           } else {
             $label.removeClass("bg-info bg-warning bg-success")
                   .addClass("bg-danger text-white")
