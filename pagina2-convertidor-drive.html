@@ -66,7 +66,10 @@
           <h2 class="fw-bold" style="color: var(--azul-marino);">Convertidor de Imágenes</h2>
           <p class="text-muted mb-0">Gestión de archivos INE y Fotos de Perfil.</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <!-- Etiqueta de resultado de búsqueda (Inicialmente oculta con d-none) -->
+          <span id="resultadoBusquedaLabel" class="d-none badge p-2 fw-semibold"></span>
+
           <button class="btn btn-outline-marino" id="btnAbrirMachote" data-bs-toggle="modal" data-bs-target="#machoteModal">
             <i class="bi bi-envelope-paper me-2"></i>Machote Correos
           </button>
@@ -76,11 +79,16 @@
         </div>
       </header>
 
-      <!-- Nueva sección para el Folio -->
+      <!-- Sección para el Folio y Búsqueda -->
       <div class="row mb-4">
         <div class="col-12 col-md-6 col-xl-4">
-          <label for="folioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio (opcional)</label>
-          <input type="text" id="folioInput" class="form-control" placeholder="Ej. 105952">
+          <label for="folioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio</label>
+          <div class="input-group">
+            <input type="text" id="folioInput" class="form-control" placeholder="Ej. 105952">
+            <button class="btn btn-outline-marino" id="btnBuscarFolio" type="button">
+              <i class="bi bi-search me-1"></i>Buscar
+            </button>
+          </div>
         </div>
       </div>
 
@@ -435,6 +443,52 @@
       e.preventDefault();
       const fileName = getFolioName() + "-foto.jpg";
       uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus");
+    });
+
+    // --- LÓGICA DE BÚSQUEDA DE FOLIO EN DRIVE ---
+    $("#btnBuscarFolio").on("click", function() {
+      const folio = $("#folioInput").val().trim();
+      const $label = $("#resultadoBusquedaLabel");
+
+      if (!folio) {
+        $label.removeClass("d-none bg-success bg-info bg-danger")
+              .addClass("bg-warning text-dark")
+              .html('<i class="bi bi-exclamation-triangle me-1"></i> Ingrese un folio');
+        return;
+      }
+
+      // Mostrar estado buscando
+      $label.removeClass("d-none bg-success bg-warning bg-danger")
+            .addClass("bg-info text-white")
+            .html('<span class="spinner-border spinner-border-sm me-1"></span> Buscando...');
+
+      // Petición a Google Apps Script
+      fetch(`${GOOGLE_SCRIPT_URL}?folio=${encodeURIComponent(folio)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.found) {
+            $label.removeClass("bg-info bg-warning bg-danger")
+                  .addClass("bg-success text-white")
+                  .html(`<i class="bi bi-check-circle me-1"></i> ${data.message}`);
+          } else {
+            $label.removeClass("bg-info bg-warning bg-success")
+                  .addClass("bg-danger text-white")
+                  .html(`<i class="bi bi-x-circle me-1"></i> ${data.message}`);
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          $label.removeClass("bg-info bg-warning bg-success")
+                .addClass("bg-danger text-white")
+                .html('<i class="bi bi-exclamation-triangle me-1"></i> Error al consultar Drive');
+        });
+    });
+
+    // Permitir buscar presionando la tecla Enter en el input de folio
+    $("#folioInput").on("keypress", function(e) {
+      if (e.which === 13) {
+        $("#btnBuscarFolio").click();
+      }
     });
 
     // --- LÓGICA MACHOTE CORREOS MODAL ---
