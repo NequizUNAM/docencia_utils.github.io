@@ -37,6 +37,21 @@
       font-weight: 600;
     }
     .btn-outline-marino:hover { background-color: var(--azul-marino); color: white; }
+    
+    /* Estilos para separadores del machote */
+    .hr-azul {
+      border: 0;
+      height: 2px;
+      background: var(--azul-marino);
+      opacity: 0.25;
+      margin: 1.5rem 0;
+    }
+    .email-template {
+      background-color: #f8f9fa;
+      padding: 1rem 1.5rem;
+      border-radius: 6px;
+      border-left: 3px solid var(--azul-marino);
+    }
   </style>
 </head>
 <body>
@@ -51,7 +66,10 @@
           <h2 class="fw-bold" style="color: var(--azul-marino);">Convertidor de Imágenes</h2>
           <p class="text-muted mb-0">Gestión de archivos INE y Fotos de Perfil.</p>
         </div>
-        <div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-marino" id="btnAbrirMachote" data-bs-toggle="modal" data-bs-target="#machoteModal">
+            <i class="bi bi-envelope-paper me-2"></i>Machote Correos
+          </button>
           <button class="btn btn-outline-marino" onclick="location.reload()">
             <i class="bi bi-arrow-clockwise me-2"></i>Recargar
           </button>
@@ -120,6 +138,126 @@
     </div>
   </main>
 
+  <!-- MODAL FULLSCREEN MACHOTE CORREOS -->
+  <div class="modal fade" id="machoteModal" tabindex="-1" aria-labelledby="machoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header" style="border-bottom: 2px solid var(--azul-marino);">
+          <div>
+            <h4 class="modal-title fw-bold" id="machoteModalLabel" style="color: var(--azul-marino);">Machote Correo Inscripciones</h4>
+            <p class="text-muted mb-0 small">Plantillas para notificación y validación de documentos.</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <div class="container">
+            
+            <!-- Input para aplicar Folio dentro del modal -->
+            <div class="row mb-4 align-items-end bg-white p-3 rounded shadow-sm border">
+              <div class="col-12 col-md-6 col-xl-4 mb-3 mb-md-0">
+                <label for="modalFolioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio</label>
+                <input type="text" id="modalFolioInput" class="form-control" placeholder="Ej. 105952">
+              </div>
+              <div class="col-12 col-md-auto">
+                <button class="btn btn-outline-marino w-100" id="btnAplicarModal">
+                  <i class="bi bi-pencil-square me-2"></i>Aplicar Folio
+                </button>
+              </div>
+            </div>
+
+            <!-- Contenedor de Plantillas -->
+            <div class="card card-custom p-4 shadow-sm">
+              
+              <!-- PLANTILLA 1 -->
+              <div class="email-template mb-3">
+                <h5>1. Cuando la INE (o pasaporte) está mal</h5>
+                <p><strong>Asunto:</strong> Verificación de documentos – Folio <strong class="folio-placeholder">[FOLIO]</strong></p>
+                <p><strong>Cuerpo:</strong> Hemos revisado la documentación enviada para el registro con el folio <strong class="folio-placeholder">[FOLIO]</strong>. Detectamos que la imagen de la INE/pasaporte no cumple con los requisitos de legibilidad o calidad (borrosa, incompleta o poco clara). <strong style="text-decoration: underline;">Pueden ser dos fotos, una por cada lado</strong>.</p>
+                <p>Por favor, envíe nuevamente las fotografías de la INE/pasaporte, asegurándose de que:</p>
+                <ul>
+                  <li>Sea visible por completo (ambos lados si es INE).</li>
+                  <li>Sea clara, sin reflejos ni sombras.</li>
+                  <li>Esté en formato JPG.</li>
+                </ul>
+                <p>Puede reenviarla a este mismo correo.</p>
+                <p class="mb-0">Gracias por su atención y colaboración.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <!-- PLANTILLA 2 -->
+              <div class="email-template mb-3">
+                <h5>2. Cuando la selfie está mal</h5>
+                <p><strong>Asunto:</strong> Verificación de documentos – Folio <strong class="folio-placeholder">[FOLIO]</strong></p>
+                <p><strong>Cuerpo:</strong> Durante la validación del registro con el folio <strong class="folio-placeholder">[FOLIO]</strong>, se detectó que la fotografía tipo selfie enviada no cumple con los requisitos necesarios (imagen borrosa, sin rostro completo o con poca iluminación).</p>
+                <p>Por favor, envíe nuevamente la selfie, tomando en cuenta estas recomendaciones:</p>
+                <ul>
+                  <li>Que el rostro se vea completo y con buena iluminación.</li>
+                  <li>Fondo claro y sin objetos que tapen la cara.</li>
+                  <li>No use filtros ni ediciones.</li>
+                  <li>Esté en formato JPG.</li>
+                </ul>
+                <p>Puede reenviarla a este mismo correo.</p>
+                <p class="mb-0">Gracias por su apoyo en este proceso.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <!-- PLANTILLA 3 -->
+              <div class="email-template mb-3">
+                <h5>3. Cuando ambos están mal</h5>
+                <p><strong>Asunto:</strong> Verificación de documentos – Folio <strong class="folio-placeholder">[FOLIO]</strong></p>
+                <p><strong>Cuerpo:</strong> Revisamos la documentación enviada para el registro con el folio <strong class="folio-placeholder">[FOLIO]</strong> y encontramos que tanto la fotografía tipo selfie como la imagen de la INE/pasaporte no cumplen con los requisitos de calidad y legibilidad.</p>
+                <p>Para continuar con el registro, se solicita enviar nuevamente:</p>
+                <ul>
+                  <li>INE/pasaporte: Imagen clara, completa, sin reflejos.</li>
+                  <li>Selfie: Rostro completo, bien iluminado, sin filtros.</li>
+                  <li>Ambos en formato JPG.</li>
+                </ul>
+                <p>Por favor, envíe ambos archivos a este mismo correo.</p>
+                <p class="mb-0">Agradecemos su comprensión y colaboración para completar el trámite.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <!-- PLANTILLA 4 -->
+              <div class="email-template mb-3">
+                <h5>4.- Pendiente envío de documentos</h5>
+                <p><strong>Asunto:</strong> Pendiente envío de documentos – FOLIO: <strong class="folio-placeholder">[FOLIO]</strong>.</p>
+                <p><strong>Cuerpo del correo:</strong></p>
+                <p>Estimado(a) participante:</p>
+                <p>Estamos revisando los registros y hemos identificado que, para el folio <strong class="folio-placeholder">[FOLIO]</strong>, aún no hemos recibido la documentación solicitada (INE/pasaporte y fotografía tipo selfie).</p>
+                <p>Para completar el proceso de inscripción, le pedimos enviarlos a la brevedad a este mismo correo, siguiendo estas indicaciones:</p>
+                <ul>
+                  <li>INE/pasaporte: Imagen legible, completa y sin reflejos.</li>
+                  <li>Selfie: Rostro completo, buena iluminación, sin filtros.</li>
+                </ul>
+                <p>En caso de haber enviado la documentación recientemente, por favor ignore este mensaje.</p>
+                <p class="mb-0">Gracias por su atención y colaboración.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <!-- PLANTILLA 5 -->
+              <div class="email-template">
+                <p><strong>Asunto:</strong> Recordatorio: Último día para completar tu inscripción</p>
+                <p>Estimado(a) participante con folio: <strong class="folio-placeholder">[FOLIO]</strong>,</p>
+                <p>Te informamos que ya se envió a tu correo electrónico la liga correspondiente para continuar con tu proceso de inscripción.</p>
+                <p>Es muy importante que realices este procedimiento a la brevedad, ya que <strong>hoy, 08 de septiembre de 2025, es el último día para completar tu inscripción</strong>.</p>
+                <p>Te recomendamos revisar tu bandeja de entrada, así como la carpeta de correo no deseado o spam.</p>
+                <p class="mb-0">Agradecemos tu atención y compromiso.</p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="footer-container"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -127,7 +265,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jsrender@1.0.14/jsrender.min.js"></script>
   <script src="js/app.js"></script>
 
-<script>
+  <script>
     // URL desplegada de Google Apps Script
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
 
@@ -144,6 +282,8 @@
 
     $("#folioInput").on("input", function() {
       getFolioName();
+      // Sincronizar el input dentro del modal si cambia el principal
+      $("#modalFolioInput").val($(this).val());
     });
 
     function handleImageLoad(file, callback) {
@@ -295,6 +435,37 @@
       e.preventDefault();
       const fileName = getFolioName() + "-foto.jpg";
       uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus");
+    });
+
+    // --- LÓGICA MACHOTE CORREOS MODAL ---
+    function aplicarFolioMachote() {
+      let folioValue = $("#modalFolioInput").val().trim();
+      if (folioValue === "") {
+        folioValue = "[FOLIO]";
+      }
+      
+      $(".folio-placeholder").fadeOut(150, function() {
+        $(this).text(folioValue).fadeIn(150);
+      });
+    }
+
+    // Al abrir el modal, tomamos el folio ingresado en el input principal
+    $("#machoteModal").on("show.bs.modal", function () {
+      const valPrincipal = $("#folioInput").val().trim();
+      $("#modalFolioInput").val(valPrincipal);
+      aplicarFolioMachote();
+    });
+
+    // Aplicar folio al dar clic al botón dentro del modal
+    $("#btnAplicarModal").on("click", function() {
+      aplicarFolioMachote();
+    });
+
+    // Permitir Enter en el input dentro del modal
+    $("#modalFolioInput").on("keypress", function(e) {
+      if (e.which === 13) {
+        aplicarFolioMachote();
+      }
     });
   </script>
 </body>
