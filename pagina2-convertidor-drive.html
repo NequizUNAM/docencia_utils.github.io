@@ -52,6 +52,17 @@
       border-radius: 6px;
       border-left: 3px solid var(--azul-marino);
     }
+
+    /* Estilo del Switch personalizado */
+    .form-switch .form-check-input {
+      width: 3em;
+      height: 1.5em;
+      cursor: pointer;
+    }
+    .form-switch .form-check-input:checked {
+      background-color: var(--azul-marino);
+      border-color: var(--azul-marino);
+    }
   </style>
 </head>
 <body>
@@ -79,8 +90,8 @@
         </div>
       </header>
 
-      <!-- Sección para el Folio y Búsqueda -->
-      <div class="row mb-4">
+      <!-- Sección para el Folio, Búsqueda y Toggle de Modo -->
+      <div class="row mb-4 align-items-end g-3">
         <div class="col-12 col-md-6 col-xl-4">
           <label for="folioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio</label>
           <div class="input-group">
@@ -88,6 +99,21 @@
             <!-- <button class="btn btn-outline-marino" id="btnBuscarFolio" type="button">
               <i class="bi bi-search me-1"></i> 🔎 
             </button> -->
+          </div>
+        </div>
+
+        <!-- TOGGLE MODO DE ACCIÓN (DRIVE / EQUIPO) -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card p-2 shadow-sm border-0 bg-light d-flex flex-row align-items-center justify-content-between px-3">
+            <span class="small fw-bold text-muted d-flex align-items-center me-2">
+              <i class="bi bi-cloud-upload me-1 text-primary"></i> Subir a Drive
+            </span>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" role="switch" id="modoToggle">
+            </div>
+            <span class="small fw-bold text-muted d-flex align-items-center ms-2">
+              <i class="bi bi-download me-1 text-success"></i> Descargar a Equipo
+            </span>
           </div>
         </div>
       </div>
@@ -294,6 +320,33 @@
       $("#modalFolioInput").val($(this).val());
     });
 
+    // --- ACTUALIZACIÓN DE TEXTO DE BOTONES SEGÚN MODO (TOGGLE) ---
+    function updateButtonTexts() {
+      const modoDescargar = $("#modoToggle").is(":checked");
+
+      // Si no están deshabilitados por haber completado la acción
+      if (!$("#downloadIneBtn").hasClass("btn-success")) {
+        if (modoDescargar) {
+          $("#downloadIneBtn").html('<i class="bi bi-download me-2"></i>Descargar INE al equipo');
+        } else {
+          $("#downloadIneBtn").html('<i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive');
+        }
+      }
+
+      if (!$("#downloadSelfieBtn").hasClass("btn-success")) {
+        if (modoDescargar) {
+          $("#downloadSelfieBtn").html('<i class="bi bi-download me-2"></i>Descargar Selfie al equipo');
+        } else {
+          $("#downloadSelfieBtn").html('<i class="bi bi-cloud-upload me-2"></i>Subir Selfie a Drive');
+        }
+      }
+    }
+
+    // Escuchar cambios en el Toggle de Modo
+    $("#modoToggle").on("change", function() {
+      updateButtonTexts();
+    });
+
     function handleImageLoad(file, callback) {
       const reader = new FileReader();
       reader.onload = e => {
@@ -329,12 +382,13 @@
       currentIneDataUrl = canvas.toDataURL('image/jpeg', 0.90);
       setPreview('ineCombinedPreview', 'inePlaceholder', currentIneDataUrl);
 
-      // Habilitar el botón de subir INE con su estado inicial
+      // Habilitar el botón de subir/descargar INE con su estado inicial
       $("#downloadIneBtn")
         .removeClass("d-none btn-success")
         .addClass("btn-outline-marino")
-        .prop("disabled", false)
-        .html('<i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive');
+        .prop("disabled", false);
+      
+      updateButtonTexts();
       $("#ineStatus").empty();
     }
 
@@ -360,15 +414,34 @@
         currentSelfieDataUrl = canvas.toDataURL('image/jpeg', 0.90);
         setPreview('selfiePreview', 'selfiePlaceholder', currentSelfieDataUrl);
 
-        // Habilitar el botón de subir Selfie con su estado inicial
+        // Habilitar el botón de subir/descargar Selfie con su estado inicial
         $("#downloadSelfieBtn")
           .removeClass("d-none btn-success")
           .addClass("btn-outline-marino")
-          .prop("disabled", false)
-          .html('<i class="bi bi-cloud-upload me-2"></i>Subir Selfie a Drive');
+          .prop("disabled", false);
+
+        updateButtonTexts();
         $("#selfieStatus").empty();
       });
     });
+
+    // Función para descargar la imagen directamente en el equipo
+    function downloadToLocal(dataUrl, fileName, btnId, statusId) {
+      const $status = $(statusId);
+      if (!dataUrl) {
+        $status.html('<span class="text-danger">No hay imagen generada para descargar.</span>');
+        return;
+      }
+
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Archivo ${fileName} descargado!</span>`);
+    }
 
     // Función unificada para enviar imágenes a Google Apps Script
     function uploadToDrive(dataUrl, fileName, btnId, statusId) {
@@ -426,23 +499,36 @@
             $btn.html(`<i class="bi bi-clock me-2"></i>Espere (${countdown}s)...`);
           } else {
             clearInterval(timer);
-            $btn.prop("disabled", false).html('<i class="bi bi-arrow-counterclockwise me-2"></i>Reintentar subida');
+            $btn.prop("disabled", false);
+            updateButtonTexts();
           }
         }, 1000);
       });
     }
 
-    // Eventos de clic para subir imágenes
+    // Eventos de clic para subir/descargar imágenes según el Toggle
     $("#downloadIneBtn").on("click", function(e) {
       e.preventDefault();
       const fileName = getFolioName() + "-ine.jpg";
-      uploadToDrive(currentIneDataUrl, fileName, "#downloadIneBtn", "#ineStatus");
+      const modoDescargar = $("#modoToggle").is(":checked");
+
+      if (modoDescargar) {
+        downloadToLocal(currentIneDataUrl, fileName, "#downloadIneBtn", "#ineStatus");
+      } else {
+        uploadToDrive(currentIneDataUrl, fileName, "#downloadIneBtn", "#ineStatus");
+      }
     });
 
     $("#downloadSelfieBtn").on("click", function(e) {
       e.preventDefault();
       const fileName = getFolioName() + "-foto.jpg";
-      uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus");
+      const modoDescargar = $("#modoToggle").is(":checked");
+
+      if (modoDescargar) {
+        downloadToLocal(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus");
+      } else {
+        uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus");
+      }
     });
 
     // --- LÓGICA DE BÚSQUEDA DE FOLIO EN DRIVE Y CARGA AUTOMÁTICA EN PREVISUALIZADORES ---
@@ -479,8 +565,8 @@
               $("#downloadIneBtn")
                 .removeClass("d-none btn-success")
                 .addClass("btn-outline-marino")
-                .prop("disabled", false)
-                .html('<i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive');
+                .prop("disabled", false);
+              updateButtonTexts();
               $("#ineStatus").empty();
             }
 
@@ -492,8 +578,8 @@
               $("#downloadSelfieBtn")
                 .removeClass("d-none btn-success")
                 .addClass("btn-outline-marino")
-                .prop("disabled", false)
-                .html('<i class="bi bi-cloud-upload me-2"></i>Subir Selfie a Drive');
+                .prop("disabled", false);
+              updateButtonTexts();
               $("#selfieStatus").empty();
             }
 
