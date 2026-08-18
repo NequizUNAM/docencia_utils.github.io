@@ -195,7 +195,7 @@
     </div>
   </main>
 
-  <!-- MODAL MACHOTE CORREOS (Intacto) -->
+  <!-- MODAL MACHOTE CORREOS -->
   <div class="modal fade" id="machoteModal" tabindex="-1" aria-labelledby="machoteModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
       <div class="modal-content">
@@ -330,9 +330,22 @@
     let currentSelfieDataUrl = null;
 
     $("#btnAbrirDrive").attr("href", GOOGLE_DRIVE_FOLDER_URL);
-    const getFolioName = () => $("#folioInput").val().trim() || "folio";
+
+    // =======================================
+    // VALIDACIÓN DE FOLIO OBLIGATORIO
+    // =======================================
+    function validarFolio() {
+      const folio = $("#folioInput").val().trim();
+      if (!folio) {
+        $("#folioInput").addClass("is-invalid").focus();
+        alert("Por favor, coloque el nombre de Folio antes de continuar.");
+        return null;
+      }
+      return folio;
+    }
 
     $("#folioInput").on("input", function() {
+      $(this).removeClass("is-invalid"); // Quita la alerta visual si escribe algo
       $("#modalFolioInput").val($(this).val());
     });
 
@@ -571,9 +584,15 @@
       });
     }
 
+    // =======================================
+    // CLICK HANDLERS (CON VALIDACIÓN)
+    // =======================================
     $("#downloadIneBtn").on("click", function(e) {
       e.preventDefault();
-      const fileName = `${getFolioName()}-ine.jpg`;
+      const folio = validarFolio(); // Llama a la validación
+      if (!folio) return;           // Si está vacío, detiene la ejecución
+
+      const fileName = `${folio}-ine.jpg`;
       $("#modoToggle").is(":checked") 
         ? downloadToLocal(currentIneDataUrl, fileName, "#ineStatus")
         : uploadToDrive(currentIneDataUrl, fileName, "#downloadIneBtn", "#ineStatus");
@@ -581,7 +600,10 @@
 
     $("#downloadSelfieBtn").on("click", function(e) {
       e.preventDefault();
-      const fileName = `${getFolioName()}-foto.jpg`;
+      const folio = validarFolio(); // Llama a la validación
+      if (!folio) return;           // Si está vacío, detiene la ejecución
+
+      const fileName = `${folio}-foto.jpg`;
       $("#modoToggle").is(":checked") 
         ? downloadToLocal(currentSelfieDataUrl, fileName, "#selfieStatus")
         : uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus");
