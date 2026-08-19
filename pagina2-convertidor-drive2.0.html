@@ -1,150 +1,699 @@
-var FOLDER_ID = "1aRJRe0623pBilxj7AqVJYsmDgi-LqwzY";
-var SHEET_ID = "1NV3p9HJLZFZJLOkj8R2fXKnphIXM8KRP1c8ctZUUV3A"; // ID de tu Google Sheet
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Convertidor de Imágenes Multi-Folio</title>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  
+  <style>
+    :root { --azul-marino: #003366; }
+    body { background-color:#ffffff; color:#1a1a2e; display:flex; flex-direction:column; min-height:100vh; }
+    
+    .card-custom {
+      border-radius: 8px;
+      border: none;
+      border-left: 5px solid var(--azul-marino);
+      transition: transform 0.2s;
+    }
+    .card-custom:hover { transform: translateY(-5px); }
 
-// ----------------------------------------------------
-// GET: búsqueda de archivos por folio o validación en Sheet
-// ----------------------------------------------------
-function doGet(e) {
-  try {
-    var folio = e.parameter.folio;
-    var action = e.parameter.action;
-
-    if (!folio) {
-      return jsonOutput({ found: false, message: "Folio no proporcionado" });
+    .image-preview {
+      min-height: 160px;
+      border: 2px dashed #dee2e6;
+      border-radius: 8px;
+      background-color: #fafbfc;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .image-preview.has-image { border: 1px solid var(--azul-marino); }
+    .preview-icon { font-size: 2.5rem; color: #adb5bd; }
+    
+    .btn-outline-marino {
+      border: 2px solid var(--azul-marino);
+      color: var(--azul-marino);
+      font-weight: 600;
+    }
+    .btn-outline-marino:hover { background-color: var(--azul-marino); color: white; }
+    
+    .hr-azul {
+      border: 0;
+      height: 2px;
+      background: var(--azul-marino);
+      opacity: 0.25;
+      margin: 1.5rem 0;
+    }
+    .email-template {
+      background-color: #f8f9fa;
+      padding: 1rem 1.5rem;
+      border-radius: 6px;
+      border-left: 3px solid var(--azul-marino);
     }
 
-    // NUEVA FUNCIÓN: Verificar si el folio existe en Google Sheets para el HTML Front
-    if (action === 'checkFolio') {
-      var sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
-      var data = sheet.getRange("A:A").getValues();
-      var existe = false;
+    .form-switch .form-check-input {
+      width: 3em;
+      height: 1.5em;
+      cursor: pointer;
+    }
+    .form-switch .form-check-input:checked {
+      background-color: var(--azul-marino);
+      border-color: var(--azul-marino);
+    }
+
+    /* Estilos Accordion */
+    .accordion-button:not(.collapsed) {
+      color: var(--azul-marino);
+      background-color: #e9ecef;
+      font-weight: bold;
+    }
+    .accordion-button:focus { box-shadow: none; border-color: rgba(0,51,102,0.2); }
+  </style>
+</head>
+<body>
+  <div id="header-container"></div>
+
+  <main class="flex-grow-1 col-md-9 ms-md-auto col-lg-10 py-5 px-4">
+    <div class="container">
       
-      for (var i = 0; i < data.length; i++) {
-        if (data[i][0].toString() === folio) {
-          existe = true;
-          break; // Detiene la búsqueda en el primer match
+      <header class="mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+          <h2 class="fw-bold" style="color: var(--azul-marino);">Convertidor de Imágenes</h2>
+          <p class="text-muted mb-0">Gestión de archivos INE y Fotos Multi-Folio.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span id="resultadoBusquedaLabel" class="d-none badge p-2 fw-semibold"></span>
+
+          <!-- BOTÓN PARA ABRIR LA CARPETA EN GOOGLE DRIVE -->
+          <a id="btnAbrirDrive" href="#" target="_blank" class="btn btn-outline-success">
+            <i class="bi bi-folder-symlink me-2"></i>Abrir Carpeta Drive
+          </a>
+
+          <button class="btn btn-outline-marino" id="btnAbrirMachote" data-bs-toggle="modal" data-bs-target="#machoteModal">
+            <i class="bi bi-envelope-paper me-2"></i>Machote Correos
+          </button>
+          
+          <button class="btn btn-outline-marino" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise me-2"></i>Recargar
+          </button>
+        </div>
+      </header>
+
+      <!-- Panel de Control General -->
+      <div class="row mb-4 align-items-center g-3 bg-light p-3 rounded shadow-sm border border-light-subtle">
+        <div class="col-12 col-md-auto">
+          <button id="btnAddRecord" class="btn btn-primary shadow-sm" style="background-color: var(--azul-marino); border-color: var(--azul-marino);">
+            <i class="bi bi-plus-circle me-2"></i>Añadir Nuevo Folio
+          </button>
+        </div>
+        <div class="col-12 col-md-auto ms-md-auto">
+          <div class="d-flex flex-row align-items-center px-3">
+            <span class="small fw-bold text-muted d-flex align-items-center me-2">
+              <i class="bi bi-cloud-upload me-1 text-primary"></i> Subir a Drive
+            </span>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" role="switch" id="modoToggle">
+            </div>
+            <span class="small fw-bold text-muted d-flex align-items-center ms-2">
+              <i class="bi bi-download me-1 text-success"></i> Descargar a Equipo
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenedor del Accordion de Folios -->
+      <div class="accordion shadow-sm" id="accordionFolios">
+        <!-- Aquí se inyectarán los folios dinámicamente -->
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL MACHOTE CORREOS -->
+  <div class="modal fade" id="machoteModal" tabindex="-1" aria-labelledby="machoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header" style="border-bottom: 2px solid var(--azul-marino);">
+          <div>
+            <h4 class="modal-title fw-bold" id="machoteModalLabel" style="color: var(--azul-marino);">Machote Correo Inscripciones</h4>
+            <p class="text-muted mb-0 small">Plantillas para notificación y validación de documentos.</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <div class="container">
+            <div class="row mb-4 align-items-end bg-white p-3 rounded shadow-sm border">
+              <div class="col-12 col-md-6 col-xl-4 mb-3 mb-md-0">
+                <label for="modalFolioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio</label>
+                <input type="text" id="modalFolioInput" class="form-control" placeholder="Ej. 105952">
+              </div>
+              <div class="col-12 col-md-auto">
+                <button class="btn btn-outline-marino w-100" id="btnAplicarModal">
+                  <i class="bi bi-pencil-square me-2"></i>Aplicar Folio
+                </button>
+              </div>
+            </div>
+
+            <div class="card card-custom p-4 shadow-sm">
+              <div class="email-template mb-3">
+                <h5>1. Cuando la INE (o pasaporte) está mal</h5>
+                <p><strong>Asunto:</strong> Verificación de documentos – Folio <strong class="folio-placeholder">[FOLIO]</strong></p>
+                <p><strong>Cuerpo:</strong> Hemos revisado la documentación enviada para el registro con el folio <strong class="folio-placeholder">[FOLIO]</strong>. Detectamos que la imagen de la INE/pasaporte no cumple con los requisitos de legibilidad o calidad (borrosa, incompleta o poco clara). <strong style="text-decoration: underline;">Pueden ser dos fotos, una por cada lado</strong>.</p>
+                <p>Por favor, envíe nuevamente las fotografías de la INE/pasaporte, asegurándose de que:</p>
+                <ul>
+                  <li>Sea visible por completo (ambos lados si es INE).</li>
+                  <li>Sea clara, sin reflejos ni sombras.</li>
+                  <li>Esté en formato JPG.</li>
+                </ul>
+                <p>Puede reenviarla a este mismo correo.</p>
+                <p class="mb-0">Gracias por su atención y colaboración.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <div class="email-template mb-3">
+                <h5>2. Cuando la selfie está mal</h5>
+                <p><strong>Asunto:</strong> Verificación de documentos – Folio <strong class="folio-placeholder">[FOLIO]</strong></p>
+                <p><strong>Cuerpo:</strong> Durante la validación del registro con el folio <strong class="folio-placeholder">[FOLIO]</strong>, se detectó que la fotografía tipo selfie enviada no cumple con los requisitos necesarios (imagen borrosa, sin rostro completo o con poca iluminación).</p>
+                <p>Por favor, envíe nuevamente la selfie, tomando en cuenta estas recomendaciones:</p>
+                <ul>
+                  <li>Que el rostro se vea completo y con buena iluminación.</li>
+                  <li>Fondo claro y sin objetos que tapen la cara.</li>
+                  <li>No use filtros ni ediciones.</li>
+                  <li>Esté en formato JPG.</li>
+                </ul>
+                <p>Puede reenviarla a este mismo correo.</p>
+                <p class="mb-0">Gracias por su apoyo en este proceso.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <div class="email-template mb-3">
+                <h5>3. Cuando ambos están mal</h5>
+                <p><strong>Asunto:</strong> Verificación de documentos – Folio <strong class="folio-placeholder">[FOLIO]</strong></p>
+                <p><strong>Cuerpo:</strong> Revisamos la documentación enviada para el registro con el folio <strong class="folio-placeholder">[FOLIO]</strong> y encontramos que tanto la fotografía tipo selfie como la imagen de la INE/pasaporte no cumplen con los requisitos de calidad y legibilidad.</p>
+                <p>Para continuar con el registro, se solicita enviar nuevamente:</p>
+                <ul>
+                  <li>INE/pasaporte: Imagen clara, completa, sin reflejos.</li>
+                  <li>Selfie: Rostro completo, bien iluminado, sin filtros.</li>
+                  <li>Ambos en formato JPG.</li>
+                </ul>
+                <p>Por favor, envíe ambos archivos a este mismo correo.</p>
+                <p class="mb-0">Agradecemos su comprensión y colaboración para completar el trámite.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <div class="email-template mb-3">
+                <h5>4.- Pendiente envío de documentos</h5>
+                <p><strong>Asunto:</strong> Pendiente envío de documentos – FOLIO: <strong class="folio-placeholder">[FOLIO]</strong>.</p>
+                <p><strong>Cuerpo del correo:</strong></p>
+                <p>Estimado(a) participante:</p>
+                <p>Estamos revisando los registros y hemos identificado que, para el folio <strong class="folio-placeholder">[FOLIO]</strong>, aún no hemos recibido la documentación solicitada (INE/pasaporte y fotografía tipo selfie).</p>
+                <p>Para completar el proceso de inscripción, le pedimos enviarlos a la brevedad a este mismo correo, siguiendo estas indicaciones:</p>
+                <ul>
+                  <li>INE/pasaporte: Imagen legible, completa y sin reflejos.</li>
+                  <li>Selfie: Rostro completo, buena iluminación, sin filtros.</li>
+                </ul>
+                <p>En caso de haber enviado la documentación recientemente, por favor ignore este mensaje.</p>
+                <p class="mb-0">Gracias por su atención y colaboración.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <div class="email-template">
+                <p><strong>Asunto:</strong> Recordatorio: Último día para completar tu inscripción</p>
+                <p>Estimado(a) participante con folio: <strong class="folio-placeholder">[FOLIO]</strong>,</p>
+                <p>Te informamos que ya se envió a tu correo electrónico la liga correspondiente para continuar con tu proceso de inscripción.</p>
+                <p>Es muy importante que realices este procedimiento a la brevedad, ya que <strong>hoy, 08 de septiembre de 2025, es el último día para completar tu inscripción</strong>.</p>
+                <p>Te recomendamos revisar tu bandeja de entrada, así como la carpeta de correo no deseado o spam.</p>
+                <p class="mb-0">Agradecemos tu atención y compromiso.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer-container"></div>
+
+  <!-- SCRIPTS -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    // =======================================
+    // VARIABLES GLOBALES Y ESTADOS (MULTI-FOLIO)
+    // =======================================
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
+    const GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1aRJRe0623pBilxj7AqVJYsmDgi-LqwzY"; 
+
+    $("#btnAbrirDrive").attr("href", GOOGLE_DRIVE_FOLDER_URL);
+
+    // Diccionario para almacenar el estado de CADA folio de manera independiente
+    let recordsData = {};
+    let recordCounter = 0;
+    let debounceTimers = {}; // Para el buscador del folio en Google Sheets
+
+    // =======================================
+    // GESTIÓN DEL ACORDEÓN Y CLONACIÓN
+    // =======================================
+    function addNewRecord() {
+      recordCounter++;
+      const id = recordCounter;
+      
+      recordsData[id] = {
+        ineFrontal: null,
+        ineLateral: null,
+        selfie: null,
+        ineDataUrl: null,
+        selfieDataUrl: null,
+        isIneUploaded: false,
+        isSelfieUploaded: false,
+        sheetUpdated: false
+      };
+
+      const htmlTemplate = `
+        <div class="accordion-item" id="item-${id}">
+          <h2 class="accordion-header" id="heading-${id}">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${id}" aria-expanded="true" aria-controls="collapse-${id}">
+              <i class="bi bi-folder2-open me-2"></i> Registro ${id}: <span class="ms-2 text-primary fw-bold folio-title-${id}">Nuevo Folio (Sin Asignar)</span>
+              <button class="btn btn-sm btn-outline-danger ms-auto me-3 d-none btn-delete-record" data-id="${id}" onclick="deleteRecord(${id}); event.stopPropagation();"><i class="bi bi-trash"></i></button>
+            </button>
+          </h2>
+          <div id="collapse-${id}" class="accordion-collapse collapse show" aria-labelledby="heading-${id}" data-bs-parent="#accordionFolios">
+            <div class="accordion-body bg-white pb-4 pt-4">
+              
+              <div class="row mb-4">
+                <div class="col-12 col-md-6 col-xl-4">
+                  <label class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio (Obligatorio)</label>
+                  <div class="input-group">
+                    <input type="text" class="form-control folio-input" data-id="${id}" id="folioInput-${id}" placeholder="Ej. 105952">
+                    <span class="input-group-text d-none bg-success text-white" id="folioCheck-${id}">
+                      <i class="bi bi-check-circle-fill me-1"></i> Existe
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row g-4">
+                <!-- INE -->
+                <div class="col-12 col-xl-7">
+                  <div class="card card-custom p-4 h-100 shadow-sm">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-card-heading me-2"></i>Combinar INE (1300x400)</h5>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label small fw-bold">FRENTE</label>
+                        <input type="file" class="form-control ine-frontal-input" data-id="${id}" accept="image/*" onclick="this.value=null">
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label small fw-bold">REVERSO</label>
+                        <input type="file" class="form-control ine-lateral-input" data-id="${id}" accept="image/*" onclick="this.value=null">
+                      </div>
+                    </div>
+
+                    <div class="image-preview mb-3" id="ineCombinedPreview-${id}">
+                      <div class="text-center" id="inePlaceholder-${id}">
+                        <i class="bi bi-id-card preview-icon"></i>
+                        <p class="small text-muted mb-0">Vista previa combinada</p>
+                      </div>
+                    </div>
+
+                    <button id="downloadIneBtn-${id}" class="btn btn-outline-marino w-100 d-none shadow-sm btn-action-ine" data-id="${id}">
+                      <i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive
+                    </button>
+                    <div id="ineStatus-${id}" class="mt-2 text-center small"></div>
+                  </div>
+                </div>
+
+                <!-- Selfie -->
+                <div class="col-12 col-xl-5">
+                  <div class="card card-custom p-4 h-100 shadow-sm">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-person-bounding-box me-2"></i>Selfie (265x320)</h5>
+                    <div class="mb-3">
+                      <label class="form-label small fw-bold">SUBIR IMAGEN</label>
+                      <input type="file" class="form-control selfie-input" data-id="${id}" accept="image/*" onclick="this.value=null">
+                    </div>
+
+                    <div class="image-preview mb-3" id="selfiePreview-${id}" style="min-height: 200px;">
+                      <div class="text-center" id="selfiePlaceholder-${id}">
+                        <i class="bi bi-person-square preview-icon"></i>
+                        <p class="small text-muted mb-0">Vista previa selfie</p>
+                      </div>
+                    </div>
+
+                    <button id="downloadSelfieBtn-${id}" class="btn btn-outline-marino w-100 d-none shadow-sm btn-action-selfie" data-id="${id}">
+                      <i class="bi bi-cloud-upload me-2"></i>Subir Selfie a Drive
+                    </button>
+                    <div id="selfieStatus-${id}" class="mt-2 text-center small"></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      `;
+
+      $(".accordion-collapse").collapse('hide');
+      $("#accordionFolios").append(htmlTemplate);
+      updateButtonTexts();
+
+      if(Object.keys(recordsData).length > 1) {
+        $(".btn-delete-record").removeClass("d-none");
+      }
+    }
+
+    function deleteRecord(id) {
+      if(confirm("¿Estás seguro de que deseas eliminar este bloque de folio?")) {
+        $(`#item-${id}`).remove();
+        delete recordsData[id];
+        
+        if(Object.keys(recordsData).length === 1) {
+          $(".btn-delete-record").addClass("d-none");
         }
       }
-      return jsonOutput({ exists: existe });
     }
 
-    // ORIGINAL: Búsqueda de archivos en Drive
-    var folder = DriveApp.getFolderById(FOLDER_ID);
-    var result = {
-      found: false,
-      message: "No se encontraron archivos para el folio " + folio
-    };
+    $(document).ready(function() {
+      addNewRecord();
+    });
 
-    var folioSafe = folio.replace(/'/g, "\\'");
+    $("#btnAddRecord").click(addNewRecord);
 
-    // Buscar INE
-    var ineQuery = "'" + FOLDER_ID + "' in parents and title contains '" + folioSafe + "-ine' and trashed = false";
-    Logger.log("Query INE: " + ineQuery);
-    var ineIt = folder.searchFiles(ineQuery);
-    if (ineIt.hasNext()) {
-      var ineFile = ineIt.next();
-      result.ineBase64 = Utilities.base64Encode(ineFile.getBlob().getBytes());
-      result.found = true;
-    }
+    // =======================================
+    // BÚSQUEDA Y VALIDACIÓN DE FOLIO EN SHEETS
+    // =======================================
+    $(document).on("input", ".folio-input", function() {
+      const id = $(this).data("id");
+      const val = $(this).val().trim();
+      $(this).removeClass("is-invalid");
+      $(`.folio-title-${id}`).text(val ? val : "Nuevo Folio (Sin Asignar)");
+      $(`#folioCheck-${id}`).addClass("d-none"); // Oculta el check verde al editar
 
-    // Buscar Selfie
-    var selfieQuery = "'" + FOLDER_ID + "' in parents and title contains '" + folioSafe + "-foto' and trashed = false";
-    Logger.log("Query Selfie: " + selfieQuery);
-    var selfieIt = folder.searchFiles(selfieQuery);
-    if (selfieIt.hasNext()) {
-      var selfieFile = selfieIt.next();
-      result.selfieBase64 = Utilities.base64Encode(selfieFile.getBlob().getBytes());
-      result.found = true;
-    }
-
-    if (result.found) {
-      result.message = "Archivos encontrados para el folio " + folio;
-    }
-
-    return jsonOutput(result);
-
-  } catch (error) {
-    return jsonOutput({ found: false, message: "Error: " + error.toString() });
-  }
-}
-
-// ----------------------------------------------------
-// POST: subida de imágenes y actualización en Sheets
-// ----------------------------------------------------
-function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-
-    // NUEVA FUNCIÓN: Actualizar Google Sheets cuando el Front mande el aviso
-    if (data.action === "updateSheet") {
-      var folio = data.folio;
-      var sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
-      var sheetData = sheet.getDataRange().getValues();
-      
-      for (var i = 1; i < sheetData.length; i++) { // i=1 omite la fila 1 (encabezados)
-        if (sheetData[i][0].toString() === folio) {
-          var rowIndex = i + 1; // Fila real en la hoja (Base 1)
-          
-          // Columna B (Índice 1): folio-ine.jpg
-          if (sheetData[i][1] === "No" || sheetData[i][1] === "") {
-            sheet.getRange(rowIndex, 2).setValue("Si");
-          }
-          // Columna C (Índice 2): folio-foto.jpg
-          if (sheetData[i][2] === "No" || sheetData[i][2] === "") {
-            sheet.getRange(rowIndex, 3).setValue("Si");
-          }
-          
-          // Columna E (Índice 4): Procesado por
-          var procesado = sheetData[i][4];
-          if (procesado === "") {
-            sheet.getRange(rowIndex, 5).setValue("Pedro");
-          } else if (procesado.indexOf("Pedro") === -1) {
-            sheet.getRange(rowIndex, 5).setValue(procesado + "/Pedro");
-          }
-          
-          // Columna G (Índice 6): Observaciones
-          var obs = sheetData[i][6];
-          if (obs === "") {
-            sheet.getRange(rowIndex, 7).setValue("Imagenes procesadas");
-          } else {
-            sheet.getRange(rowIndex, 7).setValue(obs + "//Imagenes procesadas");
-          }
-          
-          // Al retornar aquí, aseguramos que solo modifique el primer folio duplicado que encuentre
-          return jsonOutput({ status: "success", message: "Hoja actualizada" });
-        }
+      clearTimeout(debounceTimers[id]);
+      if(val) {
+        // Retardo para no saturar Google Sheets si escribe rápido
+        debounceTimers[id] = setTimeout(() => {
+          fetch(`${GOOGLE_SCRIPT_URL}?action=checkFolio&folio=${encodeURIComponent(val)}`)
+            .then(res => res.json())
+            .then(data => {
+              if(data.exists) {
+                $(`#folioCheck-${id}`).removeClass("d-none");
+              }
+            })
+            .catch(e => console.error("Error buscando folio:", e));
+        }, 800);
       }
-      return jsonOutput({ status: "error", message: "Folio no encontrado en la hoja" });
+    });
+
+    function validarFolioLocal(id) {
+      const folio = $(`#folioInput-${id}`).val().trim();
+      if (!folio) {
+        $(`#folioInput-${id}`).addClass("is-invalid").focus();
+        alert("Por favor, coloque el nombre de Folio en esta sección antes de continuar.");
+        return null;
+      }
+      return folio;
     }
 
-    // ORIGINAL: Subida de imagen a Drive
-    if (data.base64 && data.fileName) {
-      var folder = DriveApp.getFolderById(FOLDER_ID);
-      var bytes = Utilities.base64Decode(data.base64);
-      var blob = Utilities.newBlob(bytes, data.mimeType || "image/jpeg", data.fileName);
-      var file = folder.createFile(blob);
-
-      return jsonOutput({
-        status: "success",
-        fileUrl: file.getUrl(),
-        fileName: file.getName()
+    // =======================================
+    // UI TEXTOS GLOBALES DE BOTONES
+    // =======================================
+    function updateButtonTexts() {
+      const modoDescargar = $("#modoToggle").is(":checked");
+      
+      $(".btn-action-ine, .btn-action-selfie").each(function() {
+        const $btn = $(this);
+        if (!$btn.hasClass("btn-success")) { 
+          const isDownload = modoDescargar;
+          const isIne = $btn.hasClass("btn-action-ine");
+          
+          const icon = isDownload ? "bi-download" : "bi-cloud-upload";
+          const text = isDownload 
+            ? (isIne ? "Descargar INE al equipo" : "Descargar Selfie al equipo") 
+            : (isIne ? "Subir INE a Drive" : "Subir Selfie a Drive");
+            
+          $btn.html(`<i class="bi ${icon} me-2"></i>${text}`);
+        }
       });
     }
 
-    return jsonOutput({
-      status: "error",
-      message: "Acción no reconocida o parámetros insuficientes"
+    $("#modoToggle").on("change", updateButtonTexts);
+
+    function setPreview(containerId, placeholderId, dataUrl) {
+      $(`#${containerId}`).css('background-image', `url('${dataUrl}')`).addClass('has-image');
+      $(`#${placeholderId}`).hide();
+    }
+    function resetBtnState($btn) {
+      $btn.removeClass("d-none btn-success").addClass("btn-outline-marino").prop("disabled", false);
+    }
+
+    // =======================================
+    // LOGICA DE CARGA DE IMAGENES
+    // =======================================
+    function handleImageLoad(file, callback) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => callback(img);
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    $(document).on("change", ".ine-frontal-input", function(e) {
+      const id = $(this).data("id");
+      if (e.target.files[0]) {
+        handleImageLoad(e.target.files[0], img => { recordsData[id].ineFrontal = img; combineIneImages(id); });
+      }
     });
 
-  } catch (error) {
-    return jsonOutput({ status: "error", message: error.toString() });
-  }
-}
+    $(document).on("change", ".ine-lateral-input", function(e) {
+      const id = $(this).data("id");
+      if (e.target.files[0]) {
+        handleImageLoad(e.target.files[0], img => { recordsData[id].ineLateral = img; combineIneImages(id); });
+      }
+    });
 
-// ----------------------------------------------------
-// HELPER
-// ----------------------------------------------------
-function jsonOutput(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+    $(document).on("change", ".selfie-input", function(e) {
+      const id = $(this).data("id");
+      if (e.target.files[0]) {
+        handleImageLoad(e.target.files[0], img => { recordsData[id].selfie = img; updateSelfie(id); });
+      }
+    });
+
+    // =======================================
+    // PROCESAMIENTO AL CANVAS
+    // =======================================
+    function combineIneImages(id) {
+      const data = recordsData[id];
+      const canvas = document.createElement('canvas');
+      canvas.width = 1300; canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 1300, 400);
+      ctx.fillStyle = '#dee2e6'; ctx.font = "bold 24px Arial"; ctx.textAlign = "center";
+      
+      let hasAny = false;
+      if (data.ineFrontal) { ctx.drawImage(data.ineFrontal, 0, 0, 650, 400); hasAny = true; }
+      else { ctx.fillText("FRENTE PENDIENTE", 325, 200); }
+
+      if (data.ineLateral) { ctx.drawImage(data.ineLateral, 650, 0, 650, 400); hasAny = true; }
+      else { ctx.fillText("REVERSO PENDIENTE", 975, 200); }
+
+      if (hasAny) {
+        data.ineDataUrl = canvas.toDataURL('image/jpeg', 0.90);
+        setPreview(`ineCombinedPreview-${id}`, `inePlaceholder-${id}`, data.ineDataUrl);
+      }
+      
+      if (data.ineFrontal && data.ineLateral) {
+        resetBtnState($(`#downloadIneBtn-${id}`));
+        updateButtonTexts();
+        $(`#ineStatus-${id}`).empty();
+      }
+    }
+
+    function updateSelfie(id) {
+      const data = recordsData[id];
+      if (!data.selfie) return;
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = 265; canvas.height = 320;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(data.selfie, 0, 0, 265, 320);
+
+      data.selfieDataUrl = canvas.toDataURL('image/jpeg', 0.90);
+      setPreview(`selfiePreview-${id}`, `selfiePlaceholder-${id}`, data.selfieDataUrl);
+
+      resetBtnState($(`#downloadSelfieBtn-${id}`));
+      updateButtonTexts();
+      $(`#selfieStatus-${id}`).empty();
+    }
+
+    // =======================================
+    // DESCARGA Y SUBIDA A DRIVE + GOOGLE SHEETS
+    // =======================================
+    function downloadToLocal(dataUrl, fileName, statusId) {
+      const $status = $(statusId);
+      if (!dataUrl) return $status.html('<span class="text-danger">Sin imagen disponible.</span>');
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Descargado: ${fileName}!</span>`);
+    }
+
+    function uploadToDrive(dataUrl, fileName, btnId, statusId, idRecord, folioValue) {
+      const $btn = $(btnId);
+      const $status = $(statusId);
+
+      if (!dataUrl) return $status.html('<span class="text-danger">Sin imagen disponible.</span>');
+
+      const payload = {
+        base64: dataUrl.split(',')[1],
+        mimeType: "image/jpeg",
+        fileName: fileName
+      };
+
+      $btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...');
+      $status.html('<span class="text-info">Enviando a Drive...</span>');
+
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          $btn.removeClass("btn-outline-marino").addClass("btn-success")
+              .html('<i class="bi bi-check-circle-fill me-2"></i>Archivo subido');
+          $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Subido! <a href="${data.fileUrl}" target="_blank">Ver en Drive</a></span>`);
+
+          // Marcar subida exitosa en el estado del registro
+          if (btnId.includes("IneBtn")) recordsData[idRecord].isIneUploaded = true;
+          if (btnId.includes("SelfieBtn")) recordsData[idRecord].isSelfieUploaded = true;
+
+          // Si ambos se subieron y no se ha actualizado la hoja aún
+          if (recordsData[idRecord].isIneUploaded && recordsData[idRecord].isSelfieUploaded && !recordsData[idRecord].sheetUpdated) {
+            recordsData[idRecord].sheetUpdated = true; // Bloquea para que no actualice dos veces
+            
+            // Petición POST para actualizar Google Sheets
+            const sheetPayload = {
+              action: "updateSheet",
+              folio: folioValue
+            };
+
+            fetch(GOOGLE_SCRIPT_URL, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify(sheetPayload)
+            })
+            .then(r => r.json())
+            .then(resUpdate => {
+                let countdown = 20;
+                
+                if ($("#reloadAlert").length === 0) {
+                  $(".container").first().prepend(`
+                    <div id="reloadAlert" class="alert alert-success text-center fw-bold shadow-sm mb-4" role="alert">
+                      <i class="bi bi-check2-all me-2"></i>¡Archivos y Hoja de Excel actualizados con éxito! La página se recargará en <span id="reloadCountdown">${countdown}</span> segundos.
+                    </div>
+                  `);
+                  $("html, body").animate({ scrollTop: 0 }, "fast");
+                }
+                
+                const timer = setInterval(() => {
+                  countdown--;
+                  $("#reloadCountdown").text(countdown);
+                  if (countdown <= 0) {
+                    clearInterval(timer);
+                    location.reload();
+                  }
+                }, 1000);
+            })
+            .catch(e => {
+                alert("Las fotos se subieron a Drive, pero hubo un error conectando con la Hoja de Cálculo.");
+                console.error(e);
+            });
+          }
+
+        } else {
+          throw new Error(data.message || "Error en el servidor");
+        }
+      })
+      .catch(err => {
+        $status.html(`<span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Error: ${err.message}.</span>`);
+        let countdown = 5;
+        const timer = setInterval(() => {
+          if (countdown > 0) {
+            $btn.html(`<i class="bi bi-clock me-2"></i>Espere (${countdown}s)...`);
+            countdown--;
+          } else {
+            clearInterval(timer);
+            $btn.prop("disabled", false);
+            updateButtonTexts();
+          }
+        }, 1000);
+      });
+    }
+
+    $(document).on("click", ".btn-action-ine", function(e) {
+      e.preventDefault();
+      const id = $(this).data("id");
+      const folio = validarFolioLocal(id);
+      if (!folio) return;
+
+      const fileName = `${folio}-ine.jpg`;
+      const dataUrl = recordsData[id].ineDataUrl;
+      $("#modoToggle").is(":checked") 
+        ? downloadToLocal(dataUrl, fileName, `#ineStatus-${id}`)
+        : uploadToDrive(dataUrl, fileName, `#downloadIneBtn-${id}`, `#ineStatus-${id}`, id, folio);
+    });
+
+    $(document).on("click", ".btn-action-selfie", function(e) {
+      e.preventDefault();
+      const id = $(this).data("id");
+      const folio = validarFolioLocal(id);
+      if (!folio) return;
+
+      const fileName = `${folio}-foto.jpg`;
+      const dataUrl = recordsData[id].selfieDataUrl;
+      $("#modoToggle").is(":checked") 
+        ? downloadToLocal(dataUrl, fileName, `#selfieStatus-${id}`)
+        : uploadToDrive(dataUrl, fileName, `#downloadSelfieBtn-${id}`, `#selfieStatus-${id}`, id, folio);
+    });
+
+    // =======================================
+    // MODAL MACHOTE 
+    // =======================================
+    function aplicarFolioMachote() {
+      const folioValue = $("#modalFolioInput").val().trim() || "[FOLIO]";
+      $(".folio-placeholder").fadeOut(150, function() {
+        $(this).text(folioValue).fadeIn(150);
+      });
+    }
+
+    $("#machoteModal").on("show.bs.modal", function () {
+      const visibleFolio = $(".accordion-collapse.show .folio-input").val() || "";
+      $("#modalFolioInput").val(visibleFolio.trim());
+      aplicarFolioMachote();
+    });
+
+    $("#btnAplicarModal").on("click", aplicarFolioMachote);
+    $("#modalFolioInput").on("keypress", e => { if (e.which === 13) aplicarFolioMachote(); });
+  </script>
+</body>
+</html>
