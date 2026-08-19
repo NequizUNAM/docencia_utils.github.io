@@ -89,7 +89,6 @@
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <span id="resultadoBusquedaLabel" class="d-none badge p-2 fw-semibold"></span>
 
-          <!-- BOTÓN PARA ABRIR LA CARPETA EN GOOGLE DRIVE -->
           <a id="btnAbrirDrive" href="#" target="_blank" class="btn btn-outline-success">
             <i class="bi bi-folder-symlink me-2"></i>Abrir Carpeta Drive
           </a>
@@ -260,10 +259,9 @@
 
     $("#btnAbrirDrive").attr("href", GOOGLE_DRIVE_FOLDER_URL);
 
-    // Diccionario para almacenar el estado de CADA folio de manera independiente
     let recordsData = {};
     let recordCounter = 0;
-    let debounceTimers = {}; // Para el buscador del folio en Google Sheets
+    let debounceTimers = {}; 
 
     // =======================================
     // GESTIÓN DEL ACORDEÓN Y CLONACIÓN
@@ -299,7 +297,7 @@
                   <label class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio (Obligatorio)</label>
                   <div class="input-group">
                     <input type="text" class="form-control folio-input" data-id="${id}" id="folioInput-${id}" placeholder="Ej. 105952">
-                    <span class="input-group-text d-none bg-success text-white" id="folioCheck-${id}">
+                    <span class="input-group-text d-none bg-success text-white border-success" id="folioCheck-${id}">
                       <i class="bi bi-check-circle-fill me-1"></i> Existe
                     </span>
                   </div>
@@ -378,7 +376,6 @@
       if(confirm("¿Estás seguro de que deseas eliminar este bloque de folio?")) {
         $(`#item-${id}`).remove();
         delete recordsData[id];
-        
         if(Object.keys(recordsData).length === 1) {
           $(".btn-delete-record").addClass("d-none");
         }
@@ -392,18 +389,17 @@
     $("#btnAddRecord").click(addNewRecord);
 
     // =======================================
-    // BÚSQUEDA Y VALIDACIÓN DE FOLIO EN SHEETS
+    // BÚSQUEDA Y VALIDACIÓN EN SHEETS
     // =======================================
     $(document).on("input", ".folio-input", function() {
       const id = $(this).data("id");
       const val = $(this).val().trim();
       $(this).removeClass("is-invalid");
       $(`.folio-title-${id}`).text(val ? val : "Nuevo Folio (Sin Asignar)");
-      $(`#folioCheck-${id}`).addClass("d-none"); // Oculta el check verde al editar
+      $(`#folioCheck-${id}`).addClass("d-none");
 
       clearTimeout(debounceTimers[id]);
       if(val) {
-        // Retardo para no saturar Google Sheets si escribe rápido
         debounceTimers[id] = setTimeout(() => {
           fetch(`${GOOGLE_SCRIPT_URL}?action=checkFolio&folio=${encodeURIComponent(val)}`)
             .then(res => res.json())
@@ -428,7 +424,7 @@
     }
 
     // =======================================
-    // UI TEXTOS GLOBALES DE BOTONES
+    // UI Y COMPORTAMIENTO DE BOTONES
     // =======================================
     function updateButtonTexts() {
       const modoDescargar = $("#modoToggle").is(":checked");
@@ -587,11 +583,10 @@
           if (btnId.includes("IneBtn")) recordsData[idRecord].isIneUploaded = true;
           if (btnId.includes("SelfieBtn")) recordsData[idRecord].isSelfieUploaded = true;
 
-          // Si ambos se subieron y no se ha actualizado la hoja aún
+          // Si ambos se subieron, hacemos la actualización en Sheets
           if (recordsData[idRecord].isIneUploaded && recordsData[idRecord].isSelfieUploaded && !recordsData[idRecord].sheetUpdated) {
-            recordsData[idRecord].sheetUpdated = true; // Bloquea para que no actualice dos veces
+            recordsData[idRecord].sheetUpdated = true; 
             
-            // Petición POST para actualizar Google Sheets
             const sheetPayload = {
               action: "updateSheet",
               folio: folioValue
@@ -605,13 +600,22 @@
             .then(r => r.json())
             .then(resUpdate => {
                 let countdown = 20;
+                let alertHtml = "";
                 
-                if ($("#reloadAlert").length === 0) {
-                  $(".container").first().prepend(`
+                if (resUpdate.status === "success") {
+                  alertHtml = `
                     <div id="reloadAlert" class="alert alert-success text-center fw-bold shadow-sm mb-4" role="alert">
                       <i class="bi bi-check2-all me-2"></i>¡Archivos y Hoja de Excel actualizados con éxito! La página se recargará en <span id="reloadCountdown">${countdown}</span> segundos.
-                    </div>
-                  `);
+                    </div>`;
+                } else {
+                  alertHtml = `
+                    <div id="reloadAlert" class="alert alert-warning text-center fw-bold shadow-sm mb-4" role="alert">
+                      <i class="bi bi-exclamation-triangle me-2"></i>Imágenes subidas, pero el folio NO se encontró en el Excel para actualizar. Recargando en <span id="reloadCountdown">${countdown}</span> segundos.
+                    </div>`;
+                }
+                
+                if ($("#reloadAlert").length === 0) {
+                  $(".container").first().prepend(alertHtml);
                   $("html, body").animate({ scrollTop: 0 }, "fast");
                 }
                 
@@ -625,7 +629,7 @@
                 }, 1000);
             })
             .catch(e => {
-                alert("Las fotos se subieron a Drive, pero hubo un error conectando con la Hoja de Cálculo.");
+                alert("Las fotos se subieron a Drive, pero hubo un error de conexión con la Hoja de Cálculo.");
                 console.error(e);
             });
           }
@@ -677,7 +681,7 @@
     });
 
     // =======================================
-    // MODAL MACHOTE 
+    // MODAL MACHOTE
     // =======================================
     function aplicarFolioMachote() {
       const folioValue = $("#modalFolioInput").val().trim() || "[FOLIO]";
