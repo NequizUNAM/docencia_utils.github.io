@@ -133,8 +133,8 @@
                 <!-- Herramientas de rotación que aparecen al cargar -->
                 <div id="tools-ineFrontal" class="d-none mt-2 text-end">
                   <span class="small text-muted me-2">Rotar:</span>
-                  <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineFrontal', -90)"><i class="bi bi-arrow-counterclockwise"></i></button>
-                  <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineFrontal', 90)"><i class="bi bi-arrow-clockwise"></i></button>
+                  <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineFrontal', -90)"><i class="bi bi-arrow-counterclockwise"></i></button>  -->
+                  <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineFrontal', 90)"><i class="bi bi-arrow-clockwise"></i></button> -->
                 </div>
               </div>
               <div class="col-md-6 mb-3">
@@ -143,8 +143,8 @@
                 <!-- Herramientas de rotación que aparecen al cargar -->
                 <div id="tools-ineLateral" class="d-none mt-2 text-end">
                   <span class="small text-muted me-2">Rotar:</span>
-                  <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineLateral', -90)"><i class="bi bi-arrow-counterclockwise"></i></button>
-                  <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineLateral', 90)"><i class="bi bi-arrow-clockwise"></i></button>
+                  <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineLateral', -90)"><i class="bi bi-arrow-counterclockwise"></i></button> -->
+                  <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineLateral', 90)"><i class="bi bi-arrow-clockwise"></i></button> -->
                 </div>
               </div>
             </div>
@@ -173,8 +173,8 @@
               <!-- Herramientas de rotación que aparecen al cargar -->
               <div id="tools-selfie" class="d-none mt-2 text-end">
                 <span class="small text-muted me-2">Rotar:</span>
-                <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('selfie', -90)"><i class="bi bi-arrow-counterclockwise"></i></button>
-                <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('selfie', 90)"><i class="bi bi-arrow-clockwise"></i></button>
+                <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('selfie', -90)"><i class="bi bi-arrow-counterclockwise"></i></button> -->
+                <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('selfie', 90)"><i class="bi bi-arrow-clockwise"></i></button>  -->
               </div>
             </div>
 
@@ -448,7 +448,7 @@
       }
     });
 
-    /*$("#selfieInput").on("change", e => {
+    $("#selfieInput").on("change", e => {
       if (e.target.files[0]) {
         handleImageLoad(e.target.files[0], img => { 
           imagesObj.selfie = img; 
@@ -456,7 +456,7 @@
           updateSelfie();
         });
       }
-    });*/
+    });
 
     // =======================================
     // PROCESAMIENTO DE IMÁGENES AL CANVAS
