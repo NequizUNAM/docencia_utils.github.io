@@ -69,11 +69,11 @@
 </head>
 <body>
 
-  <!-- BANNER DE RECARGA (nuevo) -->
+  <!-- BANNER DE RECARGA (solo aparece cuando AMBOS archivos ya se subieron) -->
   <div id="reloadBanner" class="d-none" style="position:sticky; top:0; z-index:2000; width:100%;">
     <div class="alert alert-success text-center mb-0 rounded-0 fw-bold">
       <i class="bi bi-check-circle-fill me-2"></i>
-      Imágenes subidas correctamente. Recargando en <span id="reloadCountdown">25</span>s...
+      INE y Selfie subidos correctamente. Recargando en <span id="reloadCountdown">25</span>s...
     </div>
   </div>
 
@@ -338,7 +338,7 @@
     let currentIneDataUrl = null;
     let currentSelfieDataUrl = null;
 
-    // Bandera para el contador de recarga (nuevo)
+    // Bandera para el contador de recarga
     let reloadTimerActive = false;
 
     $("#btnAbrirDrive").attr("href", GOOGLE_DRIVE_FOLDER_URL);
@@ -549,7 +549,8 @@
       $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Descargado: ${fileName}!</span>`);
     }
 
-    // Contador de recarga de 25s (nuevo)
+    // Contador de recarga de 25s. Solo se dispara cuando AMBOS
+    // archivos (INE y Selfie) ya se subieron a Drive.
     function iniciarContadorRecarga() {
       if (reloadTimerActive) return;
       reloadTimerActive = true;
@@ -597,16 +598,20 @@
           $btn.removeClass("btn-outline-marino").addClass("btn-success")
               .html('<i class="bi bi-check-circle-fill me-2"></i>Archivo subido');
 
-          // Aviso si el folio no se localizó en la Bitácora (nuevo)
-          let extraMsg = "";
-          if (data.folioEncontrado === false) {
-            extraMsg = ' <span class="badge bg-warning text-dark ms-1">Folio no localizado</span>';
+          if (data.ambosCompletos === true) {
+            // Ya están INE y Selfie en Drive: se actualizó (o intentó actualizar) la Bitácora
+            let extraMsg = "";
+            if (data.folioEncontrado === false) {
+              extraMsg = ' <span class="badge bg-warning text-dark ms-1">Folio no localizado</span>';
+            }
+            $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Subido! <a href="${data.fileUrl}" target="_blank">Ver en Drive</a></span>${extraMsg}`);
+
+            // Solo aquí se recarga la página (25s)
+            iniciarContadorRecarga();
+          } else {
+            // Falta el otro archivo: no se toca la Bitácora ni se recarga
+            $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Subido! <a href="${data.fileUrl}" target="_blank">Ver en Drive</a></span> <span class="badge bg-secondary ms-1">Esperando el otro documento</span>`);
           }
-
-          $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Subido! <a href="${data.fileUrl}" target="_blank">Ver en Drive</a></span>${extraMsg}`);
-
-          // Inicia el contador de recarga de 25s (nuevo)
-          iniciarContadorRecarga();
         } else {
           throw new Error(data.message || "Error en el servidor");
         }
