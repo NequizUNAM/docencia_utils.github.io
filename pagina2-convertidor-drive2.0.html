@@ -139,22 +139,10 @@
               <div class="col-md-6 mb-3">
                 <label class="form-label small fw-bold">FRENTE</label>
                 <input type="file" id="ineFrontalInput" class="form-control" accept="image/*" onclick="this.value=null">
-                <!-- Herramientas de rotación que aparecen al cargar -->
-                <div id="tools-ineFrontal" class="d-none mt-2 text-end">
-                   <!-- <span class="small text-muted me-2">Rotar:</span>  -->
-                  <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineFrontal', -90)"><i class="bi bi-arrow-counterclockwise"></i></button>  -->
-                  <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineFrontal', 90)"><i class="bi bi-arrow-clockwise"></i></button> -->
-                </div>
               </div>
               <div class="col-md-6 mb-3">
                 <label class="form-label small fw-bold">REVERSO</label>
                 <input type="file" id="ineLateralInput" class="form-control" accept="image/*" onclick="this.value=null">
-                <!-- Herramientas de rotación que aparecen al cargar -->
-                <div id="tools-ineLateral" class="d-none mt-2 text-end">
-                   <!-- <span class="small text-muted me-2">Rotar:</span>  -->
-                  <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineLateral', -90)"><i class="bi bi-arrow-counterclockwise"></i></button> -->
-                  <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('ineLateral', 90)"><i class="bi bi-arrow-clockwise"></i></button> -->
-                </div>
               </div>
             </div>
 
@@ -179,12 +167,6 @@
             <div class="mb-3">
               <label class="form-label small fw-bold">SUBIR IMAGEN</label>
               <input type="file" id="selfieInput" class="form-control" accept="image/*" onclick="this.value=null">
-              <!-- Herramientas de rotación que aparecen al cargar -->
-              <div id="tools-selfie" class="d-none mt-2 text-end">
-                <!-- <span class="small text-muted me-2">Rotar:</span> -->
-                <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('selfie', -90)"><i class="bi bi-arrow-counterclockwise"></i></button> -->
-                <!-- <button type="button" class="btn btn-sm btn-outline-marino" onclick="rotateTarget('selfie', 90)"><i class="bi bi-arrow-clockwise"></i></button>  -->
-              </div>
             </div>
 
             <div class="image-preview mb-3" id="selfiePreview" style="min-height: 200px;">
@@ -328,7 +310,7 @@
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
     const GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1aRJRe0623pBilxj7AqVJYsmDgi-LqwzY"; 
 
-    // Almacenamos el objeto Image puro para poder rotarlo si se necesita
+    // Almacenamos el objeto Image
     let imagesObj = {
       ineFrontal: null,
       ineLateral: null,
@@ -357,7 +339,7 @@
     }
 
     $("#folioInput").on("input", function() {
-      $(this).removeClass("is-invalid"); // Quita la alerta visual si escribe algo
+      $(this).removeClass("is-invalid"); 
       $("#modalFolioInput").val($(this).val());
     });
 
@@ -395,9 +377,6 @@
           .prop("disabled", false);
     }
 
-    // =======================================
-    // LOGICA DE CARGA Y ROTACIÓN EN VIVO
-    // =======================================
     function handleImageLoad(file, callback) {
       const reader = new FileReader();
       reader.onload = e => {
@@ -408,35 +387,6 @@
       reader.readAsDataURL(file);
     }
 
-    // Función que rota la imagen original en memoria y vuelve a dibujar el canvas
-    function rotateTarget(target, angle) {
-      let img = imagesObj[target];
-      if (!img) return;
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      // Intercambiamos dimensiones porque al girar 90 grados el alto pasa a ser el ancho
-      canvas.width = img.height;
-      canvas.height = img.width;
-
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate(angle * Math.PI / 180);
-      ctx.drawImage(img, -img.width / 2, -img.height / 2);
-
-      // Guardamos la nueva imagen rotada y redibujamos
-      let newImg = new Image();
-      newImg.onload = function() {
-        imagesObj[target] = newImg;
-        if (target === 'selfie') {
-          updateSelfie();
-        } else {
-          combineIneImages();
-        }
-      };
-      newImg.src = canvas.toDataURL('image/jpeg', 1.0);
-    }
-
     // =======================================
     // EVENTOS DE LOS INPUTS
     // =======================================
@@ -444,7 +394,6 @@
       if (e.target.files[0]) {
         handleImageLoad(e.target.files[0], img => { 
           imagesObj.ineFrontal = img; 
-          $("#tools-ineFrontal").removeClass("d-none"); // Muestra botones rotar
           combineIneImages(); 
         });
       }
@@ -454,7 +403,6 @@
       if (e.target.files[0]) {
         handleImageLoad(e.target.files[0], img => { 
           imagesObj.ineLateral = img; 
-          $("#tools-ineLateral").removeClass("d-none"); // Muestra botones rotar
           combineIneImages(); 
         });
       }
@@ -464,7 +412,6 @@
       if (e.target.files[0]) {
         handleImageLoad(e.target.files[0], img => { 
           imagesObj.selfie = img; 
-          $("#tools-selfie").removeClass("d-none"); // Muestra botones rotar
           updateSelfie();
         });
       }
@@ -482,7 +429,6 @@
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, 1300, 400);
 
-      // Guías visuales por si falta un lado
       ctx.fillStyle = '#dee2e6';
       ctx.font = "bold 24px Arial";
       ctx.textAlign = "center";
@@ -549,8 +495,6 @@
       $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Descargado: ${fileName}!</span>`);
     }
 
-    // Contador de recarga de 25s. Solo se dispara cuando AMBOS
-    // archivos (INE y Selfie) ya se subieron a Drive.
     function iniciarContadorRecarga() {
       if (reloadTimerActive) return;
       reloadTimerActive = true;
@@ -578,10 +522,12 @@
 
       if (!dataUrl) return $status.html('<span class="text-danger">Sin imagen disponible.</span>');
 
+      // AQUÍ ESTÁ LA MAGIA: Enviamos updateSheet: true para que GS sepa que ESTA PÁGINA sí modifica el Excel
       const payload = {
         base64: dataUrl.split(',')[1],
         mimeType: "image/jpeg",
-        fileName: fileName
+        fileName: fileName,
+        updateSheet: true 
       };
 
       $btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...');
@@ -599,17 +545,14 @@
               .html('<i class="bi bi-check-circle-fill me-2"></i>Archivo subido');
 
           if (data.ambosCompletos === true) {
-            // Ya están INE y Selfie en Drive: se actualizó (o intentó actualizar) la Bitácora
             let extraMsg = "";
             if (data.folioEncontrado === false) {
-              extraMsg = ' <span class="badge bg-warning text-dark ms-1">Folio no localizado</span>';
+              extraMsg = ' <span class="badge bg-warning text-dark ms-1">Folio no localizado en Bitácora</span>';
             }
             $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Subido! <a href="${data.fileUrl}" target="_blank">Ver en Drive</a></span>${extraMsg}`);
 
-            // Solo aquí se recarga la página (25s)
             iniciarContadorRecarga();
           } else {
-            // Falta el otro archivo: no se toca la Bitácora ni se recarga
             $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Subido! <a href="${data.fileUrl}" target="_blank">Ver en Drive</a></span> <span class="badge bg-secondary ms-1">Esperando el otro documento</span>`);
           }
         } else {
@@ -638,8 +581,8 @@
     // =======================================
     $("#downloadIneBtn").on("click", function(e) {
       e.preventDefault();
-      const folio = validarFolio(); // Llama a la validación
-      if (!folio) return;           // Si está vacío, detiene la ejecución
+      const folio = validarFolio();
+      if (!folio) return;
 
       const fileName = `${folio}-ine.jpg`;
       $("#modoToggle").is(":checked") 
@@ -649,8 +592,8 @@
 
     $("#downloadSelfieBtn").on("click", function(e) {
       e.preventDefault();
-      const folio = validarFolio(); // Llama a la validación
-      if (!folio) return;           // Si está vacío, detiene la ejecución
+      const folio = validarFolio();
+      if (!folio) return;
 
       const fileName = `${folio}-foto.jpg`;
       $("#modoToggle").is(":checked") 
