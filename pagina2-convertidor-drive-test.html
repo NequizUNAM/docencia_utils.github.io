@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Convertidor de Imágenes</title>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  
+  <style>
+    :root { --azul-marino: #003366; }
+    body { background-color:#ffffff; color:#1a1a2e; display:flex; flex-direction:column; min-height:100vh; }
+    
+    .card-custom {
+      border-radius: 8px;
+      border: none;
+      border-left: 5px solid var(--azul-marino);
+      transition: transform 0.2s;
+    }
+    .card-custom:hover { transform: translateY(-5px); }
+
+    .image-preview {
+      min-height: 160px;
+      border: 2px dashed #dee2e6;
+      border-radius: 8px;
+      background-color: #fafbfc;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .image-preview.has-image { border: 1px solid var(--azul-marino); }
+    .preview-icon { font-size: 2.5rem; color: #adb5bd; }
+    
+    .btn-outline-marino {
+      border: 2px solid var(--azul-marino);
+      color: var(--azul-marino);
+      font-weight: 600;
+    }
+    .btn-outline-marino:hover { background-color: var(--azul-marino); color: white; }
+    
+    .hr-azul {
+      border: 0;
+      height: 2px;
+      background: var(--azul-marino);
+      opacity: 0.25;
+      margin: 1.5rem 0;
+    }
+    .email-template {
+      background-color: #f8f9fa;
+      padding: 1rem 1.5rem;
+      border-radius: 6px;
+      border-left: 3px solid var(--azul-marino);
+    }
+
+    .form-switch .form-check-input {
+      width: 3em;
+      height: 1.5em;
+      cursor: pointer;
+    }
+    .form-switch .form-check-input:checked {
+      background-color: var(--azul-marino);
+      border-color: var(--azul-marino);
+    }
+  </style>
+</head>
+<body>
+  <div id="header-container"></div>
+
+  <main class="flex-grow-1 col-md-9 ms-md-auto col-lg-10 py-5 px-4">
+    <div class="container">
+      
+      <header class="mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+          <h2 class="fw-bold" style="color: var(--azul-marino);">Convertidor de Imágenes</h2>
+          <p class="text-muted mb-0">Gestión de archivos INE y Fotos de Perfil.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span id="resultadoBusquedaLabel" class="d-none badge p-2 fw-semibold"></span>
+
+          <!-- BOTÓN PARA ABRIR LA CARPETA EN GOOGLE DRIVE -->
+          <a id="btnAbrirDrive" href="#" target="_blank" class="btn btn-outline-success">
+            <i class="bi bi-folder-symlink me-2"></i>Abrir Carpeta Drive
+          </a>
+
+          <!-- NUEVO BOTÓN BUSCAR -->
+          <button class="btn btn-outline-marino" id="btnAbrirBuscar" data-bs-toggle="modal" data-bs-target="#buscarModal">
+            <i class="bi bi-search me-2"></i>Buscar
+          </button>
+
+          <button class="btn btn-outline-marino" id="btnAbrirMachote" data-bs-toggle="modal" data-bs-target="#machoteModal">
+            <i class="bi bi-envelope-paper me-2"></i>Machote Correos
+          </button>
+          
+          <button class="btn btn-outline-marino" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise me-2"></i>Recargar
+          </button>
+        </div>
+      </header>
+
+      <!-- Sección Folio y Toggle -->
+      <div class="row mb-4 align-items-end g-3">
+        <div class="col-12 col-md-6 col-xl-4">
+          <label for="folioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio</label>
+          <div class="input-group">
+            <input type="text" id="folioInput" class="form-control" placeholder="Coloque aquí el Folio">
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card p-2 shadow-sm border-0 bg-light d-flex flex-row align-items-center justify-content-between px-3">
+            <span class="small fw-bold text-muted d-flex align-items-center me-2">
+              <i class="bi bi-cloud-upload me-1 text-primary"></i> Subir a Drive
+            </span>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" role="switch" id="modoToggle">
+            </div>
+            <span class="small fw-bold text-muted d-flex align-items-center ms-2">
+              <i class="bi bi-download me-1 text-success"></i> Descargar a Equipo
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarjetas de Procesamiento -->
+      <div class="row g-4">
+        <!-- INE -->
+        <div class="col-12 col-xl-7">
+          <div class="card card-custom p-4 h-100 shadow-sm">
+            <h5 class="fw-bold mb-3"><i class="bi bi-card-heading me-2"></i>Combinar INE (1300x400)</h5>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label small fw-bold">FRENTE</label>
+                <input type="file" id="ineFrontalInput" class="form-control" accept="image/*" onclick="this.value=null">
+                <div id="tools-ineFrontal" class="d-none mt-2 text-end"></div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label small fw-bold">REVERSO</label>
+                <input type="file" id="ineLateralInput" class="form-control" accept="image/*" onclick="this.value=null">
+                <div id="tools-ineLateral" class="d-none mt-2 text-end"></div>
+              </div>
+            </div>
+
+            <div class="image-preview mb-3" id="ineCombinedPreview">
+              <div class="text-center" id="inePlaceholder">
+                <i class="bi bi-id-card preview-icon"></i>
+                <p class="small text-muted mb-0">Vista previa combinada</p>
+              </div>
+            </div>
+
+            <button id="downloadIneBtn" class="btn btn-outline-marino w-100 d-none shadow-sm">
+              <i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive
+            </button>
+            <div id="ineStatus" class="mt-2 text-center small"></div>
+          </div>
+        </div>
+
+        <!-- Selfie -->
+        <div class="col-12 col-xl-5">
+          <div class="card card-custom p-4 h-100 shadow-sm">
+            <h5 class="fw-bold mb-3"><i class="bi bi-person-bounding-box me-2"></i>Selfie (265x320)</h5>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">SUBIR IMAGEN</label>
+              <input type="file" id="selfieInput" class="form-control" accept="image/*" onclick="this.value=null">
+              <div id="tools-selfie" class="d-none mt-2 text-end"></div>
+            </div>
+
+            <div class="image-preview mb-3" id="selfiePreview" style="min-height: 200px;">
+              <div class="text-center" id="selfiePlaceholder">
+                <i class="bi bi-person-square preview-icon"></i>
+                <p class="small text-muted mb-0">Vista previa selfie</p>
+              </div>
+            </div>
+
+            <button id="downloadSelfieBtn" class="btn btn-outline-marino w-100 d-none shadow-sm">
+              <i class="bi bi-cloud-upload me-2"></i>Subir Selfie a Drive
+            </button>
+            <div id="selfieStatus" class="mt-2 text-center small"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL BUSCAR -->
+  <div class="modal fade" id="buscarModal" tabindex="-1" aria-labelledby="buscarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header" style="border-bottom: 2px solid var(--azul-marino);">
+          <div>
+            <h4 class="modal-title fw-bold" id="buscarModalLabel" style="color: var(--azul-marino);">Buscar en Base de Datos</h4>
+            <p class="text-muted mb-0 small">Consulta de folios en Google Sheets.</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <div class="row mb-4 align-items-end bg-white p-3 rounded shadow-sm border">
+            <div class="col-12 col-md-8 mb-3 mb-md-0">
+              <label for="inputBuscarFolio" class="form-label small fw-bold" style="color: var(--azul-marino);">Folio a buscar</label>
+              <div class="input-group">
+                <input type="text" id="inputBuscarFolio" class="form-control" placeholder="Ej. 105952">
+                <button class="btn btn-outline-marino" type="button" id="btnEjecutarBusqueda">
+                  <i class="bi bi-search"></i> Buscar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="loadingBusqueda" class="text-center d-none my-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted fw-bold">Consultando base de datos, por favor espere...</p>
+          </div>
+
+          <div id="errorBusqueda" class="alert alert-danger d-none fw-bold shadow-sm"></div>
+
+          <div id="resultadoBusquedaContainer" class="d-none card card-custom shadow-sm">
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0" style="font-size: 0.9rem;">
+                  <tbody id="tablaResultadosBusqueda">
+                    <!-- Resultados Inyectados Aquí -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MACHOTE CORREOS -->
+  <div class="modal fade" id="machoteModal" tabindex="-1" aria-labelledby="machoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header" style="border-bottom: 2px solid var(--azul-marino);">
+          <div>
+            <h4 class="modal-title fw-bold" id="machoteModalLabel" style="color: var(--azul-marino);">Machote Correo Inscripciones</h4>
+            <p class="text-muted mb-0 small">Plantillas para notificación y validación de documentos.</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <div class="container">
+            <div class="row mb-4 align-items-end bg-white p-3 rounded shadow-sm border">
+              <div class="col-12 col-md-6 col-xl-4 mb-3 mb-md-0">
+                <label for="modalFolioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio</label>
+                <input type="text" id="modalFolioInput" class="form-control" placeholder="Ej. 105952">
+              </div>
+              <div class="col-12 col-md-auto">
+                <button class="btn btn-outline-marino w-100" id="btnAplicarModal">
+                  <i class="bi bi-pencil-square me-2"></i>Aplicar Folio
+                </button>
+              </div>
+            </div>
+
+            <div class="card card-custom p-4 shadow-sm">
+              <div class="email-template mb-3">
+                <h5>1. Cuando la INE (o pasaporte) está mal</h5>
+                <p><strong>Asunto:</strong> Verificación de documentos – Folio <strong class="folio-placeholder">[FOLIO]</strong></p>
+                <p><strong>Cuerpo:</strong> Hemos revisado la documentación enviada para el registro con el folio <strong class="folio-placeholder">[FOLIO]</strong>. Detectamos que la imagen de la INE/pasaporte no cumple con los requisitos de legibilidad o calidad (borrosa, incompleta o poco clara). <strong style="text-decoration: underline;">Pueden ser dos fotos, una por cada lado</strong>.</p>
+                <p>Por favor, envíe nuevamente las fotografías de la INE/pasaporte, asegurándose de que:</p>
+                <ul>
+                  <li>Sea visible por completo (ambos lados si es INE).</li>
+                  <li>Sea clara, sin reflejos ni sombras.</li>
+                  <li>Esté en formato JPG.</li>
+                </ul>
+                <p>Puede reenviarla a este mismo correo.</p>
+                <p class="mb-0">Gracias por su atención y colaboración.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <div class="email-template mb-3">
+                <h5>2. Cuando la selfie está mal</h5>
+                <p><strong>Asunto:</strong> Verificación de documentos – Folio <strong class="folio-placeholder">[FOLIO]</strong></p>
+                <p><strong>Cuerpo:</strong> Durante la validación del registro con el folio <strong class="folio-placeholder">[FOLIO]</strong>, se detectó que la fotografía tipo selfie enviada no cumple con los requisitos necesarios (imagen borrosa, sin rostro completo o con poca iluminación).</p>
+                <p>Por favor, envíe nuevamente la selfie, tomando en cuenta estas recomendaciones:</p>
+                <ul>
+                  <li>Que el rostro se vea completo y con buena iluminación.</li>
+                  <li>Fondo claro y sin objetos que tapen la cara.</li>
+                  <li>No use filtros ni ediciones.</li>
+                  <li>Esté en formato JPG.</li>
+                </ul>
+                <p>Puede reenviarla a este mismo correo.</p>
+                <p class="mb-0">Gracias por su apoyo en este proceso.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <div class="email-template mb-3">
+                <h5>3. Cuando ambos están mal</h5>
+                <p><strong>Asunto:</strong> Verificación de documentos – Folio <strong class="folio-placeholder">[FOLIO]</strong></p>
+                <p><strong>Cuerpo:</strong> Revisamos la documentación enviada para el registro con el folio <strong class="folio-placeholder">[FOLIO]</strong> y encontramos que tanto la fotografía tipo selfie como la imagen de la INE/pasaporte no cumplen con los requisitos de calidad y legibilidad.</p>
+                <p>Para continuar con el registro, se solicita enviar nuevamente:</p>
+                <ul>
+                  <li>INE/pasaporte: Imagen clara, completa, sin reflejos.</li>
+                  <li>Selfie: Rostro completo, bien iluminado, sin filtros.</li>
+                  <li>Ambos en formato JPG.</li>
+                </ul>
+                <p>Por favor, envíe ambos archivos a este mismo correo.</p>
+                <p class="mb-0">Agradecemos su comprensión y colaboración para completar el trámite.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <div class="email-template mb-3">
+                <h5>4.- Pendiente envío de documentos</h5>
+                <p><strong>Asunto:</strong> Pendiente envío de documentos – FOLIO: <strong class="folio-placeholder">[FOLIO]</strong>.</p>
+                <p><strong>Cuerpo del correo:</strong></p>
+                <p>Estimado(a) participante:</p>
+                <p>Estamos revisando los registros y hemos identificado que, para el folio <strong class="folio-placeholder">[FOLIO]</strong>, aún no hemos recibido la documentación solicitada (INE/pasaporte y fotografía tipo selfie).</p>
+                <p>Para completar el proceso de inscripción, le pedimos enviarlos a la brevedad a este mismo correo, siguiendo estas indicaciones:</p>
+                <ul>
+                  <li>INE/pasaporte: Imagen legible, completa y sin reflejos.</li>
+                  <li>Selfie: Rostro completo, buena iluminación, sin filtros.</li>
+                </ul>
+                <p>En caso de haber enviado la documentación recientemente, por favor ignore este mensaje.</p>
+                <p class="mb-0">Gracias por su atención y colaboración.</p>
+              </div>
+
+              <hr class="hr-azul">
+
+              <div class="email-template">
+                <p><strong>Asunto:</strong> Recordatorio: Último día para completar tu inscripción</p>
+                <p>Estimado(a) participante con folio: <strong class="folio-placeholder">[FOLIO]</strong>,</p>
+                <p>Te informamos que ya se envió a tu correo electrónico la liga correspondiente para continuar con tu proceso de inscripción.</p>
+                <p>Es muy importante que realices este procedimiento a la brevedad, ya que <strong>hoy, 08 de septiembre de 2025, es el último día para completar tu inscripción</strong>.</p>
+                <p>Te recomendamos revisar tu bandeja de entrada, así como la carpeta de correo no deseado o spam.</p>
+                <p class="mb-0">Agradecemos tu atención y compromiso.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer-container"></div>
+
+  <!-- SCRIPTS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    // =======================================
+    // VARIABLES GLOBALES Y ESTADOS
+    // =======================================
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
+    const GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1aRJRe0623pBilxj7AqVJYsmDgi-LqwzY"; 
+
+    // Almacenamos el objeto Image puro para poder rotarlo si se necesita
+    let imagesObj = {
+      ineFrontal: null,
+      ineLateral: null,
+      selfie: null
+    };
+
+    let currentIneDataUrl = null;
+    let currentSelfieDataUrl = null;
+
+    $("#btnAbrirDrive").attr("href", GOOGLE_DRIVE_FOLDER_URL);
+
+    // =======================================
+    // VALIDACIÓN DE FOLIO OBLIGATORIO
+    // =======================================
+    function validarFolio() {
+      const folio = $("#folioInput").val().trim();
+      if (!folio) {
+        $("#folioInput").addClass("is-invalid").focus();
+        alert("Por favor, coloque el nombre de Folio antes de continuar.");
+        return null;
+      }
+      return folio;
+    }
+
+    $("#folioInput").on("input", function() {
+      $(this).removeClass("is-invalid"); // Quita la alerta visual si escribe algo
+      $("#modalFolioInput").val($(this).val());
+      $("#inputBuscarFolio").val($(this).val());
+    });
+
+    // =======================================
+    // UI Y COMPORTAMIENTO DE BOTONES
+    // =======================================
+    function updateButtonTexts() {
+      const modoDescargar = $("#modoToggle").is(":checked");
+      const config = [
+        { btn: "#downloadIneBtn", driveTxt: "Subir INE a Drive", localTxt: "Descargar INE al equipo" },
+        { btn: "#downloadSelfieBtn", driveTxt: "Subir Selfie a Drive", localTxt: "Descargar Selfie al equipo" }
+      ];
+
+      config.forEach(item => {
+        const $btn = $(item.btn);
+        if (!$btn.hasClass("btn-success")) {
+          const isDownload = modoDescargar;
+          const icon = isDownload ? "bi-download" : "bi-cloud-upload";
+          const text = isDownload ? item.localTxt : item.driveTxt;
+          $btn.html(`<i class="bi ${icon} me-2"></i>${text}`);
+        }
+      });
+    }
+
+    $("#modoToggle").on("change", updateButtonTexts);
+
+    function setPreview(containerId, placeholderId, dataUrl) {
+      $(`#${containerId}`).css('background-image', `url('${dataUrl}')`).addClass('has-image');
+      $(`#${placeholderId}`).hide();
+    }
+
+    function resetBtnState($btn) {
+      $btn.removeClass("d-none btn-success")
+          .addClass("btn-outline-marino")
+          .prop("disabled", false);
+    }
+
+    // =======================================
+    // LOGICA DE CARGA Y ROTACIÓN EN VIVO
+    // =======================================
+    function handleImageLoad(file, callback) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => callback(img);
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function rotateTarget(target, angle) {
+      let img = imagesObj[target];
+      if (!img) return;
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      canvas.width = img.height;
+      canvas.height = img.width;
+
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(angle * Math.PI / 180);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+      let newImg = new Image();
+      newImg.onload = function() {
+        imagesObj[target] = newImg;
+        if (target === 'selfie') {
+          updateSelfie();
+        } else {
+          combineIneImages();
+        }
+      };
+      newImg.src = canvas.toDataURL('image/jpeg', 1.0);
+    }
+
+    // =======================================
+    // EVENTOS DE LOS INPUTS
+    // =======================================
+    $("#ineFrontalInput").on("change", e => {
+      if (e.target.files[0]) {
+        handleImageLoad(e.target.files[0], img => { 
+          imagesObj.ineFrontal = img; 
+          $("#tools-ineFrontal").removeClass("d-none");
+          combineIneImages(); 
+        });
+      }
+    });
+
+    $("#ineLateralInput").on("change", e => {
+      if (e.target.files[0]) {
+        handleImageLoad(e.target.files[0], img => { 
+          imagesObj.ineLateral = img; 
+          $("#tools-ineLateral").removeClass("d-none");
+          combineIneImages(); 
+        });
+      }
+    });
+
+    $("#selfieInput").on("change", e => {
+      if (e.target.files[0]) {
+        handleImageLoad(e.target.files[0], img => { 
+          imagesObj.selfie = img; 
+          $("#tools-selfie").removeClass("d-none");
+          updateSelfie();
+        });
+      }
+    });
+
+    // =======================================
+    // PROCESAMIENTO DE IMÁGENES AL CANVAS
+    // =======================================
+    function combineIneImages() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1300;
+      canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 1300, 400);
+
+      ctx.fillStyle = '#dee2e6';
+      ctx.font = "bold 24px Arial";
+      ctx.textAlign = "center";
+      
+      let hasAny = false;
+      
+      if (imagesObj.ineFrontal) {
+        ctx.drawImage(imagesObj.ineFrontal, 0, 0, 650, 400);
+        hasAny = true;
+      } else {
+        ctx.fillText("FRENTE PENDIENTE", 325, 200);
+      }
+
+      if (imagesObj.ineLateral) {
+        ctx.drawImage(imagesObj.ineLateral, 650, 0, 650, 400);
+        hasAny = true;
+      } else {
+        ctx.fillText("REVERSO PENDIENTE", 975, 200);
+      }
+
+      if (hasAny) {
+        currentIneDataUrl = canvas.toDataURL('image/jpeg', 0.90);
+        setPreview('ineCombinedPreview', 'inePlaceholder', currentIneDataUrl);
+      }
+      
+      if (imagesObj.ineFrontal && imagesObj.ineLateral) {
+        resetBtnState($("#downloadIneBtn"));
+        updateButtonTexts();
+        $("#ineStatus").empty();
+      }
+    }
+
+    function updateSelfie() {
+      if (!imagesObj.selfie) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = 265;
+      canvas.height = 320;
+      const ctx = canvas.getContext('2d');
+      
+      ctx.drawImage(imagesObj.selfie, 0, 0, 265, 320);
+
+      currentSelfieDataUrl = canvas.toDataURL('image/jpeg', 0.90);
+      setPreview('selfiePreview', 'selfiePlaceholder', currentSelfieDataUrl);
+
+      resetBtnState($("#downloadSelfieBtn"));
+      updateButtonTexts();
+      $("#selfieStatus").empty();
+    }
+
+    // =======================================
+    // DESCARGA Y SUBIDA
+    // =======================================
+    function downloadToLocal(dataUrl, fileName, statusId) {
+      const $status = $(statusId);
+      if (!dataUrl) return $status.html('<span class="text-danger">Sin imagen disponible.</span>');
+
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Descargado: ${fileName}!</span>`);
+    }
+
+    function uploadToDrive(dataUrl, fileName, btnId, statusId) {
+      const $btn = $(btnId);
+      const $status = $(statusId);
+
+      if (!dataUrl) return $status.html('<span class="text-danger">Sin imagen disponible.</span>');
+
+      const payload = {
+        base64: dataUrl.split(',')[1],
+        mimeType: "image/jpeg",
+        fileName: fileName
+      };
+
+      $btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...');
+      $status.html('<span class="text-info">Enviando a Drive...</span>');
+
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          $btn.removeClass("btn-outline-marino").addClass("btn-success")
+              .html('<i class="bi bi-check-circle-fill me-2"></i>Archivo subido');
+          $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Subido! <a href="${data.fileUrl}" target="_blank">Ver en Drive</a></span>`);
+        } else {
+          throw new Error(data.message || "Error en el servidor");
+        }
+      })
+      .catch(err => {
+        $status.html(`<span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Error: ${err.message}.</span>`);
+        let countdown = 5;
+        
+        const timer = setInterval(() => {
+          if (countdown > 0) {
+            $btn.html(`<i class="bi bi-clock me-2"></i>Espere (${countdown}s)...`);
+            countdown--;
+          } else {
+            clearInterval(timer);
+            $btn.prop("disabled", false);
+            updateButtonTexts();
+          }
+        }, 1000);
+      });
+    }
+
+    // =======================================
+    // CLICK HANDLERS
+    // =======================================
+    $("#downloadIneBtn").on("click", function(e) {
+      e.preventDefault();
+      const folio = validarFolio();
+      if (!folio) return;
+
+      const fileName = `${folio}-ine.jpg`;
+      $("#modoToggle").is(":checked") 
+        ? downloadToLocal(currentIneDataUrl, fileName, "#ineStatus")
+        : uploadToDrive(currentIneDataUrl, fileName, "#downloadIneBtn", "#ineStatus");
+    });
+
+    $("#downloadSelfieBtn").on("click", function(e) {
+      e.preventDefault();
+      const folio = validarFolio();
+      if (!folio) return;
+
+      const fileName = `${folio}-foto.jpg`;
+      $("#modoToggle").is(":checked") 
+        ? downloadToLocal(currentSelfieDataUrl, fileName, "#selfieStatus")
+        : uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus");
+    });
+
+    // =======================================
+    // MODAL MACHOTE
+    // =======================================
+    function aplicarFolioMachote() {
+      const folioValue = $("#modalFolioInput").val().trim() || "[FOLIO]";
+      $(".folio-placeholder").fadeOut(150, function() {
+        $(this).text(folioValue).fadeIn(150);
+      });
+    }
+
+    $("#machoteModal").on("show.bs.modal", function () {
+      $("#modalFolioInput").val($("#folioInput").val().trim());
+      aplicarFolioMachote();
+    });
+
+    $("#btnAplicarModal").on("click", aplicarFolioMachote);
+    $("#modalFolioInput").on("keypress", e => { if (e.which === 13) aplicarFolioMachote(); });
+
+    // =======================================
+    // MODAL BUSCAR EN SHEET EXTERNA
+    // =======================================
+    $("#buscarModal").on("show.bs.modal", function () {
+      $("#inputBuscarFolio").val($("#folioInput").val().trim());
+      $("#resultadoBusquedaContainer, #errorBusqueda").addClass("d-none");
+      $("#tablaResultadosBusqueda").empty();
+    });
+
+    $("#btnEjecutarBusqueda").on("click", function() {
+      const folioABuscar = $("#inputBuscarFolio").val().trim();
+      if (!folioABuscar) return alert("Por favor, ingrese un folio para buscar.");
+
+      $("#resultadoBusquedaContainer, #errorBusqueda").addClass("d-none");
+      $("#loadingBusqueda").removeClass("d-none");
+      $("#tablaResultadosBusqueda").empty();
+
+      const url = `${GOOGLE_SCRIPT_URL}?action=searchExternalSheet&folio=${encodeURIComponent(folioABuscar)}`;
+      
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          $("#loadingBusqueda").addClass("d-none");
+          
+          if (data.found) {
+            let htmlRows = "";
+            for (const [header, valor] of Object.entries(data.data)) {
+              // Filtrar posibles campos vacíos si no quieres mostrarlos o mostrarlos en blanco
+              let textValue = (valor !== undefined && valor !== null && valor !== "") ? valor : '<em>-</em>';
+              htmlRows += `
+                <tr>
+                  <th class="w-25 text-end text-muted align-middle py-2" style="background-color: #f8f9fa; border-right: 2px solid var(--azul-marino);">${header}</th>
+                  <td class="align-middle fw-semibold text-break py-2 ps-3">${textValue}</td>
+                </tr>`;
+            }
+            $("#tablaResultadosBusqueda").html(htmlRows);
+            $("#resultadoBusquedaContainer").removeClass("d-none");
+          } else {
+            $("#errorBusqueda").removeClass("d-none").html(`<i class="bi bi-exclamation-octagon-fill me-2"></i>${data.message}`);
+          }
+        })
+        .catch(err => {
+          $("#loadingBusqueda").addClass("d-none");
+          $("#errorBusqueda").removeClass("d-none").html(`<i class="bi bi-x-circle-fill me-2"></i>Error de conexión al consultar el servidor.`);
+        });
+    });
+
+    $("#inputBuscarFolio").on("keypress", function(e) {
+      if (e.which === 13) $("#btnEjecutarBusqueda").click();
+    });
+
+  </script>
+</body>
+</html>
