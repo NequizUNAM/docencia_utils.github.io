@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Inicio</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <style>
     body { background-color: #ffffff; color: #1a1a2e; display:flex; flex-direction:column; min-height:100vh; }
     .hero { background: linear-gradient(135deg, #001f5b, #1a1a2e); color: white; padding: 80px 20px; }
@@ -14,7 +14,6 @@
 <body>
   <div id="header-container"></div>
 
-    <!-- col-md-9 offset para dejar espacio al sidebar en desktop -->
   <main class="flex-grow-1 col-md-9 ms-md-auto col-lg-10 py-5 px-4">
     <div class="hero text-center">
       <h1 class="display-4 fw-bold">Bienvenido</h1>
@@ -33,11 +32,11 @@
   <script>
     $(function () {
       const data = [
-        { title: "Formulario Moodle",     body: "Formulario para plataforma Moodle." },
-        { title: "Convertidor Imágenes",  body: "Redimensiona las Imágene sy descarga en formato jpg" },
-        { title: "Documento PDF",         body: "Consulta el documento oficial en línea." },
-        { title: "Itinerario Escolar",    body: "Agenda de actividades y horarios." },
-        { title: "Mapa / Embed",          body: "Ubicación e información embebida." }
+        { title: "Formulario Moodle", body: "Formulario para plataforma Moodle.", url: "pagina1-formulario.html" },
+        { title: "Convertidor Imágenes", body: "Redimensiona las Imágenes y descarga en formato jpg", url: "pagina2-convertidor-drive.html" },
+        { title: "Documento PDF", body: "Consulta el documento oficial en línea.", url: "documento.pdf" },
+        { title: "Itinerario Escolar", body: "Agenda de actividades y horarios.", url: "itinerario.html" },
+        { title: "Mapa / Embed", body: "Ubicación e información embebida.", url: "mapa.html" }
       ];
       const html = $.render.cardTpl(data);
       $('#cards-container').html(
