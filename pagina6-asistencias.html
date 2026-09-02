@@ -29,6 +29,8 @@
     .btn-primary-navy:hover { background-color: #001240; border-color:#001240; color:#fff; }
     .btn-outline-primary-navy { color: #001f5b; border-color: #001f5b; }
     .btn-outline-primary-navy:hover { background-color: #001f5b; color: #fff; }
+    .btn-success-custom { background-color: #198754; border-color: #198754; color: #fff; }
+    .btn-success-custom:hover { background-color: #146c43; border-color: #13653f; color: #fff; }
     .badge-sesion { background-color:#001f5b; }
     .thumb-preview { max-width: 120px; max-height: 120px; object-fit: cover; border-radius:.5rem; border:1px solid #dee2e6; }
     .thumb-historico {
@@ -60,7 +62,7 @@
       <!-- FILTROS -->
       <div class="card filtros-card p-3 mb-4">
         <div class="row g-3 align-items-end">
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label for="selectGrupo" class="form-label fw-semibold">Grupo (group1)</label>
             <select id="selectGrupo" class="form-select">
               <option value="">Selecciona un grupo…</option>
@@ -81,15 +83,20 @@
               <option value="Sesión10">Sesión 10</option>
             </select>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <button id="btnCargar" class="btn btn-primary-navy w-100 shadow-sm">
-              <i class="bi bi-arrow-repeat"></i> Cargar participantes
+              <i class="bi bi-arrow-repeat"></i> Cargar
             </button>
           </div>
           <div class="col-md-2">
             <button id="btnAbrirHistorico" class="btn btn-outline-primary-navy w-100 shadow-sm">
               <i class="bi bi-search"></i> Histórico
             </button>
+          </div>
+          <div class="col-md-2">
+            <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vR_dzYtU6M2pXhM_WP076ksiU0cwHXFcFd6Xj977SFpyv6QHlKafcp0KcZjjvvC-ivklZ9QEgYGizWW/pubhtml" target="_blank" class="btn btn-success-custom w-100 shadow-sm">
+              <i class="bi bi-table"></i> Ver Data
+            </a>
           </div>
         </div>
         <div id="estadoGuardado" class="mt-2 text-primary fw-bold"></div>
