@@ -43,7 +43,7 @@
     .thumb-historico:hover {
       transform: scale(1.05);
     }
-    #estadoGuardado { min-height: 24px; }
+    #estadoGuardado { min-height: 24px; font-size: 1.1rem; font-weight: 500; }
   </style>
 </head>
 <body>
@@ -92,7 +92,7 @@
             </button>
           </div>
         </div>
-        <div id="estadoGuardado" class="small text-muted mt-2"></div>
+        <div id="estadoGuardado" class="mt-2 text-primary fw-bold"></div>
       </div>
 
       <!-- TABLA PARTICIPANTES -->
@@ -283,9 +283,9 @@
 
     const filas = participantes.map(p => {
       const val = (p[columnaSesion] || "").toString().trim().toLowerCase();
-      const marcado = val === "sí" || val === "si";
+      const marcado = (val === "sí" || val === "si");
       return `
-        <tr data-folio="${p.Folio}" class="${marcado ? "marcado-si" : ""}">
+        <tr data-folio="${p.Folio}" class="${marcado ? "marcado-si" : "marcado-no"}">
           <td>${p.Folio}</td>
           <td>${p.firstname || ""} ${p.lastname || ""}</td>
           <td class="text-center">
@@ -307,7 +307,7 @@
 
   function mostrarEstado(selector, mensaje, tipo = "muted") {
     const clases = { muted: "text-muted", ok: "text-success", error: "text-danger" };
-    $(selector).removeClass("text-muted text-success text-danger")
+    $(selector).removeClass("text-muted text-success text-danger text-primary")
                .addClass(clases[tipo] || "text-muted")
                .text(mensaje);
   }
@@ -325,19 +325,26 @@
     $("#btnCargar").on("click", async function () {
       const grupo = $("#selectGrupo").val();
       const sesion = $("#selectSesion").val();
+      
+      // Limpiar tabla anterior por temas de UX antes de procesar
+      $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-muted py-4">Cargando participantes...</td></tr>`);
+      
       if (!grupo) {
         mostrarEstado("#estadoGuardado", "Selecciona un grupo primero.", "error");
+        $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-muted py-4">Selecciona un grupo y una sesión, luego "Cargar participantes".</td></tr>`);
         return;
       }
-      mostrarEstado("#estadoGuardado", "Cargando participantes…");
+      
+      mostrarEstado("#estadoGuardado", "Cargando participantes y sincronizando datos de la hoja...", "ok");
       try {
         const { participantes, error } = await fetchParticipantesPorGrupo(grupo);
         if (error) throw new Error(error);
         renderParticipantes(participantes, sesion);
-        mostrarEstado("#estadoGuardado", `${participantes.length} participante(s) cargado(s).`, "ok");
+        mostrarEstado("#estadoGuardado", `¡${participantes.length} participante(s) cargado(s) exitosamente!`, "ok");
       } catch (err) {
         console.error(err);
         mostrarEstado("#estadoGuardado", "Error al cargar participantes.", "error");
+        $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-danger py-4">Error al cargar datos.</td></tr>`);
       }
     });
 
@@ -460,7 +467,6 @@
     $(document).on("click", ".thumb-historico", function () {
       const url = $(this).data("img-url");
       $("#imgGrandeSrc").attr("src", url);
-      // Ajustamos el enlace de descarga para que apunte directo al archivo o fuerza descarga web
       $("#btnDescargarImagen").attr("href", url);
       new bootstrap.Modal("#modalImagenGrande").show();
     });
