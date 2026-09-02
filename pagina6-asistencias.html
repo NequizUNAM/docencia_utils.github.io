@@ -179,13 +179,21 @@
     </div>
   </div>
 
-  <!-- MODAL PARA VER IMAGEN EN GRANDE (LIGHTBOX) -->
+  <!-- MODAL PARA VER IMAGEN EN GRANDE (LIGHTBOX CON DESCARGA) -->
   <div class="modal fade" id="modalImagenGrande" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content bg-transparent border-0">
-        <div class="modal-body text-center position-relative p-0">
-          <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 bg-dark p-2 rounded-circle" data-bs-dismiss="modal" aria-label="Close"></button>
-          <img id="imgGrandeSrc" src="" class="img-fluid rounded shadow-lg" style="max-height: 85vh;" alt="Evidencia en grande">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+      <div class="modal-content bg-dark border-0 shadow-lg">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title text-white">Vista Previa de Evidencia</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center p-3">
+          <img id="imgGrandeSrc" src="" class="img-fluid rounded shadow" style="max-height: 70vh;" alt="Evidencia en grande">
+        </div>
+        <div class="modal-footer border-0 pt-0 justify-content-center">
+          <a id="btnDescargarImagen" href="" target="_blank" download="evidencia.jpg" class="btn btn-light fw-bold px-4">
+            <i class="bi bi-download"></i> Descargar Imagen
+          </a>
         </div>
       </div>
     </div>
@@ -448,10 +456,12 @@
       }
     });
 
-    // Abrir imagen en grande manteniendo el modal principal activo
+    // Abrir imagen en grande manteniendo el modal principal activo (Lightbox con opción de descarga)
     $(document).on("click", ".thumb-historico", function () {
       const url = $(this).data("img-url");
       $("#imgGrandeSrc").attr("src", url);
+      // Ajustamos el enlace de descarga para que apunte directo al archivo o fuerza descarga web
+      $("#btnDescargarImagen").attr("href", url);
       new bootstrap.Modal("#modalImagenGrande").show();
     });
   });
