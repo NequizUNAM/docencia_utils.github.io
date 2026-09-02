@@ -9,14 +9,40 @@
   <style>
     body { background-color: #ffffff; color: #1a1a2e; display:flex; flex-direction:column; min-height:100vh; }
     .hero { background: linear-gradient(135deg, #001f5b, #1a1a2e); color: white; padding: 60px 20px; }
-    .filtros-card { border: none; box-shadow: 0 2px 10px rgba(0,31,91,0.08); border-radius: .75rem; }
+    .filtros-card { border: none; box-shadow: 0 4px 12px rgba(0,31,91,0.08); border-radius: .75rem; }
+    .shadow-custom { box-shadow: 0 4px 12px rgba(0, 31, 91, 0.08); }
     #tablaParticipantes tbody tr.marcado-si { background-color: #eaf5ea; }
     #tablaParticipantes tbody tr.marcado-no { background-color: #fdecec; }
-    .form-check-input:checked { background-color: #001f5b; border-color: #001f5b; }
+    .table-bordered th, .table-bordered td { border: 1px solid #dee2e6 !important; }
+    .custom-checkbox {
+      width: 1.3rem;
+      height: 1.3rem;
+      border: 2px solid #001f5b !important;
+      box-shadow: 0 2px 4px rgba(0, 31, 91, 0.15);
+      cursor: pointer;
+    }
+    .custom-checkbox:checked {
+      background-color: #001f5b;
+      border-color: #001f5b;
+    }
     .btn-primary-navy { background-color: #001f5b; border-color: #001f5b; color:#fff; }
     .btn-primary-navy:hover { background-color: #001240; border-color:#001240; color:#fff; }
+    .btn-outline-primary-navy { color: #001f5b; border-color: #001f5b; }
+    .btn-outline-primary-navy:hover { background-color: #001f5b; color: #fff; }
     .badge-sesion { background-color:#001f5b; }
     .thumb-preview { max-width: 120px; max-height: 120px; object-fit: cover; border-radius:.5rem; border:1px solid #dee2e6; }
+    .thumb-historico {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      cursor: pointer;
+      border-radius: 0.5rem;
+      border: 1px solid #dee2e6;
+      transition: transform 0.2s;
+    }
+    .thumb-historico:hover {
+      transform: scale(1.05);
+    }
     #estadoGuardado { min-height: 24px; }
   </style>
 </head>
@@ -24,7 +50,7 @@
   <div id="header-container"></div>
 
   <main class="flex-grow-1 col-md-9 ms-md-auto col-lg-10 py-5 px-4">
-    <div class="hero text-center rounded-3 mb-4">
+    <div class="hero text-center rounded-3 mb-4 shadow-custom">
       <h1 class="display-5 fw-bold">Registro de Asistencia</h1>
       <p class="lead mb-0">Selecciona grupo y sesión, marca asistencia y agrega bitácora por participante</p>
     </div>
@@ -34,13 +60,13 @@
       <!-- FILTROS -->
       <div class="card filtros-card p-3 mb-4">
         <div class="row g-3 align-items-end">
-          <div class="col-md-5">
+          <div class="col-md-4">
             <label for="selectGrupo" class="form-label fw-semibold">Grupo (group1)</label>
             <select id="selectGrupo" class="form-select">
               <option value="">Selecciona un grupo…</option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label for="selectSesion" class="form-label fw-semibold">Sesión</label>
             <select id="selectSesion" class="form-select">
               <option value="Sesión1">Sesión 1</option>
@@ -56,8 +82,13 @@
             </select>
           </div>
           <div class="col-md-3">
-            <button id="btnCargar" class="btn btn-primary-navy w-100">
+            <button id="btnCargar" class="btn btn-primary-navy w-100 shadow-sm">
               <i class="bi bi-arrow-repeat"></i> Cargar participantes
+            </button>
+          </div>
+          <div class="col-md-2">
+            <button id="btnAbrirHistorico" class="btn btn-outline-primary-navy w-100 shadow-sm">
+              <i class="bi bi-search"></i> Histórico
             </button>
           </div>
         </div>
@@ -65,8 +96,8 @@
       </div>
 
       <!-- TABLA PARTICIPANTES -->
-      <div class="table-responsive">
-        <table class="table table-hover align-middle bg-white" id="tablaParticipantes">
+      <div class="table-responsive shadow-custom rounded bg-white p-2">
+        <table class="table table-bordered table-hover align-middle bg-white mb-0" id="tablaParticipantes">
           <thead style="background-color:#001f5b; color:#fff;">
             <tr>
               <th>Folio</th>
@@ -87,9 +118,9 @@
   </main>
 
   <!-- MODAL BITÁCORA -->
-  <div class="modal fade" id="modalBitacora" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" id="modalBitacora" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
+      <div class="modal-content shadow">
         <div class="modal-header" style="background-color:#001f5b; color:#fff;">
           <h5 class="modal-title"><i class="bi bi-journal-text"></i> Bitácora de participante</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -124,6 +155,42 @@
     </div>
   </div>
 
+  <!-- MODAL HISTÓRICO POR FOLIO -->
+  <div class="modal fade" id="modalHistorico" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content shadow">
+        <div class="modal-header" style="background-color:#001f5b; color:#fff;">
+          <h5 class="modal-title"><i class="bi bi-clock-history"></i> Histórico y Bitácora por Folio</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="input-group mb-3">
+            <input type="text" id="inputBuscaFolio" class="form-control" placeholder="Ingresa el Folio del participante...">
+            <button class="btn btn-primary-navy" type="button" id="btnEjecutarBusquedaHistorico">Buscar</button>
+          </div>
+          <div id="resultadoHistorico" class="list-group">
+            <p class="text-muted text-center py-3">Ingresa un folio para consultar su historial de bitácora y evidencias.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PARA VER IMAGEN EN GRANDE (LIGHTBOX) -->
+  <div class="modal fade" id="modalImagenGrande" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content bg-transparent border-0">
+        <div class="modal-body text-center position-relative p-0">
+          <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 bg-dark p-2 rounded-circle" data-bs-dismiss="modal" aria-label="Close"></button>
+          <img id="imgGrandeSrc" src="" class="img-fluid rounded shadow-lg" style="max-height: 85vh;" alt="Evidencia en grande">
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="footer-container"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -133,31 +200,10 @@
   <script>
   /* =========================================================================
    * SCRIPT DE LA PÁGINA — Registro de Asistencia y Bitácora
-   * Todo en un solo archivo (HTML + JS), como en el resto de páginas del
-   * sitio (pagina1-formulario.html, pagina2-convertidor-drive.html, etc.)
-   *
-   * Este script consume el MISMO Web App de Apps Script (Code.gs) que ya
-   * usan tus otras páginas: se agregaron ahí las acciones "listGrupos",
-   * "listParticipantes", "updateAsistencia" y "addBitacoraAsistencia".
    * ========================================================================= */
 
-  /* -----------------------------------------------------------------------
-   * 1) VARIABLES GLOBALES DE URL — mantenimiento centralizado
-   * ----------------------------------------------------------------------- */
-  // URL de implementación del Web App de Apps Script (Code.gs). Reemplázala
-  // cada vez que vuelvas a "Implementar > Nueva implementación".
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec"; // ej. https://script.google.com/macros/s/XXXXX/exec
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
 
-  /* -----------------------------------------------------------------------
-   * 2) MODEL — llamadas al Web App (GET para lectura, POST para escritura)
-   * ----------------------------------------------------------------------- */
-
-  /**
-   * Ejecuta una acción de LECTURA contra el Web App (doGet), vía querystring.
-   * @param {string} action Nombre de la acción (ej. "listGrupos")
-   * @param {Object} [params] Parámetros adicionales de la URL
-   * @return {Promise<Object>} Respuesta JSON del Web App
-   */
   async function llamarWebAppGet(action, params = {}) {
     const query = new URLSearchParams({ action, ...params }).toString();
     const resp = await fetch(`${WEB_APP_URL}?${query}`);
@@ -165,14 +211,6 @@
     return resp.json();
   }
 
-  /**
-   * Ejecuta una acción de ESCRITURA contra el Web App (doPost).
-   * Se usa "text/plain" como Content-Type para evitar el preflight OPTIONS,
-   * que Apps Script no maneja de forma nativa.
-   * @param {string} action Nombre de la acción (ej. "updateAsistencia")
-   * @param {Object} payload Cuerpo adicional a enviar
-   * @return {Promise<Object>} Respuesta JSON del Web App
-   */
   async function llamarWebAppPost(action, payload = {}) {
     const resp = await fetch(WEB_APP_URL, {
       method: "POST",
@@ -183,22 +221,22 @@
     return resp.json();
   }
 
-  // Trae los grupos únicos (columna group1) desde la hoja Asistencias
   function fetchGrupos() {
     return llamarWebAppGet("listGrupos");
   }
 
-  // Trae los participantes de un grupo específico
   function fetchParticipantesPorGrupo(grupo) {
     return llamarWebAppGet("listParticipantes", { grupo });
   }
 
-  // Marca Sí/No en la columna de la sesión seleccionada para un Folio
+  function fetchHistorico(folio) {
+    return llamarWebAppGet("getHistorico", { folio });
+  }
+
   function actualizarAsistencia(folio, columnaSesion, valor) {
     return llamarWebAppPost("updateAsistencia", { folio, columnaSesion, valor });
   }
 
-  // Convierte un File a base64 puro (sin el prefijo "data:...;base64,")
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -208,7 +246,6 @@
     });
   }
 
-  // Crea un renglón nuevo en Log_Asistencia (con imagen opcional)
   async function guardarLog({ folio, nombre, grupo, sesion, comentario, file }) {
     let base64Data = null, fileName = null, mimeType = null;
     if (file) {
@@ -221,9 +258,6 @@
     });
   }
 
-  /* -----------------------------------------------------------------------
-   * 3) VIEW — render de tabla y utilidades de UI
-   * ----------------------------------------------------------------------- */
   function renderGrupos(grupos) {
     const $sel = $("#selectGrupo");
     $sel.find("option:not(:first)").remove();
@@ -247,10 +281,10 @@
           <td>${p.Folio}</td>
           <td>${p.firstname || ""} ${p.lastname || ""}</td>
           <td class="text-center">
-            <input type="checkbox" class="form-check-input chk-asistencia" ${marcado ? "checked" : ""}>
+            <input type="checkbox" class="form-check-input chk-asistencia custom-checkbox" ${marcado ? "checked" : ""}>
           </td>
           <td class="text-center">
-            <button class="btn btn-sm btn-outline-primary btn-bitacora"
+            <button class="btn btn-sm btn-outline-primary btn-bitacora shadow-sm"
                     data-folio="${p.Folio}"
                     data-nombre="${(p.firstname || "") + " " + (p.lastname || "")}"
                     data-grupo="${p.group1 || ""}">
@@ -270,9 +304,6 @@
                .text(mensaje);
   }
 
-  /* -----------------------------------------------------------------------
-   * 4) CONTROLLER — eventos
-   * ----------------------------------------------------------------------- */
   $(async function () {
     try {
       const { grupos, error } = await fetchGrupos();
@@ -283,7 +314,6 @@
       mostrarEstado("#estadoGuardado", "No se pudieron cargar los grupos. Revisa la consola.", "error");
     }
 
-    // Cargar participantes del grupo + sesión seleccionados
     $("#btnCargar").on("click", async function () {
       const grupo = $("#selectGrupo").val();
       const sesion = $("#selectSesion").val();
@@ -303,7 +333,6 @@
       }
     });
 
-    // Evento CHANGE del checkbox: marca Sí/No en automático en la hoja
     $("#tablaParticipantes").on("change", ".chk-asistencia", async function () {
       const $chk = $(this);
       const $fila = $chk.closest("tr");
@@ -318,14 +347,13 @@
         $fila.toggleClass("marcado-si", valor === "Sí").toggleClass("marcado-no", valor === "No");
       } catch (err) {
         console.error(err);
-        $chk.prop("checked", !$chk.is(":checked")); // revertir si falla
+        $chk.prop("checked", !$chk.is(":checked"));
         alert("No se pudo guardar la asistencia. Intenta de nuevo.");
       } finally {
         $chk.prop("disabled", false);
       }
     });
 
-    // Abrir modal de bitácora
     $("#tablaParticipantes").on("click", ".btn-bitacora", function () {
       const $btn = $(this);
       $("#logFolio").val($btn.data("folio"));
@@ -338,7 +366,6 @@
       new bootstrap.Modal("#modalBitacora").show();
     });
 
-    // Vista previa de imagen
     $("#logImagen").on("change", function () {
       const file = this.files[0];
       if (!file) return;
@@ -347,7 +374,6 @@
       reader.readAsDataURL(file);
     });
 
-    // Guardar bitácora (imagen opcional + comentario)
     $("#btnGuardarLog").on("click", async function () {
       const folio = $("#logFolio").val();
       const nombre = $("#logNombre").text();
@@ -374,6 +400,59 @@
       } finally {
         $btn.prop("disabled", false);
       }
+    });
+
+    // Abrir modal de histórico
+    $("#btnAbrirHistorico").on("click", function () {
+      $("#inputBuscaFolio").val("");
+      $("#resultadoHistorico").html('<p class="text-muted text-center py-3">Ingresa un folio para consultar su historial de bitácora y evidencias.</p>');
+      new bootstrap.Modal("#modalHistorico").show();
+    });
+
+    // Búsqueda de histórico por folio
+    $("#btnEjecutarBusquedaHistorico").on("click", async function () {
+      const folio = $("#inputBuscaFolio").val().trim();
+      if (!folio) {
+        alert("Por favor ingresa un folio.");
+        return;
+      }
+      const $res = $("#resultadoHistorico");
+      $res.html('<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="text-muted mt-2">Buscando historial...</p></div>');
+      try {
+        const resp = await fetchHistorico(folio);
+        if (resp.error) throw new Error(resp.error);
+        const registros = resp.registros || [];
+        if (registros.length === 0) {
+          $res.html('<p class="text-center text-muted py-3">No se encontraron registros de bitácora para este folio.</p>');
+          return;
+        }
+
+        let html = '';
+        registros.forEach(r => {
+          html += `
+            <div class="list-group-item list-group-item-action mb-2 rounded border shadow-sm">
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1 text-primary-navy fw-bold">${r.sesion || 'Sesión'}</h5>
+                <small class="text-muted">${r.fecha || ''}</small>
+              </div>
+              <p class="mb-1"><strong>Grupo:</strong> ${r.grupo || ''} | <strong>Participante:</strong> ${r.nombre || ''}</p>
+              <p class="mb-2"><strong>Comentario:</strong> ${r.comentario || 'Sin comentario'}</p>
+              ${r.imagenUrl ? `<div class="mt-2"><img src="${r.imagenUrl}" class="thumb-historico img-thumbnail" data-img-url="${r.imagenUrl}" alt="Evidencia"></div>` : ''}
+            </div>
+          `;
+        });
+        $res.html(html);
+      } catch (err) {
+        console.error(err);
+        $res.html('<p class="text-center text-danger py-3">Error al cargar el histórico.</p>');
+      }
+    });
+
+    // Abrir imagen en grande manteniendo el modal principal activo
+    $(document).on("click", ".thumb-historico", function () {
+      const url = $(this).data("img-url");
+      $("#imgGrandeSrc").attr("src", url);
+      new bootstrap.Modal("#modalImagenGrande").show();
     });
   });
   </script>
