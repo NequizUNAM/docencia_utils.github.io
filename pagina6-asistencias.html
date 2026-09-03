@@ -34,8 +34,8 @@
     .badge-sesion { background-color:#001f5b; }
     .thumb-preview { max-width: 120px; max-height: 120px; object-fit: cover; border-radius:.5rem; border:1px solid #dee2e6; }
     .thumb-historico {
-      width: 80px;
-      height: 80px;
+      width: 90px;
+      height: 90px;
       object-fit: cover;
       cursor: pointer;
       border-radius: 0.5rem;
@@ -59,7 +59,7 @@
 
     <div class="container">
 
-      <!-- FILTROS -->
+      <!-- FILTROS REDISEÑADOS -->
       <div class="card filtros-card p-4 mb-4 bg-white shadow-custom">
         <!-- FILA 1: PARÁMETROS DE BÚSQUEDA -->
         <div class="row g-3 align-items-end mb-3">
@@ -138,7 +138,7 @@
     </div>
   </main>
 
-  <!-- MODAL BITÁCORA DE PARTICIPANTE -->
+  <!-- MODAL BITÁCORA -->
   <div class="modal fade" id="modalBitacora" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content shadow">
@@ -220,16 +220,18 @@
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content shadow">
         <div class="modal-header" style="background-color:#001f5b; color:#fff;">
-          <h5 class="modal-title"><i class="bi bi-clock-history"></i> Histórico de Incidencias y Bitácora</h5>
+          <h5 class="modal-title"><i class="bi bi-clock-history"></i> Histórico y Bitácora por Folio</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <div class="input-group mb-3">
-            <input type="text" id="inputBuscaFolio" class="form-control" placeholder="Ingresa el Folio a consultar...">
-            <button class="btn btn-primary-navy" type="button" id="btnEjecutarBusquedaHistorico">Buscar</button>
+            <input type="text" id="inputBuscaFolio" class="form-control form-control-lg fs-6" placeholder="Ingresa el Folio del participante...">
+            <button class="btn btn-primary-navy px-4" type="button" id="btnEjecutarBusquedaHistorico">
+              <i class="bi bi-search"></i> Buscar
+            </button>
           </div>
-          <div id="resultadoHistorico" class="list-group">
-            <p class="text-muted text-center py-3">Ingresa un folio para consultar su historial registrado en Incidencias.</p>
+          <div id="resultadoHistorico">
+            <p class="text-muted text-center py-3">Ingresa un folio para consultar su historial registrado.</p>
           </div>
         </div>
         <div class="modal-footer">
@@ -314,7 +316,6 @@
     });
   }
 
-  // Guardar registro de la columna Bitácora (se guarda en hoja Incidencias como Tipo: "Bitácora")
   async function guardarLog({ folio, nombre, grupo, sesion, comentario, file }) {
     let base64Data = null, fileName = null, mimeType = null;
     if (file) {
@@ -335,7 +336,6 @@
     });
   }
 
-  // Guardar Registro de Incidencia independiente (se guarda en hoja Incidencias como Tipo: "Incidencia")
   async function guardarIncidencia({ folio, texto, file }) {
     let base64Data = null, fileName = null, mimeType = null;
     if (file) {
@@ -498,7 +498,7 @@
       try {
         const resp = await guardarLog({ folio, nombre, grupo, sesion, comentario, file });
         if (resp.status !== "success") throw new Error(resp.message);
-        mostrarEstado("#logEstado", "Registro guardado en Incidencias correctamente.", "ok");
+        mostrarEstado("#logEstado", "Registro guardado correctamente.", "ok");
         setTimeout(() => bootstrap.Modal.getInstance($("#modalBitacora")[0]).hide(), 800);
       } catch (err) {
         console.error(err);
@@ -579,7 +579,7 @@
       new bootstrap.Modal("#modalHistorico").show();
     });
 
-    // Búsqueda de histórico por folio en la hoja unificada "Incidencias"
+    // Búsqueda e impresión con GRID DE BOOTSTRAP para el histórico
     $("#btnEjecutarBusquedaHistorico").on("click", async function () {
       const folio = $("#inputBuscaFolio").val().trim();
       if (!folio) {
@@ -593,28 +593,64 @@
         if (resp.error) throw new Error(resp.error);
         const registros = resp.registros || [];
         if (registros.length === 0) {
-          $res.html('<p class="text-center text-muted py-3">No se encontraron registros de incidencias/bitácora para este folio.</p>');
+          $res.html('<p class="text-center text-muted py-3">No se encontraron registros para este folio.</p>');
           return;
         }
 
-        let html = '';
+        let html = '<div class="row g-3">';
         registros.forEach(r => {
-          const badgeColor = r.tipo === 'Bitácora' ? 'bg-primary' : 'bg-warning text-dark';
+          const isBitacora = (r.tipo === 'Bitácora');
+          const badgeClass = isBitacora ? 'bg-primary' : 'bg-warning text-dark';
+          const sesionTexto = (r.sesion && r.sesion !== '-') ? r.sesion : 'Incidencia General';
+
           html += `
-            <div class="list-group-item list-group-item-action mb-2 rounded border shadow-sm">
-              <div class="d-flex w-100 justify-content-between align-items-center mb-1">
-                <div>
-                  <span class="badge ${badgeColor} me-2">${r.tipo || 'Registro'}</span>
-                  <strong class="text-primary-navy">${r.sesion !== '-' ? r.sesion : 'Incidencia General'}</strong>
+            <div class="col-12">
+              <div class="card border shadow-sm rounded-3">
+                <div class="card-body">
+                  
+                  <!-- ENCABEZADO Y FECHA -->
+                  <div class="row align-items-center mb-2 pb-2 border-bottom">
+                    <div class="col-8">
+                      <span class="badge ${badgeClass} me-2 fw-semibold fs-6">${r.tipo || 'Registro'}</span>
+                      <strong class="text-primary-navy fs-5">${sesionTexto}</strong>
+                    </div>
+                    <div class="col-4 text-end">
+                      <small class="text-muted"><i class="bi bi-clock me-1"></i>${r.fecha || ''}</small>
+                    </div>
+                  </div>
+
+                  <!-- DETALLES DE GRUPO Y PARTICIPANTE EN GRID -->
+                  <div class="row g-2 mb-2 text-secondary fs-6">
+                    <div class="col-md-6">
+                      <strong><i class="bi bi-people me-1"></i>Grupo:</strong> 
+                      <span>${r.grupo || '-'}</span>
+                    </div>
+                    <div class="col-md-6">
+                      <strong><i class="bi bi-person me-1"></i>Participante:</strong> 
+                      <span>${r.nombre || '-'}</span>
+                    </div>
+                  </div>
+
+                  <!-- SECCIÓN COMENTARIOS / DETALLE (COLUMNA G) -->
+                  <div class="p-2 mt-2 bg-light rounded border-start border-4 border-primary">
+                    <strong class="d-block text-dark mb-1"><i class="bi bi-chat-left-text me-1"></i>Comentario / Detalle:</strong>
+                    <p class="mb-0 text-dark fw-medium" style="white-space: pre-wrap;">${r.comentario || r.detalle || 'Sin comentario'}</p>
+                  </div>
+
+                  <!-- IMAGEN Y EVIDENCIA SI EXISTE -->
+                  ${r.imagenUrl ? `
+                    <div class="mt-3 pt-2 border-top d-flex align-items-center gap-2">
+                      <strong class="small text-muted"><i class="bi bi-image me-1"></i>Evidencia:</strong>
+                      <img src="${r.imagenUrl}" class="thumb-historico img-thumbnail shadow-sm" data-img-url="${r.imagenUrl}" alt="Evidencia">
+                    </div>
+                  ` : ''}
+
                 </div>
-                <small class="text-muted">${r.fecha || ''}</small>
               </div>
-              <p class="mb-1 small"><strong>Grupo:</strong> ${r.grupo || '-'} | <strong>Participante:</strong> ${r.nombre || '-'}</p>
-              <p class="mb-2"><strong>Detalle:</strong> ${r.detalle || 'Sin detalle'}</p>
-              ${r.imagenUrl ? `<div class="mt-2"><img src="${r.imagenUrl}" class="thumb-historico img-thumbnail" data-img-url="${r.imagenUrl}" alt="Evidencia"></div>` : ''}
             </div>
           `;
         });
+        html += '</div>';
         $res.html(html);
       } catch (err) {
         console.error(err);
