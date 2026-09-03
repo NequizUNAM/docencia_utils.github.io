@@ -59,7 +59,7 @@
 
     <div class="container">
 
-      <!-- FILTROS REDISEÑADOS -->
+      <!-- FILTROS -->
       <div class="card filtros-card p-4 mb-4 bg-white shadow-custom">
         <!-- FILA 1: PARÁMETROS DE BÚSQUEDA -->
         <div class="row g-3 align-items-end mb-3">
@@ -138,7 +138,7 @@
     </div>
   </main>
 
-  <!-- MODAL BITÁCORA -->
+  <!-- MODAL BITÁCORA DE PARTICIPANTE -->
   <div class="modal fade" id="modalBitacora" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content shadow">
@@ -152,7 +152,7 @@
           <p class="mb-3"><strong>Participante:</strong> <span id="logNombre">-</span></p>
 
           <div class="mb-3">
-            <label for="logImagen" class="form-label">Imagen (opcional)</label>
+            <label for="logImagen" class="form-label fw-semibold">Imagen (opcional)</label>
             <input class="form-control" type="file" id="logImagen" accept="image/*">
             <div class="mt-2">
               <img id="logImagenPreview" class="thumb-preview d-none" alt="Vista previa">
@@ -160,7 +160,7 @@
           </div>
 
           <div class="mb-3">
-            <label for="logComentario" class="form-label">Comentario</label>
+            <label for="logComentario" class="form-label fw-semibold">Comentario / Observación</label>
             <textarea class="form-control" id="logComentario" rows="3" placeholder="Escribe una observación…"></textarea>
           </div>
 
@@ -176,7 +176,7 @@
     </div>
   </div>
 
-  <!-- MODAL REGISTRO DE INCIDENCIA -->
+  <!-- MODAL REGISTRO DE INCIDENCIA GENERAL -->
   <div class="modal fade" id="modalIncidencia" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content shadow">
@@ -220,16 +220,16 @@
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content shadow">
         <div class="modal-header" style="background-color:#001f5b; color:#fff;">
-          <h5 class="modal-title"><i class="bi bi-clock-history"></i> Histórico y Bitácora por Folio</h5>
+          <h5 class="modal-title"><i class="bi bi-clock-history"></i> Histórico de Incidencias y Bitácora</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <div class="input-group mb-3">
-            <input type="text" id="inputBuscaFolio" class="form-control" placeholder="Ingresa el Folio del participante...">
+            <input type="text" id="inputBuscaFolio" class="form-control" placeholder="Ingresa el Folio a consultar...">
             <button class="btn btn-primary-navy" type="button" id="btnEjecutarBusquedaHistorico">Buscar</button>
           </div>
           <div id="resultadoHistorico" class="list-group">
-            <p class="text-muted text-center py-3">Ingresa un folio para consultar su historial de bitácora y evidencias.</p>
+            <p class="text-muted text-center py-3">Ingresa un folio para consultar su historial registrado en Incidencias.</p>
           </div>
         </div>
         <div class="modal-footer">
@@ -239,7 +239,7 @@
     </div>
   </div>
 
-  <!-- MODAL PARA VER IMAGEN EN GRANDE -->
+  <!-- MODAL LIGHTBOX PARA VER IMAGEN EN GRANDE -->
   <div class="modal fade" id="modalImagenGrande" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
       <div class="modal-content bg-dark border-0 shadow-lg">
@@ -267,7 +267,7 @@
 
   <script>
   /* =========================================================================
-   * SCRIPT DE LA PÁGINA — Registro de Asistencia y Bitácora
+   * SCRIPT DE LA PÁGINA — Registro de Asistencia, Incidencias y Bitácora
    * ========================================================================= */
 
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
@@ -314,18 +314,28 @@
     });
   }
 
+  // Guardar registro de la columna Bitácora (se guarda en hoja Incidencias como Tipo: "Bitácora")
   async function guardarLog({ folio, nombre, grupo, sesion, comentario, file }) {
     let base64Data = null, fileName = null, mimeType = null;
     if (file) {
       base64Data = await fileToBase64(file);
-      fileName = `${Date.now()}_${file.name}`;
+      fileName = `bitacora_${Date.now()}_${file.name}`;
       mimeType = file.type;
     }
-    return llamarWebAppPost("addBitacoraAsistencia", {
-      folio, nombre, grupo, sesion, comentario, base64Data, fileName, mimeType
+    return llamarWebAppPost("addRegistroIncidencia", {
+      tipo: "Bitácora",
+      folio,
+      nombre,
+      grupo,
+      sesion,
+      detalle: comentario,
+      base64Data,
+      fileName,
+      mimeType
     });
   }
 
+  // Guardar Registro de Incidencia independiente (se guarda en hoja Incidencias como Tipo: "Incidencia")
   async function guardarIncidencia({ folio, texto, file }) {
     let base64Data = null, fileName = null, mimeType = null;
     if (file) {
@@ -333,8 +343,16 @@
       fileName = `incidencia_${Date.now()}_${file.name}`;
       mimeType = file.type;
     }
-    return llamarWebAppPost("addIncidencia", {
-      folio, texto, base64Data, fileName, mimeType
+    return llamarWebAppPost("addRegistroIncidencia", {
+      tipo: "Incidencia",
+      folio,
+      nombre: "-",
+      grupo: "-",
+      sesion: "-",
+      detalle: texto,
+      base64Data,
+      fileName,
+      mimeType
     });
   }
 
@@ -398,7 +416,6 @@
       const grupo = $("#selectGrupo").val();
       const sesion = $("#selectSesion").val();
       
-      // Limpiar tabla anterior por temas de UX antes de procesar
       $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div> Buscando participantes...</td></tr>`);
       
       if (!grupo) {
@@ -441,6 +458,7 @@
       }
     });
 
+    // Abrir modal de Bitácora desde la fila
     $("#tablaParticipantes").on("click", ".btn-bitacora", function () {
       const $btn = $(this);
       $("#logFolio").val($btn.data("folio"));
@@ -461,6 +479,7 @@
       reader.readAsDataURL(file);
     });
 
+    // Guardar desde Bitácora hacia la hoja "Incidencias"
     $("#btnGuardarLog").on("click", async function () {
       const folio = $("#logFolio").val();
       const nombre = $("#logNombre").text();
@@ -479,7 +498,7 @@
       try {
         const resp = await guardarLog({ folio, nombre, grupo, sesion, comentario, file });
         if (resp.status !== "success") throw new Error(resp.message);
-        mostrarEstado("#logEstado", "Registro guardado correctamente.", "ok");
+        mostrarEstado("#logEstado", "Registro guardado en Incidencias correctamente.", "ok");
         setTimeout(() => bootstrap.Modal.getInstance($("#modalBitacora")[0]).hide(), 800);
       } catch (err) {
         console.error(err);
@@ -489,7 +508,7 @@
       }
     });
 
-    // MÓDULO INCIDENCIAS
+    // Abrir Modal de Registro de Incidencias independiente
     $("#btnAbrirIncidencia").on("click", function () {
       $("#incidenciaFolio").val("");
       $("#incidenciaTexto").val("");
@@ -512,6 +531,7 @@
       reader.readAsDataURL(file);
     });
 
+    // Guardar Incidencia en la hoja "Incidencias"
     $("#btnGuardarIncidencia").on("click", async function () {
       const folio = $("#incidenciaFolio").val().trim();
       const texto = $("#incidenciaTexto").val().trim();
@@ -530,7 +550,6 @@
       const $btn = $(this);
       const $btnCancelar = $("#btnCancelarIncidencia");
       
-      // Bloquear botón y mostrar "Guardando.."
       $btn.prop("disabled", true).text("Guardando..");
       $btnCancelar.prop("disabled", true);
       mostrarEstado("#incidenciaEstado", "Procesando incidencia...", "muted");
@@ -541,7 +560,6 @@
 
         mostrarEstado("#incidenciaEstado", "Incidencia guardada correctamente.", "ok");
         
-        // Cerrar la modal en automático tras finalizar
         setTimeout(() => {
           bootstrap.Modal.getInstance($("#modalIncidencia")[0]).hide();
         }, 800);
@@ -557,11 +575,11 @@
     // Abrir modal de histórico
     $("#btnAbrirHistorico").on("click", function () {
       $("#inputBuscaFolio").val("");
-      $("#resultadoHistorico").html('<p class="text-muted text-center py-3">Ingresa un folio para consultar su historial de bitácora y evidencias.</p>');
+      $("#resultadoHistorico").html('<p class="text-muted text-center py-3">Ingresa un folio para consultar su historial de incidencias y bitácoras.</p>');
       new bootstrap.Modal("#modalHistorico").show();
     });
 
-    // Búsqueda de histórico por folio
+    // Búsqueda de histórico por folio en la hoja unificada "Incidencias"
     $("#btnEjecutarBusquedaHistorico").on("click", async function () {
       const folio = $("#inputBuscaFolio").val().trim();
       if (!folio) {
@@ -575,20 +593,24 @@
         if (resp.error) throw new Error(resp.error);
         const registros = resp.registros || [];
         if (registros.length === 0) {
-          $res.html('<p class="text-center text-muted py-3">No se encontraron registros de bitácora para este folio.</p>');
+          $res.html('<p class="text-center text-muted py-3">No se encontraron registros de incidencias/bitácora para este folio.</p>');
           return;
         }
 
         let html = '';
         registros.forEach(r => {
+          const badgeColor = r.tipo === 'Bitácora' ? 'bg-primary' : 'bg-warning text-dark';
           html += `
             <div class="list-group-item list-group-item-action mb-2 rounded border shadow-sm">
-              <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1 text-primary-navy fw-bold">${r.sesion || 'Sesión'}</h5>
+              <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                <div>
+                  <span class="badge ${badgeColor} me-2">${r.tipo || 'Registro'}</span>
+                  <strong class="text-primary-navy">${r.sesion !== '-' ? r.sesion : 'Incidencia General'}</strong>
+                </div>
                 <small class="text-muted">${r.fecha || ''}</small>
               </div>
-              <p class="mb-1"><strong>Grupo:</strong> ${r.grupo || ''} | <strong>Participante:</strong> ${r.nombre || ''}</p>
-              <p class="mb-2"><strong>Comentario:</strong> ${r.comentario || 'Sin comentario'}</p>
+              <p class="mb-1 small"><strong>Grupo:</strong> ${r.grupo || '-'} | <strong>Participante:</strong> ${r.nombre || '-'}</p>
+              <p class="mb-2"><strong>Detalle:</strong> ${r.detalle || 'Sin detalle'}</p>
               ${r.imagenUrl ? `<div class="mt-2"><img src="${r.imagenUrl}" class="thumb-historico img-thumbnail" data-img-url="${r.imagenUrl}" alt="Evidencia"></div>` : ''}
             </div>
           `;
