@@ -180,7 +180,7 @@
     </div>
   </div>
 
-  <!-- MODAL REGISTRO DE INCIDENCIA GENERAL -->
+  <!-- MODAL REGISTRO DE INCIDENCIA GENERAL (CON GRUPO Y SESIÓN OPCIONALES) -->
   <div class="modal fade" id="modalIncidencia" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content shadow">
@@ -190,12 +190,37 @@
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label for="incidenciaFolio" class="form-label fw-semibold">Número de Folio</label>
+            <label for="incidenciaFolio" class="form-label fw-semibold">Número de Folio <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="incidenciaFolio" placeholder="Ingresa el número de folio">
           </div>
 
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label for="incidenciaGrupo" class="form-label fw-semibold">Grupo <span class="text-muted fw-normal">(Opcional)</span></label>
+              <select id="incidenciaGrupo" class="form-select">
+                <option value="">Selecciona grupo…</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="incidenciaSesion" class="form-label fw-semibold">Sesión <span class="text-muted fw-normal">(Opcional)</span></label>
+              <select id="incidenciaSesion" class="form-select">
+                <option value="">Ninguna / No aplica</option>
+                <option value="Sesión1">Sesión 1</option>
+                <option value="Sesión2">Sesión 2</option>
+                <option value="Sesión3">Sesión 3</option>
+                <option value="Sesión4">Sesión 4</option>
+                <option value="Sesión5">Sesión 5</option>
+                <option value="Sesión6">Sesión 6</option>
+                <option value="Sesión7">Sesión 7</option>
+                <option value="Sesión8">Sesión 8</option>
+                <option value="Sesión9">Sesión 9</option>
+                <option value="Sesión10">Sesión 10</option>
+              </select>
+            </div>
+          </div>
+
           <div class="mb-3">
-            <label for="incidenciaImagen" class="form-label fw-semibold">Imagen (opcional)</label>
+            <label for="incidenciaImagen" class="form-label fw-semibold">Imagen <span class="text-muted fw-normal">(Opcional)</span></label>
             <input class="form-control" type="file" id="incidenciaImagen" accept="image/*">
             <div class="mt-2">
               <img id="incidenciaImagenPreview" class="thumb-preview d-none" alt="Vista previa">
@@ -203,7 +228,7 @@
           </div>
 
           <div class="mb-3">
-            <label for="incidenciaTexto" class="form-label fw-semibold">Detalle de la Incidencia</label>
+            <label for="incidenciaTexto" class="form-label fw-semibold">Detalle de la Incidencia <span class="text-danger">*</span></label>
             <textarea class="form-control" id="incidenciaTexto" rows="3" placeholder="Describe la incidencia presentada…"></textarea>
           </div>
 
@@ -219,7 +244,7 @@
     </div>
   </div>
 
-  <!-- MODAL HISTÓRICO FULLSCREEN CON PAGINADOR Y TECLA ESC PARA CERRAR -->
+  <!-- MODAL HISTÓRICO FULLSCREEN CON PAGINADOR Y TECLA ESC -->
   <div class="modal fade" id="modalHistorico" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen">
       <div class="modal-content shadow-lg">
@@ -380,7 +405,7 @@
     });
   }
 
-  async function guardarIncidencia({ folio, texto, file }) {
+  async function guardarIncidencia({ folio, grupo, sesion, texto, file }) {
     let base64Data = null, fileName = null, mimeType = null;
     if (file) {
       base64Data = await fileToBase64(file);
@@ -391,8 +416,8 @@
       tipo: "Incidencia",
       folio,
       nombre: "-",
-      grupo: "-",
-      sesion: "-",
+      grupo: grupo || "-",
+      sesion: sesion || "-",
       detalle: texto,
       base64Data,
       fileName,
@@ -401,9 +426,16 @@
   }
 
   function renderGrupos(grupos) {
-    const $sel = $("#selectGrupo");
-    $sel.find("option:not(:first)").remove();
-    (grupos || []).forEach(g => $sel.append(`<option value="${g}">${g}</option>`));
+    const $selMain = $("#selectGrupo");
+    const $selInc = $("#incidenciaGrupo");
+
+    $selMain.find("option:not(:first)").remove();
+    $selInc.find("option:not(:first)").remove();
+
+    (grupos || []).forEach(g => {
+      $selMain.append(`<option value="${g}">${g}</option>`);
+      $selInc.append(`<option value="${g}">${g}</option>`);
+    });
   }
 
   function renderParticipantes(participantes, columnaSesion) {
@@ -446,7 +478,7 @@
                .text(mensaje);
   }
 
-  // Cargar y renderizar la tabla DataTables en el Modal
+  // Cargar y renderizar DataTables
   async function cargarTablaHistorico(folioBusqueda = "") {
     if (dataTableHistoricoInstance) {
       dataTableHistoricoInstance.destroy();
@@ -490,11 +522,10 @@
 
       $tbody.html(filasHtml);
 
-      // Inicialización de DataTable con paginación de 10 en 10
       dataTableHistoricoInstance = $('#tablaHistoricoData').DataTable({
         pageLength: 10,
         lengthChange: false,
-        ordering: false, // Mantiene el orden estricto devuelto por Apps Script (más reciente a más antiguo)
+        ordering: false,
         language: {
           search: "Buscar en la lista:",
           zeroRecords: "No se encontraron coincidencias",
@@ -572,7 +603,7 @@
       }
     });
 
-    // Abrir modal de Bitácora
+    // Abrir modal Bitácora
     $("#tablaParticipantes").on("click", ".btn-bitacora", function () {
       const $btn = $(this);
       $("#logFolio").val($btn.data("folio"));
@@ -593,7 +624,7 @@
       reader.readAsDataURL(file);
     });
 
-    // Guardar desde Bitácora
+    // Guardar Bitácora
     $("#btnGuardarLog").on("click", async function () {
       const folio = $("#logFolio").val();
       const nombre = $("#logNombre").text();
@@ -622,9 +653,11 @@
       }
     });
 
-    // Abrir Modal de Registro de Incidencias
+    // Abrir Modal Incidencia (se precarga el grupo si hay uno seleccionado en el filtro principal)
     $("#btnAbrirIncidencia").on("click", function () {
       $("#incidenciaFolio").val("");
+      $("#incidenciaGrupo").val($("#selectGrupo").val() || "");
+      $("#incidenciaSesion").val($("#selectSesion").val() || "");
       $("#incidenciaTexto").val("");
       $("#incidenciaImagen").val("");
       $("#incidenciaImagenPreview").addClass("d-none").attr("src", "");
@@ -648,6 +681,8 @@
     // Guardar Incidencia
     $("#btnGuardarIncidencia").on("click", async function () {
       const folio = $("#incidenciaFolio").val().trim();
+      const grupo = $("#incidenciaGrupo").val();
+      const sesion = $("#incidenciaSesion").val();
       const texto = $("#incidenciaTexto").val().trim();
       const file = $("#incidenciaImagen")[0].files[0];
 
@@ -669,7 +704,7 @@
       mostrarEstado("#incidenciaEstado", "Procesando incidencia...", "muted");
 
       try {
-        const resp = await guardarIncidencia({ folio, texto, file });
+        const resp = await guardarIncidencia({ folio, grupo, sesion, texto, file });
         if (resp.status !== "success") throw new Error(resp.message);
 
         mostrarEstado("#incidenciaEstado", "Incidencia guardada correctamente.", "ok");
@@ -686,33 +721,31 @@
       }
     });
 
-    // Abrir modal de Histórico (Full Screen / Tecla ESC permitida)
+    // Abrir Modal de Histórico Full Screen
     $("#btnAbrirHistorico").on("click", function () {
       $("#inputBuscaFolio").val("");
-      // Crear o mostrar modal habilitando la tecla ESC (keyboard: true)
       const modalHistoricoElem = document.getElementById("modalHistorico");
       const modalInstancia = bootstrap.Modal.getOrCreateInstance(modalHistoricoElem, {
         keyboard: true
       });
       modalInstancia.show();
 
-      // Carga automática por defecto de las últimas 40 incidencias al abrir
       cargarTablaHistorico("");
     });
 
-    // Botón Búsqueda por folio específico dentro del Modal
+    // Búsqueda específica
     $("#btnEjecutarBusquedaHistorico").on("click", function () {
       const folio = $("#inputBuscaFolio").val().trim();
       cargarTablaHistorico(folio);
     });
 
-    // Botón Recargar Top 40
+    // Recargar últimas 40
     $("#btnRecargarTop40").on("click", function () {
       $("#inputBuscaFolio").val("");
       cargarTablaHistorico("");
     });
 
-    // Abrir imagen en grande Lightbox
+    // Abrir Lightbox
     $(document).on("click", ".thumb-historico", function () {
       const url = $(this).data("img-url");
       $("#imgGrandeSrc").attr("src", url);
