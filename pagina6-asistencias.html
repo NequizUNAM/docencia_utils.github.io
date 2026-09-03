@@ -59,18 +59,24 @@
 
     <div class="container">
 
-      <!-- FILTROS -->
-      <div class="card filtros-card p-3 mb-4">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-3">
-            <label for="selectGrupo" class="form-label fw-semibold">Grupo (group1)</label>
-            <select id="selectGrupo" class="form-select">
+      <!-- FILTROS REDISEÑADOS -->
+      <div class="card filtros-card p-4 mb-4 bg-white shadow-custom">
+        <!-- FILA 1: PARÁMETROS DE BÚSQUEDA -->
+        <div class="row g-3 align-items-end mb-3">
+          <div class="col-md-5">
+            <label for="selectGrupo" class="form-label fw-semibold text-dark">
+              <i class="bi bi-people-fill text-primary"></i> Grupo (group1)
+            </label>
+            <select id="selectGrupo" class="form-select form-select-lg fs-6">
               <option value="">Selecciona un grupo…</option>
             </select>
           </div>
-          <div class="col-md-2">
-            <label for="selectSesion" class="form-label fw-semibold">Sesión</label>
-            <select id="selectSesion" class="form-select">
+
+          <div class="col-md-4">
+            <label for="selectSesion" class="form-label fw-semibold text-dark">
+              <i class="bi bi-calendar-event text-primary"></i> Sesión
+            </label>
+            <select id="selectSesion" class="form-select form-select-lg fs-6">
               <option value="Sesión1">Sesión 1</option>
               <option value="Sesión2">Sesión 2</option>
               <option value="Sesión3">Sesión 3</option>
@@ -83,28 +89,31 @@
               <option value="Sesión10">Sesión 10</option>
             </select>
           </div>
-          <div class="col-md-2">
-            <button id="btnCargar" class="btn btn-primary-navy w-100 shadow-sm">
-              <i class="bi bi-arrow-repeat"></i> Cargar
+
+          <div class="col-md-3">
+            <button id="btnCargar" class="btn btn-primary-navy btn-lg w-100 fs-6 fw-semibold shadow-sm">
+              <i class="bi bi-search me-1"></i> Buscar
             </button>
-          </div>
-          <div class="col-md-2">
-            <button id="btnAbrirHistorico" class="btn btn-outline-primary-navy w-100 shadow-sm">
-              <i class="bi bi-search"></i> Histórico
-            </button>
-          </div>
-          <div class="col-md-1">
-            <button id="btnAbrirIncidencia" class="btn btn-warning w-100 shadow-sm fw-semibold" title="Registro de Incidencia">
-              <i class="bi bi-exclamation-triangle"></i> Incidencia
-            </button>
-          </div>
-          <div class="col-md-2">
-            <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vR_dzYtU6M2pXhM_WP076ksiU0cwHXFcFd6Xj977SFpyv6QHlKafcp0KcZjjvvC-ivklZ9QEgYGizWW/pubhtml" target="_blank" class="btn btn-success-custom w-100 shadow-sm">
-              <i class="bi bi-table"></i> Ver Data
-            </a>
           </div>
         </div>
-        <div id="estadoGuardado" class="mt-2 text-primary fw-bold"></div>
+
+        <!-- FILA 2: ACCIONES SECUNDARIAS -->
+        <div class="pt-3 border-top d-flex flex-wrap justify-content-end gap-2">
+          <button id="btnAbrirHistorico" class="btn btn-outline-primary-navy px-3 fw-semibold shadow-sm">
+            <i class="bi bi-clock-history me-1"></i> Histórico
+          </button>
+          
+          <button id="btnAbrirIncidencia" class="btn btn-warning px-3 fw-bold text-dark shadow-sm" title="Registro de Incidencia">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> Reg. Incidencia
+          </button>
+          
+          <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vR_dzYtU6M2pXhM_WP076ksiU0cwHXFcFd6Xj977SFpyv6QHlKafcp0KcZjjvvC-ivklZ9QEgYGizWW/pubhtml" target="_blank" class="btn btn-success-custom px-3 fw-semibold shadow-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i> Ver Data
+          </a>
+        </div>
+
+        <!-- ESTADO MENSAJE -->
+        <div id="estadoGuardado" class="mt-2 text-primary fw-bold text-center"></div>
       </div>
 
       <!-- TABLA PARTICIPANTES -->
@@ -120,7 +129,7 @@
           </thead>
           <tbody>
             <tr>
-              <td colspan="4" class="text-center text-muted py-4">Selecciona un grupo y una sesión, luego "Cargar participantes".</td>
+              <td colspan="4" class="text-center text-muted py-4">Selecciona un grupo y una sesión, luego presiona "Buscar".</td>
             </tr>
           </tbody>
         </table>
@@ -167,7 +176,7 @@
     </div>
   </div>
 
-  <!-- MODAL REGISTRO DE INCIDENCIA (NUEVO) -->
+  <!-- MODAL REGISTRO DE INCIDENCIA -->
   <div class="modal fade" id="modalIncidencia" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content shadow">
@@ -230,7 +239,7 @@
     </div>
   </div>
 
-  <!-- MODAL PARA VER IMAGEN EN GRANDE (LIGHTBOX CON DESCARGA) -->
+  <!-- MODAL PARA VER IMAGEN EN GRANDE -->
   <div class="modal fade" id="modalImagenGrande" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
       <div class="modal-content bg-dark border-0 shadow-lg">
@@ -390,15 +399,15 @@
       const sesion = $("#selectSesion").val();
       
       // Limpiar tabla anterior por temas de UX antes de procesar
-      $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-muted py-4">Cargando participantes...</td></tr>`);
+      $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div> Buscando participantes...</td></tr>`);
       
       if (!grupo) {
         mostrarEstado("#estadoGuardado", "Selecciona un grupo primero.", "error");
-        $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-muted py-4">Selecciona un grupo y una sesión, luego "Cargar participantes".</td></tr>`);
+        $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-muted py-4">Selecciona un grupo y una sesión, luego presiona "Buscar".</td></tr>`);
         return;
       }
       
-      mostrarEstado("#estadoGuardado", "Cargando participantes y sincronizando datos de la hoja...", "ok");
+      mostrarEstado("#estadoGuardado", "Cargando participantes y sincronizando datos...", "ok");
       try {
         const { participantes, error } = await fetchParticipantesPorGrupo(grupo);
         if (error) throw new Error(error);
@@ -480,9 +489,7 @@
       }
     });
 
-    // ==========================================
-    // LÓGICA MÓDULO INCIDENCIAS (NUEVO)
-    // ==========================================
+    // MÓDULO INCIDENCIAS
     $("#btnAbrirIncidencia").on("click", function () {
       $("#incidenciaFolio").val("");
       $("#incidenciaTexto").val("");
@@ -593,7 +600,7 @@
       }
     });
 
-    // Abrir imagen en grande manteniendo el modal principal activo (Lightbox con opción de descarga)
+    // Abrir imagen en grande
     $(document).on("click", ".thumb-historico", function () {
       const url = $(this).data("img-url");
       $("#imgGrandeSrc").attr("src", url);
