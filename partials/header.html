@@ -1,90 +1,114 @@
-<!-- ===== NAVBAR MÓVIL (solo visible en pantallas pequeñas) ===== -->
-<nav class="navbar navbar-mobile border-bottom px-3 py-2 d-md-none bg-white sticky-top">
-  <button class="btn btn-outline-dark border-0" type="button"
-          data-bs-toggle="offcanvas" data-bs-target="#mobileMenu">
-    <i class="bi bi-list fs-3"></i>
-  </button>
-  <span class="fw-bold" style="color:#001f5b;">MiSitio</span>
-</nav>
+<!-- ===== NAVBAR PRINCIPAL UNIFICADO ===== -->
+<nav class="navbar navbar-expand-lg sticky-top shadow-sm" style="background-color: #001f5b;" data-bs-theme="dark">
+  <div class="container-fluid px-3 px-lg-4">
 
-<!-- ===== OFFCANVAS MÓVIL ===== -->
-<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu">
-  <div class="offcanvas-header border-bottom">
-    <h5 class="offcanvas-title fw-bold" style="color:#001f5b;">MENÚ</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    <!-- LOGO / BRAND -->
+    <a class="navbar-brand fw-bold d-flex align-items-center me-4" href="index.html">
+      <i class="bi bi-shield-check me-2 fs-4"></i>
+      <span>DGTIC</span>
+    </a>
+
+    <!-- BOTÓN HAMBURGUESA PARA MÓVIL (Abre el Offcanvas nativo) -->
+    <button class="navbar-toggler border-0 shadow-none" type="button" 
+            data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar" 
+            aria-controls="offcanvasNavbar" aria-label="Abrir menú">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- MENÚ CONTENEDOR (Offcanvas en Móvil / Navbar horizontal en Desktop) -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+      
+      <!-- Encabezado del menú móvil -->
+      <div class="offcanvas-header border-bottom border-secondary">
+        <h5 class="offcanvas-title fw-bold text-white" id="offcanvasNavbarLabel">
+          <i class="bi bi-compass me-2"></i>MENÚ DE NAVEGACIÓN
+        </h5>
+        <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+      </div>
+
+      <!-- Cuerpo del menú -->
+      <div class="offcanvas-body">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-lg-1">
+          
+          <!-- INICIO -->
+          <li class="nav-item">
+            <a class="nav-link text-white fw-semibold px-3" href="index.html">
+              <i class="bi bi-house-door me-1"></i> INICIO
+            </a>
+          </li>
+
+          <!-- GRUPO: REGISTROS Y CONTROL -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-white fw-semibold px-3" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-folder-check me-1"></i> REGISTROS
+            </a>
+            <ul class="dropdown-menu shadow border-0">
+              <li>
+                <a class="dropdown-item py-2" href="pagina6-asistencias.html">
+                  <i class="bi bi-person-check text-primary me-2"></i> Asistencias SDPC
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item py-2" href="pagina1-formulario.html">
+                  <i class="bi bi-ui-checks text-primary me-2"></i> Formulario Principal
+                </a>
+              </li>
+            </ul>
+          </li>
+
+          <!-- GRUPO: HERRAMIENTAS Y UTILERÍAS -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-white fw-semibold px-3" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-tools me-1"></i> HERRAMIENTAS
+            </a>
+            <ul class="dropdown-menu shadow border-0">
+              <li>
+                <a class="dropdown-item py-2" href="pagina2-convertidor-drive.html">
+                  <i class="bi bi-images text-primary me-2"></i> Convertidor INE / Fotos
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item py-2" href="pagina3-pdf.html">
+                  <i class="bi bi-file-earmark-pdf text-danger me-2"></i> Documento PDF
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item py-2" href="pagina5-iframe.html">
+                  <i class="bi bi-map text-success me-2"></i> Mapa / Embed
+                </a>
+              </li>
+            </ul>
+          </li>
+
+          <!-- ITINERARIO -->
+          <li class="nav-item">
+            <a class="nav-link text-white fw-semibold px-3" href="pagina4-itinerario.html">
+              <i class="bi bi-calendar3 me-1"></i> ITINERARIO
+            </a>
+          </li>
+
+          <!-- SECCIONES POR SEMANA (Opcional en Dropdown) -->
+          <!-- <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-white-50 fw-semibold px-3" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-journal-bookmark me-1"></i> SEMANAS
+            </a>
+            <ul class="dropdown-menu shadow border-0">
+              <li><a class="dropdown-item py-2" href="semana1.html"><i class="bi bi-1-circle me-2"></i> Semana 1</a></li>
+              <li><a class="dropdown-item py-2" href="semana2.html"><i class="bi bi-2-circle me-2"></i> Semana 2</a></li>
+            </ul>
+          </li> -->
+
+        </ul>
+
+        <!-- ACCIÓN DERECHA (P. ej. Manual o Perfil) -->
+        <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0 pt-3 pt-lg-0 border-top border-lg-0">
+          <a href="manual.html" class="btn btn-outline-light btn-sm fw-semibold w-100 w-lg-auto px-3">
+            <i class="bi bi-book me-1"></i> Manual de Uso
+          </a>
+        </div>
+
+      </div>
+    </div>
+
   </div>
-  <!-- El contenido del menú se inyecta aquí via JS para no duplicar -->
-  <div class="offcanvas-body" id="menuMobileContent"></div>
-</div>
-
-<!-- ===== SIDEBAR DESKTOP (oculto en móvil) ===== -->
-<nav id="sidebar"
-     class="col-md-3 col-lg-2 d-none d-md-flex flex-column p-3 shadow-sm position-fixed vh-100"
-     style="background:#001f5b; top:0; left:0; overflow-y:auto; z-index:1030;">
-
-  <div class="text-center mb-4 mt-2">
-    <h4 class="fw-bold text-white">MiSitio</h4>
-    <hr class="border-light opacity-50">
-  </div>
-
-  <ul class="nav flex-column" id="mainMenu">
-    <li class="nav-item">
-      <a class="nav-link text-white" href="index.html">
-        <i class="bi bi-house-door me-2"></i> INICIO
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link text-white" href="pagina1-formulario.html">
-        <i class="bi bi-ui-checks me-2"></i> FORMULARIO
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link text-white" href="pagina2-convertidor-drive.html">
-        <i class="bi bi-images me-2"></i> CONVERTIDOR INE
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link text-white" href="pagina6-asistencias.html">
-        <i class="bi bi-images me-2"></i>REGISTRO ASISTENCIA SDPC
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link text-white" href="pagina4-itinerario.html">
-        <i class="bi bi-calendar3 me-2"></i> ITINERARIO
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link text-white" href="pagina3-pdf.html">
-        <i class="bi bi-file-earmark-pdf me-2"></i> DOCUMENTO PDF
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link text-white" href="pagina5-iframe.html">
-        <i class="bi bi-map me-2"></i> MAPA / EMBED
-      </a>
-    </li>
-
-    <hr class="border-light opacity-50 my-2">
-    <div class="small fw-bold text-white-50 mb-2 ps-3">SECCIONES</div>
-
-    <!-- <li class="nav-item">
-      <a class="nav-link text-white" href="semana1.html">
-        <i class="bi bi-1-square me-2"></i> SEMANA 1
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link text-white" href="semana2.html">
-        <i class="bi bi-2-square me-2"></i> SEMANA 2
-      </a>
-    </li> -->
-
-    <hr class="border-light opacity-50 my-2">
-
-    <!-- <li class="nav-item mt-auto">
-      <a class="nav-link text-white" href="manual.html">
-        <i class="bi bi-book me-2"></i> MANUAL
-      </a>
-    </li>-->
-
-  </ul>
 </nav>
