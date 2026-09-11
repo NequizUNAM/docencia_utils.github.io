@@ -80,6 +80,27 @@
     .formatos-info { font-size: .82rem; color: #6c757d; margin-top: 6px; }
 
     #estadoCarga { min-height: 1.2em; }
+
+    /* =========================================================
+       COLOR MARINO PARA CONTROLES (toggle y radio buttons)
+       ========================================================= */
+
+    .form-check-input:checked {
+      background-color: #001f5b !important;
+      border-color: #001f5b !important;
+    }
+
+    .form-check-input:focus {
+      border-color: #001f5b;
+      box-shadow: 0 0 0 .2rem rgba(0, 31, 91, .25);
+    }
+
+    .form-switch .form-check-input {
+      width: 2.6em;
+      height: 1.4em;
+    }
+
+    #toggleAgruparInfo { font-size: .82rem; }
   </style>
 </head>
 
@@ -159,6 +180,18 @@
             </select>
           </div>
 
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-12">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="toggleAgrupar">
+              <label class="form-check-label fw-semibold" for="toggleAgrupar">
+                Agrupar imágenes en pares por captura
+              </label>
+            </div>
+            <div class="text-muted" id="toggleAgruparInfo"></div>
+          </div>
         </div>
       </form>
 
@@ -433,8 +466,9 @@
     function obtenerUltimaCaptura(nombres, curso, grupo, turno) {
       const prefijo = `${curso}_${grupo}_${turno}_Captura_`;
 
+      // El sufijo de orden puede ser 0 (modo individual) o 1/2 (modo en pares).
       const patron = new RegExp(
-        `^${prefijo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d+)_[12]\\.[^.]+$`,
+        `^${prefijo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d+)_\\d\\.[^.]+$`,
         "i"
       );
 
@@ -447,13 +481,38 @@
       return maximo;
     }
 
-    function agruparImagenes(archivos) {
+    // Toggle desactivado (por defecto): cada imagen es su propia captura,
+    // numeradas de forma consecutiva con sufijo "_0" (1_0, 2_0, 3_0...).
+    // Toggle activado: las imágenes se agrupan de a 2 por captura, con
+    // sufijos "_1" y "_2" (1_1, 1_2, 2_1, 2_2...).
+    function modoParesActivo() {
+      return $("toggleAgrupar").checked;
+    }
+
+    function tamanoGrupoActual() {
+      return modoParesActivo() ? 2 : 1;
+    }
+
+    function agruparImagenes(archivos, tamanoGrupo) {
       const capturas = [];
-      for (let i = 0; i < archivos.length; i += 2) {
-        capturas.push([archivos[i], archivos[i + 1] || null]);
+      for (let i = 0; i < archivos.length; i += tamanoGrupo) {
+        capturas.push(archivos.slice(i, i + tamanoGrupo));
       }
       return capturas;
     }
+
+    function actualizarInfoToggle() {
+      const info = $("toggleAgruparInfo");
+      info.textContent = modoParesActivo()
+        ? "Cada captura tomará 2 imágenes consecutivas (ej. Captura_1_1, Captura_1_2)."
+        : "Cada imagen será una captura independiente y consecutiva (ej. Captura_1_0, Captura_2_0, Captura_3_0).";
+    }
+
+    $("toggleAgrupar").addEventListener("change", () => {
+      actualizarInfoToggle();
+      mostrarVistaPrevia();
+      revisarBotonSubir();
+    });
 
     /* ===========================================================
        SELECCIÓN DE ARCHIVOS
@@ -538,15 +597,15 @@
       const cont = $("listaCapturas");
       cont.innerHTML = "";
 
-      const capturas = agruparImagenes(imagenesSeleccionadas);
+      const capturas = agruparImagenes(imagenesSeleccionadas, tamanoGrupoActual());
 
-      capturas.forEach((par, idx) => {
+      capturas.forEach((imgs, idx) => {
         const col = document.createElement("div");
         col.className = "col";
 
-        const completa = par[1] !== null;
-        const urlImagen1 = URL.createObjectURL(par[0]);
-        const urlImagen2 = completa ? URL.createObjectURL(par[1]) : null;
+        const completa = imgs.length > 1;
+        const urlImagen1 = URL.createObjectURL(imgs[0]);
+        const urlImagen2 = completa ? URL.createObjectURL(imgs[1]) : null;
 
         col.innerHTML = `
           <div class="captura-card card border">
@@ -597,6 +656,7 @@
       document.querySelectorAll('input[name="turno"]').forEach((r) => { r.disabled = bloqueado; });
       $("inputImagenes").disabled = bloqueado;
       $("btnLimpiar").disabled = bloqueado;
+      $("toggleAgrupar").disabled = bloqueado;
       dropzone.style.pointerEvents = bloqueado ? "none" : "";
       dropzone.style.opacity = bloqueado ? "0.6" : "";
     }
@@ -653,19 +713,24 @@
         mostrarEstado(`Comprimiendo imágenes (${listas}/${archivosOriginales.length})...`);
       });
 
-      const capturas = agruparImagenes(comprimidas);
+      const paresActivos = modoParesActivo();
+      const capturas = agruparImagenes(comprimidas, paresActivos ? 2 : 1);
       let numeroCaptura = obtenerUltimaCaptura(existentes, curso, grupo, turno);
 
       const gruposPorCaptura = [];
 
-      capturas.forEach((par) => {
+      capturas.forEach((imgs) => {
         numeroCaptura += 1;
         const idxCaptura = gruposPorCaptura.length;
         const tareasCaptura = [];
 
-        [[1, par[0]], [2, par[1]]].forEach(([orden, img]) => {
+        // Modo individual (toggle desactivado): sufijo fijo "0".
+        // Modo pares (toggle activado): sufijo "1" para la primera
+        // imagen del par y "2" para la segunda.
+        imgs.forEach((img, i) => {
           if (!img) return;
 
+          const orden = paresActivos ? i + 1 : 0;
           const extension = obtenerExtension(img.name);
 
           tareasCaptura.push({
@@ -851,6 +916,7 @@
        ESTADO INICIAL
        =========================================================== */
 
+    actualizarInfoToggle();
     revisarBotonSubir();
 
   })();
