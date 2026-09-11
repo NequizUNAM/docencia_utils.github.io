@@ -164,12 +164,12 @@
       <label id="dropzone" class="dropzone d-block mb-3" for="inputImagenes">
         <i class="bi bi-cloud-arrow-up d-block mb-2"></i>
         <strong>Arrastra imágenes .PNG aquí</strong> o haz clic para seleccionar
-        <div class="small text-muted mt-1">Puedes seleccionar cualquier cantidad de imágenes. Se agrupan de 2 en 2 por captura.</div>
+        <div class="small text-muted mt-1">Puedes seleccionar cualquier cantidad de imágenes. Se agrupan de 2 en 2 por captura; la última puede quedar con 1 sola.</div>
         <input type="file" id="inputImagenes" accept=".png,image/png" multiple hidden>
       </label>
 
-      <div id="avisoImpar" class="alert alert-warning d-none">
-        Debe seleccionar un número par de imágenes porque cada captura requiere exactamente 2 imágenes.
+      <div id="avisoUltimaCaptura" class="alert alert-info d-none">
+        La última captura quedará con solo 1 imagen. Puedes agregar otra más tarde o subirla así.
       </div>
       <div id="avisoFormato" class="alert alert-danger d-none"></div>
 
@@ -250,7 +250,6 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyM785Mm5p9PyTz
 // https://drive.google.com/drive/folders/1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp
 // (se deja aquí solo como referencia informativa; el ID real vive en Code.gs)
 const CARPETA_DRIVE_REF = "1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp";
-  
 
 // Estructura de carpetas: CARPETA_DRIVE / DIA / MES / ANIO / archivo.png
 // (el curso/grupo/turno ya quedan identificados en el propio nombre del archivo)
@@ -411,9 +410,9 @@ $("btnLimpiar").addEventListener("click", () => {
 function mostrarVistaPrevia() {
   const cont = $("listaCapturas");
   cont.innerHTML = "";
-  const avisoImpar = $("avisoImpar");
+  const avisoUltimaCaptura = $("avisoUltimaCaptura");
   const impar = imagenesSeleccionadas.length % 2 !== 0;
-  avisoImpar.classList.toggle("d-none", !impar || imagenesSeleccionadas.length === 0);
+  avisoUltimaCaptura.classList.toggle("d-none", !impar);
 
   const capturas = agruparImagenes(imagenesSeleccionadas);
 
@@ -424,12 +423,12 @@ function mostrarVistaPrevia() {
     col.innerHTML = `
       <div class="captura-card">
         <div class="captura-header">
-          <span>Captura ${idx + 1}</span>
-          <i class="bi ${completa ? "bi-clock-history estado-icono pendiente" : "bi-exclamation-triangle-fill estado-icono error"}" data-captura="${idx}"></i>
+          <span>Captura ${idx + 1}${completa ? "" : " (1 imagen)"}</span>
+          <i class="bi bi-clock-history estado-icono pendiente" data-captura="${idx}"></i>
         </div>
         <div class="captura-thumbs">
-          <img src="${URL.createObjectURL(par[0])}" alt="Imagen 1">
-          ${completa ? `<img src="${URL.createObjectURL(par[1])}" alt="Imagen 2">` : `<div class="d-flex align-items-center justify-content-center bg-light text-muted small" style="width:50%;">falta img. 2</div>`}
+          <img src="${URL.createObjectURL(par[0])}" alt="Imagen 1" ${completa ? "" : 'style="width:100%;"'}>
+          ${completa ? `<img src="${URL.createObjectURL(par[1])}" alt="Imagen 2">` : ""}
         </div>
       </div>`;
     cont.appendChild(col);
@@ -473,9 +472,8 @@ document.querySelectorAll('input[name="turno"]').forEach(r => r.addEventListener
 
 function revisarBotonSubir() {
   const btn = $("btnSubir");
-  const impar = imagenesSeleccionadas.length % 2 !== 0;
   const invalidosPresentes = !$("avisoFormato").classList.contains("d-none");
-  btn.disabled = subiendo || !formularioValido() || imagenesSeleccionadas.length === 0 || impar || invalidosPresentes;
+  btn.disabled = subiendo || !formularioValido() || imagenesSeleccionadas.length === 0 || invalidosPresentes;
 }
 ["curso", "grupo"].forEach(id => $(id).addEventListener("change", revisarBotonSubir));
 document.querySelectorAll('input[name="turno"]').forEach(r => r.addEventListener("change", revisarBotonSubir));
@@ -517,7 +515,7 @@ $("btnSubir").addEventListener("click", async () => {
 
       try {
         for (const [idx, img] of [[1, img1], [2, img2]]) {
-          if (!img) continue; // no debería pasar: el botón está deshabilitado si es impar
+          if (!img) continue; // ocurre en la última captura cuando el total de imágenes es impar (1 imagen)
           let nombreFinal = `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${idx}.png`;
 
           // Guardia anti-colisión en el cliente (lista que ya tenemos en memoria).
