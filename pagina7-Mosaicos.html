@@ -1,35 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
   <meta charset="UTF-8">
-
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <title>Mosaicos SDCP — Página 7</title>
 
-  <!-- =========================================================
-       BOOTSTRAP
-       ========================================================= -->
-
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-  >
-
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
-  >
-
-
-  <!-- =========================================================
-       ESTILOS DE LA PÁGINA 7
-       ========================================================= -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
   <style>
-
     body {
       background-color: #ffffff;
       color: #1a1a2e;
@@ -38,238 +17,84 @@
       min-height: 100vh;
     }
 
-
-    /* =========================================================
-       HERO
-       ========================================================= */
-
     .page-hero {
-      background: linear-gradient(
-        135deg,
-        #001f5b,
-        #1a1a2e
-      );
-
+      background: linear-gradient(135deg, #001f5b, #1a1a2e);
       color: #ffffff;
-
       padding: 48px 20px;
     }
 
-
     .badge-pagina {
       background: #ffffff22;
-
       border: 1px solid #ffffff55;
-
       font-weight: 600;
-
       letter-spacing: .02em;
     }
 
-
-    /* =========================================================
-       DROPZONE
-       ========================================================= */
-
     .dropzone {
-
       border: 2px dashed #a9b4d0;
-
       border-radius: .6rem;
-
       padding: 32px 16px;
-
       text-align: center;
-
       background: #f7f9fd;
-
       cursor: pointer;
-
-      transition:
-        border-color .15s ease,
-        background .15s ease;
+      transition: border-color .15s ease, background .15s ease, opacity .15s ease;
     }
 
-
     .dropzone.dragover {
-
       border-color: #001f5b;
-
       background: #eef2fb;
     }
 
+    .dropzone i { font-size: 1.8rem; color: #001f5b; }
 
-    .dropzone i {
-
-      font-size: 1.8rem;
-
-      color: #001f5b;
-    }
-
-
-    /* =========================================================
-       CARDS DE CAPTURA
-       ========================================================= */
-
-    .captura-card {
-
-      overflow: hidden;
-    }
-
+    .captura-card { overflow: hidden; }
 
     .captura-card .captura-header {
-
       background: #f2f4fa;
-
       padding: .4rem .75rem;
-
       font-weight: 600;
-
       font-size: .85rem;
-
       color: #001f5b;
-
       display: flex;
-
       justify-content: space-between;
-
       align-items: center;
     }
 
-
-    .captura-thumbs {
-
-      display: flex;
-
-      gap: 2px;
-
-      background: #e9edf5;
-    }
-
+    .captura-thumbs { display: flex; gap: 2px; background: #e9edf5; }
 
     .captura-thumbs img {
-
       width: 50%;
-
       height: 120px;
-
       object-fit: cover;
-
       display: block;
     }
 
+    .captura-thumbs img.unica { width: 100%; }
 
-    .captura-thumbs img.unica {
+    .estado-icono { font-size: 1rem; }
+    .estado-icono.pendiente { color: #8a94ab; }
+    .estado-icono.subiendo { color: #0d6efd; }
+    .estado-icono.ok { color: #1c6b34; }
+    .estado-icono.error { color: #c0392b; }
 
-      width: 100%;
-    }
+    .formatos-info { font-size: .82rem; color: #6c757d; margin-top: 6px; }
 
-
-    /* =========================================================
-       ICONOS DE ESTADO
-       ========================================================= */
-
-    .estado-icono {
-
-      font-size: 1rem;
-    }
-
-
-    .estado-icono.pendiente {
-
-      color: #8a94ab;
-    }
-
-
-    .estado-icono.subiendo {
-
-      color: #0d6efd;
-    }
-
-
-    .estado-icono.ok {
-
-      color: #1c6b34;
-    }
-
-
-    .estado-icono.error {
-
-      color: #c0392b;
-    }
-
-
-    /* =========================================================
-       INFORMACIÓN DE FORMATOS
-       ========================================================= */
-
-    .formatos-info {
-
-      font-size: .82rem;
-
-      color: #6c757d;
-
-      margin-top: 6px;
-    }
-
+    #estadoCarga { min-height: 1.2em; }
   </style>
-
 </head>
-
 
 <body>
 
-
-  <!-- =========================================================
-       HEADER
-
-       IMPORTANTE:
-       El header se carga mediante js/app.js y templates.js
-       ========================================================= -->
-
   <div id="header-container"></div>
-
-
-
-  <!-- =========================================================
-       CONTENIDO PRINCIPAL
-       ========================================================= -->
 
   <main class="flex-grow-1 py-4">
 
-
-    <!-- =======================================================
-         HERO
-         ======================================================= -->
-
     <div class="page-hero text-center">
-
-
-      <span class="badge badge-pagina rounded-pill px-3 py-2 mb-2">
-
-        PÁGINA 7
-
-      </span>
-
-
-      <h1 class="display-6 fw-bold mb-1">
-
-        Mosaicos SDCP
-
-      </h1>
-
-
+      <span class="badge badge-pagina rounded-pill px-3 py-2 mb-2">PÁGINA 7</span>
+      <h1 class="display-6 fw-bold mb-1">Mosaicos SDCP</h1>
       <p class="lead mb-3">
-
-        Carga y organización de imágenes por captura,
-        con numeración continua en Google Drive
-
+        Carga y organización de imágenes por captura, con numeración continua en Google Drive
       </p>
-
-
-      <!-- =====================================================
-           BOTÓN GOOGLE DRIVE
-           ===================================================== -->
 
       <a
         href="https://drive.google.com/drive/folders/1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp?usp=drive_link"
@@ -277,1937 +102,759 @@
         rel="noopener noreferrer"
         class="btn btn-primary"
       >
-
         <i class="bi bi-google me-1"></i>
-
         Abrir carpeta de Google Drive
-
       </a>
-
-
     </div>
 
+    <div class="container my-4" style="max-width: 900px;">
 
-
-    <!-- =======================================================
-         CONTENEDOR
-         ======================================================= -->
-
-    <div
-      class="container my-4"
-      style="max-width: 900px;"
-    >
-
-
-      <!-- =====================================================
-           FORMULARIO
-           ===================================================== -->
-
-      <form
-        id="formMosaicos"
-        class="mb-4"
-        novalidate
-      >
-
+      <form id="formMosaicos" class="mb-4" novalidate>
         <div class="row g-3">
 
-
-          <!-- =================================================
-               CURSO
-               ================================================= -->
-
           <div class="col-md-4">
-
-            <label
-              for="curso"
-              class="form-label fw-semibold"
-            >
-
-              Curso
-
-            </label>
-
-
-            <select
-              id="curso"
-              class="form-select"
-              required
-            >
-
-              <option
-                value=""
-                selected
-                disabled
-              >
-
-                Seleccione un curso
-
-              </option>
-
-
+            <label for="curso" class="form-label fw-semibold">Curso</label>
+            <select id="curso" class="form-select" required>
+              <option value="" selected disabled>Seleccione un curso</option>
               <option>ADOB</option>
-
               <option>ADOI</option>
-
               <option>HTICIPB</option>
-
               <option>HTICIPI</option>
-
               <option>MBCIWB</option>
-
               <option>MBCIWI</option>
-
               <option>MEB</option>
-
               <option>MEI</option>
-
               <option>MWB</option>
-
               <option>MWI</option>
-
               <option>PMIWEB</option>
-
               <option>PMIWEI</option>
-
               <option>SMECI</option>
-
               <option>TCNI</option>
-
             </select>
-
           </div>
 
-
-
-          <!-- =================================================
-               TURNO
-               ================================================= -->
-
           <div class="col-md-4">
-
-            <label class="form-label fw-semibold d-block">
-
-              Turno
-
-            </label>
-
-
+            <label class="form-label fw-semibold d-block">Turno</label>
             <div class="d-flex gap-3 pt-2">
-
-
-              <!-- MATUTINO -->
-
               <div class="form-check">
-
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  name="turno"
-                  id="turnoMatutino"
-                  value="MATUTINO"
-                  required
-                >
-
-
-                <label
-                  class="form-check-label"
-                  for="turnoMatutino"
-                >
-
-                  Matutino
-
-                </label>
-
+                <input class="form-check-input" type="radio" name="turno" id="turnoMatutino" value="MATUTINO" required>
+                <label class="form-check-label" for="turnoMatutino">Matutino</label>
               </div>
-
-
-
-              <!-- VESPERTINO -->
-
               <div class="form-check">
-
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  name="turno"
-                  id="turnoVespertino"
-                  value="VESPERTINO"
-                  required
-                >
-
-
-                <label
-                  class="form-check-label"
-                  for="turnoVespertino"
-                >
-
-                  Vespertino
-
-                </label>
-
+                <input class="form-check-input" type="radio" name="turno" id="turnoVespertino" value="VESPERTINO" required>
+                <label class="form-check-label" for="turnoVespertino">Vespertino</label>
               </div>
-
-
             </div>
-
           </div>
-
-
-
-          <!-- =================================================
-               GRUPO
-               ================================================= -->
 
           <div class="col-md-4">
-
-            <label
-              for="grupo"
-              class="form-label fw-semibold"
-            >
-
-              Grupo
-
-            </label>
-
-
-            <select
-              id="grupo"
-              class="form-select"
-              required
-            >
-
-              <option
-                value=""
-                selected
-                disabled
-              >
-
-                Seleccione un grupo
-
-              </option>
-
-
+            <label for="grupo" class="form-label fw-semibold">Grupo</label>
+            <select id="grupo" class="form-select" required>
+              <option value="" selected disabled>Seleccione un grupo</option>
               <option>gpo01</option>
-
               <option>gpo02</option>
-
               <option>gpo03</option>
-
               <option>gpo04</option>
-
               <option>gpo05</option>
-
             </select>
-
           </div>
-
 
         </div>
-
       </form>
 
-
-
-      <!-- =======================================================
-           CARD DE CARGA
-           ======================================================= -->
-
       <div class="card border shadow-sm">
-
         <div class="card-body">
 
-
-          <!-- =================================================
-               DROPZONE
-               ================================================= -->
-
-          <label
-            id="dropzone"
-            class="dropzone d-block mb-3"
-            for="inputImagenes"
-          >
-
-
-            <i
-              class="bi bi-cloud-arrow-up d-block mb-2"
-            ></i>
-
-
-            <strong>
-
-              Arrastra imágenes aquí
-
-            </strong>
-
-
+          <label id="dropzone" class="dropzone d-block mb-3" for="inputImagenes">
+            <i class="bi bi-cloud-arrow-up d-block mb-2"></i>
+            <strong>Arrastra imágenes aquí</strong>
             <br>
-
-
-            <span class="text-muted">
-
-              o haz clic para seleccionar
-
-            </span>
-
-
+            <span class="text-muted">o haz clic para seleccionar</span>
             <div class="formatos-info">
-
-              Se acepta cualquier formato de imagen
-              compatible con el navegador.
-
+              Se acepta cualquier formato de imagen compatible con el navegador.
               <br>
-
-              PNG, JPG, JPEG, WEBP, GIF, BMP, SVG,
-              TIFF, AVIF, etc.
-
+              PNG, JPG, JPEG, WEBP, GIF, BMP, SVG, TIFF, AVIF, etc.
+              <br>
+              Las imágenes pesadas se comprimen automáticamente antes de subirse.
             </div>
-
-
-            <!--
-              image/*
-
-              Permite seleccionar cualquier archivo
-              reconocido como imagen por el navegador.
-            -->
-
-            <input
-              type="file"
-              id="inputImagenes"
-              accept="image/*"
-              multiple
-              hidden
-            >
-
-
+            <input type="file" id="inputImagenes" accept="image/*" multiple hidden>
           </label>
 
+          <div id="avisoFormato" class="alert alert-danger d-none py-2 small"></div>
 
+          <div id="listaCapturas" class="row row-cols-2 row-cols-md-3 g-2 mb-3"></div>
 
-          <!-- =================================================
-               AVISO DE FORMATO
-               ================================================= -->
+          <div id="estadoCarga" class="small text-muted mb-2 d-none"></div>
 
-          <div
-            id="avisoFormato"
-            class="alert alert-danger d-none py-2 small"
-          ></div>
-
-
-
-          <!-- =================================================
-               LISTA DE CAPTURAS
-               ================================================= -->
-
-          <div
-            id="listaCapturas"
-            class="row row-cols-2 row-cols-md-3 g-2 mb-3"
-          ></div>
-
-
-
-          <!-- =================================================
-               PROGRESO
-               ================================================= -->
-
-          <div
-            id="progresoBox"
-            class="mb-3 d-none"
-          >
-
-            <div
-              class="progress"
-              role="progressbar"
-              style="height: .6rem;"
-            >
-
-              <div
-                id="barraProgreso"
-                class="progress-bar"
-                style="width: 0%"
-              ></div>
-
+          <div id="progresoBox" class="mb-3 d-none">
+            <div class="progress" role="progressbar" style="height: .6rem;">
+              <div id="barraProgreso" class="progress-bar" style="width: 0%"></div>
             </div>
-
           </div>
 
+          <div id="mensajeFinal" class="alert py-2 d-none"></div>
 
-
-          <!-- =================================================
-               MENSAJE FINAL
-               ================================================= -->
-
-          <div
-            id="mensajeFinal"
-            class="alert alert-success py-2 d-none"
-          ></div>
-
-
-
-          <!-- =================================================
-               BOTONES
-               ================================================= -->
+          <div id="reintentarBox" class="mb-3 d-none">
+            <button id="btnReintentar" class="btn btn-warning btn-sm" type="button">
+              <i class="bi bi-arrow-clockwise me-1"></i>
+              Reintentar capturas con error
+            </button>
+          </div>
 
           <div class="d-flex gap-2">
-
-
-            <button
-              id="btnSubir"
-              class="btn btn-success"
-              disabled
-            >
-
+            <button id="btnSubir" class="btn btn-success" disabled>
               <i class="bi bi-upload me-1"></i>
-
               Cargar imágenes
-
             </button>
-
-
-            <button
-              id="btnLimpiar"
-              class="btn btn-outline-secondary"
-              type="button"
-            >
-
+            <button id="btnLimpiar" class="btn btn-outline-secondary" type="button">
               <i class="bi bi-x-circle me-1"></i>
-
               Limpiar selección
-
             </button>
-
-
           </div>
 
-
         </div>
-
       </div>
 
-
     </div>
-
   </main>
-
-
-
-  <!-- =========================================================
-       FOOTER
-
-       Se carga mediante js/app.js y templates.js
-       ========================================================= -->
 
   <div id="footer-container"></div>
 
-
-
-  <!-- =========================================================
-       LIBRERÍAS
-       ========================================================= -->
-
-  <script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
-  </script>
-
-
-  <script
-    src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js">
-  </script>
-
-
-  <script
-    src="https://cdn.jsdelivr.net/npm/jsrender@1.0.14/jsrender.min.js">
-  </script>
-
-
-  <!-- =========================================================
-       ARCHIVOS DE LA PLANTILLA
-
-       Estos archivos son los que importan:
-       - Header
-       - Footer
-       - Templates
-       ========================================================= -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsrender@1.0.14/jsrender.min.js"></script>
 
   <script src="js/app.js"></script>
-
   <script src="js/templates.js"></script>
 
-
-
-  <!-- =========================================================
-       JAVASCRIPT — PÁGINA 7
-       MOSAICOS SDCP
-       ========================================================= -->
-
   <script>
+  (() => {
 
-
-    /* =========================================================
+    /* ===========================================================
        CONFIGURACIÓN
-       ========================================================= */
-
+       =========================================================== */
 
     const APPS_SCRIPT_URL =
       "https://script.google.com/macros/s/AKfycbyM785Mm5p9PyTz8aQuxrcR1q3wRrUDHtAVuk9M4k_avfNY2FJSwUeDFRrt2EjRugv-6A/exec";
 
+    const CONCURRENCIA_LOTES = 3;      // peticiones de subida en paralelo
+    const CAPTURAS_POR_LOTE = 2;       // capturas (≈4 imágenes) por petición
+    const CONCURRENCIA_COMPRESION = 3; // imágenes comprimiéndose en paralelo
 
-    /*
-       Número máximo de imágenes que se procesan
-       simultáneamente.
-    */
+    const DIMENSION_MAXIMA = 1920;             // px, lado más largo
+    const PESO_MINIMO_PARA_COMPRIMIR = 700 * 1024; // 700 KB
+    const CALIDAD_JPEG = 0.82;
 
-    const CONCURRENCIA_SUBIDA = 4;
+    const TIMEOUT_MS = 25000;
+    const MAX_REINTENTOS_RED = 2;
 
-
-
-    /* =========================================================
+    /* ===========================================================
        ESTADO
-       ========================================================= */
-
+       =========================================================== */
 
     let imagenesSeleccionadas = [];
-
     let subiendo = false;
+    let tareasActuales = [];  // último lote de grupos [[tarea,...], ...]
+    let rutaActual = null;
 
+    /* ===========================================================
+       UTILIDADES BÁSICAS
+       =========================================================== */
 
-
-    /* =========================================================
-       ATAJO PARA ELEMENTOS
-       ========================================================= */
-
-
-    const $ = (id) =>
-      document.getElementById(id);
-
-
-
-    /* =========================================================
-       FECHA
-       ========================================================= */
-
+    const $ = (id) => document.getElementById(id);
+    const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
     function partesFecha(fecha) {
-
       return {
-
-        dia:
-          String(fecha.getDate())
-            .padStart(2, "0"),
-
-        mes:
-          String(fecha.getMonth() + 1)
-            .padStart(2, "0"),
-
-        anio:
-          String(fecha.getFullYear())
-
+        dia: String(fecha.getDate()).padStart(2, "0"),
+        mes: String(fecha.getMonth() + 1).padStart(2, "0"),
+        anio: String(fecha.getFullYear())
       };
-
     }
 
-
-
-    /* =========================================================
-       LISTAR ARCHIVOS EXISTENTES EN DRIVE
-       ========================================================= */
-
-
-    async function listarArchivosEnCarpeta({
-      curso,
-      anio,
-      mes,
-      dia
-    }) {
-
-
-      const qs =
-        new URLSearchParams({
-
-          accion: "listar",
-
-          curso,
-
-          anio,
-
-          mes,
-
-          dia
-
-        });
-
-
-      const resp =
-        await fetch(
-          `${APPS_SCRIPT_URL}?${qs.toString()}`
-        );
-
-
-      if (!resp.ok) {
-
-        throw new Error(
-          `No se pudo consultar Drive ` +
-          `(HTTP ${resp.status})`
-        );
-
-      }
-
-
-      const data =
-        await resp.json();
-
-
-      if (!data.ok) {
-
-        throw new Error(
-          data.error ||
-          "Error al listar archivos existentes"
-        );
-
-      }
-
-
-      return data.files;
-
+    function obtenerExtension(nombreArchivo) {
+      const partes = nombreArchivo.split(".");
+      if (partes.length < 2) return "img";
+      return partes.pop().toLowerCase();
     }
 
-
-
-    /* =========================================================
-       OBTENER ÚLTIMA CAPTURA
-       
-       AHORA ACEPTA CUALQUIER EXTENSIÓN
-       ========================================================= */
-
-
-    function obtenerUltimaCaptura(
-      nombres,
-      curso,
-      grupo,
-      turno
-    ) {
-
-
-      const prefijo =
-        `${curso}_${grupo}_${turno}_Captura_`;
-
-
-      /*
-         Antes solamente buscábamos .png.
-
-         Ahora:
-
-         .png
-         .jpg
-         .jpeg
-         .webp
-         .gif
-         .bmp
-         .svg
-         .tiff
-         .avif
-         etc.
-      */
-
-
-      const patron =
-        new RegExp(
-
-          `^${prefijo.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          )}(\\d+)_[12]\\.[^.]+$`,
-
-          "i"
-
-        );
-
-
-      let maximo = 0;
-
-
-      for (const nombre of nombres) {
-
-        const m =
-          nombre.match(patron);
-
-
-        if (m) {
-
-          maximo =
-            Math.max(
-              maximo,
-              parseInt(m[1], 10)
-            );
-
-        }
-
-      }
-
-
-      return maximo;
-
+    function cambiarExtension(nombre, nuevaExt) {
+      const punto = nombre.lastIndexOf(".");
+      const base = punto === -1 ? nombre : nombre.slice(0, punto);
+      return `${base}.${nuevaExt}`;
     }
-
-
-
-    /* =========================================================
-       BLOB A BASE64
-       ========================================================= */
-
 
     function blobABase64(blob) {
-
-      return new Promise(
-        (resolve, reject) => {
-
-
-          const lector =
-            new FileReader();
-
-
-          lector.onload =
-            () => {
-
-              resolve(
-                lector.result
-                  .split(",")[1]
-              );
-
-            };
-
-
-          lector.onerror =
-            reject;
-
-
-          lector.readAsDataURL(blob);
-
-        }
-      );
-
+      return new Promise((resolve, reject) => {
+        const lector = new FileReader();
+        lector.onload = () => resolve(lector.result.split(",")[1]);
+        lector.onerror = reject;
+        lector.readAsDataURL(blob);
+      });
     }
 
+    /* ===========================================================
+       COMPRESIÓN DE IMÁGENES (LADO DEL CLIENTE)
+       Reduce dimensiones y peso antes de subir. Solo el servidor
+       se encarga de guardar el archivo ya optimizado.
+       =========================================================== */
 
+    async function comprimirSiNecesario(archivo) {
+      const tipo = archivo.type || "";
 
-    /* =========================================================
-       OBTENER EXTENSIÓN ORIGINAL
-       ========================================================= */
-
-
-    function obtenerExtension(
-      nombreArchivo
-    ) {
-
-
-      const partes =
-        nombreArchivo.split(".");
-
-
-      if (partes.length < 2) {
-
-        return "img";
-
+      // SVG es vectorial y GIF puede ser animado: se suben tal cual.
+      if (tipo === "image/svg+xml" || tipo === "image/gif") {
+        return archivo;
       }
 
-
-      return partes
-        .pop()
-        .toLowerCase();
-
-    }
-
-
-
-    /* =========================================================
-       CARGAR IMAGEN
-       ========================================================= */
-
-
-    async function cargarImagen(
-      blob,
-      nombreFinal,
-      {
-        curso,
-        anio,
-        mes,
-        dia
-      }
-    ) {
-
-
-      const contenidoBase64 =
-        await blobABase64(blob);
-
-
-      const resp =
-        await fetch(
-          APPS_SCRIPT_URL,
-          {
-
-            method: "POST",
-
-            headers: {
-
-              "Content-Type":
-                "text/plain;charset=utf-8"
-
-            },
-
-            body:
-              JSON.stringify({
-
-                curso,
-
-                anio,
-
-                mes,
-
-                dia,
-
-                nombre:
-                  nombreFinal,
-
-                contenidoBase64
-
-              })
-
-          }
-        );
-
-
-      if (!resp.ok) {
-
-        throw new Error(
-          `Fallo de red al subir ` +
-          `${nombreFinal} ` +
-          `(HTTP ${resp.status})`
-        );
-
-      }
-
-
-      return resp.json();
-
-    }
-
-
-
-    /* =========================================================
-       VALIDAR FORMULARIO
-       ========================================================= */
-
-
-    function formularioValido() {
-
-
-      const curso =
-        $("curso").value;
-
-
-      const grupo =
-        $("grupo").value;
-
-
-      const turno =
-        document.querySelector(
-          'input[name="turno"]:checked'
-        );
-
-
-      return (
-        curso &&
-        grupo &&
-        turno
-      );
-
-    }
-
-
-
-    /* =========================================================
-       AGRUPAR IMÁGENES
-
-       Dos imágenes = una captura.
-       ========================================================= */
-
-
-    function agruparImagenes(
-      archivos
-    ) {
-
-
-      const capturas = [];
-
-
-      for (
-        let i = 0;
-        i < archivos.length;
-        i += 2
-      ) {
-
-
-        capturas.push([
-
-          archivos[i],
-
-          archivos[i + 1] || null
-
-        ]);
-
-      }
-
-
-      return capturas;
-
-    }
-
-
-
-    /* =========================================================
-       VALIDAR ARCHIVOS
-
-       IMPORTANTE:
-
-       YA NO SE RESTRINGE A PNG.
-
-       Solamente se acepta un archivo
-       cuyo tipo MIME corresponda a una imagen.
-
-       image/png
-       image/jpeg
-       image/webp
-       image/gif
-       image/bmp
-       image/svg+xml
-       image/tiff
-       image/avif
-       etc.
-       ========================================================= */
-
-
-    function validarArchivos(
-      archivos
-    ) {
-
-
-      return archivos.filter(
-        f => {
-
-          return (
-            !f.type ||
-            !f.type.startsWith("image/")
-          );
-
-        }
-      );
-
-    }
-
-
-
-    /* =========================================================
-       AGREGAR IMÁGENES
-       ========================================================= */
-
-
-    function agregarImagenes(
-      nuevosArchivos
-    ) {
-
-
-      const invalidos =
-        validarArchivos(
-          nuevosArchivos
-        );
-
-
-      const avisoFormato =
-        $("avisoFormato");
-
-
-      if (invalidos.length > 0) {
-
-
-        avisoFormato.textContent =
-
-          `Estos archivos no son imágenes ` +
-          `válidas y no fueron agregados: ` +
-          `${invalidos
-            .map(f => f.name)
-            .join(", ")}`;
-
-
-        avisoFormato
-          .classList
-          .remove("d-none");
-
-      }
-      else {
-
-
-        avisoFormato
-          .classList
-          .add("d-none");
-
-      }
-
-
-      const validos =
-        nuevosArchivos.filter(
-          f =>
-            !invalidos.includes(f)
-        );
-
-
-      /*
-         IMPORTANTE:
-
-         No sustituimos las imágenes
-         anteriores.
-
-         Las nuevas se agregan al final.
-      */
-
-      imagenesSeleccionadas =
-        imagenesSeleccionadas.concat(
-          validos
-        );
-
-
-      $("mensajeFinal")
-        .classList
-        .add("d-none");
-
-
-      mostrarVistaPrevia();
-
-
-      revisarBotonSubir();
-
-    }
-
-
-
-    /* =========================================================
-       INPUT DE ARCHIVOS
-       ========================================================= */
-
-
-    $("inputImagenes")
-      .addEventListener(
-        "change",
-        (e) => {
-
-
-          agregarImagenes(
-            Array.from(
-              e.target.files
-            )
-          );
-
-
-          /*
-             Permite seleccionar nuevamente
-             el mismo archivo.
-          */
-
-          e.target.value = "";
-
-        }
-      );
-
-
-
-    /* =========================================================
-       DRAG & DROP
-       ========================================================= */
-
-
-    const dropzone =
-      $("dropzone");
-
-
-    [
-      "dragenter",
-      "dragover"
-    ]
-    .forEach(
-      evt => {
-
-        dropzone.addEventListener(
-          evt,
-          (e) => {
-
-            e.preventDefault();
-
-            dropzone.classList.add(
-              "dragover"
-            );
-
-          }
-        );
-
-      }
-    );
-
-
-    [
-      "dragleave",
-      "drop"
-    ]
-    .forEach(
-      evt => {
-
-        dropzone.addEventListener(
-          evt,
-          (e) => {
-
-            e.preventDefault();
-
-            dropzone.classList.remove(
-              "dragover"
-            );
-
-          }
-        );
-
-      }
-    );
-
-
-    dropzone.addEventListener(
-      "drop",
-      (e) => {
-
-
-        const archivos =
-          Array.from(
-            e.dataTransfer.files || []
-          );
-
-
-        if (archivos.length) {
-
-          agregarImagenes(
-            archivos
-          );
-
+      try {
+        const bitmap = await createImageBitmap(archivo);
+        const { width, height } = bitmap;
+
+        const excedeDimension = Math.max(width, height) > DIMENSION_MAXIMA;
+        const pesaMucho = archivo.size > PESO_MINIMO_PARA_COMPRIMIR;
+
+        if (!excedeDimension && !pesaMucho) {
+          bitmap.close();
+          return archivo; // ya es razonablemente ligera
         }
 
+        const escala = Math.min(1, DIMENSION_MAXIMA / Math.max(width, height));
+        const anchoFinal = Math.round(width * escala);
+        const altoFinal = Math.round(height * escala);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = anchoFinal;
+        canvas.height = altoFinal;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(bitmap, 0, 0, anchoFinal, altoFinal);
+        bitmap.close();
+
+        // El PNG conserva transparencia; el resto se normaliza a JPEG.
+        const tipoSalida = tipo === "image/png" ? "image/png" : "image/jpeg";
+        const calidad = tipoSalida === "image/jpeg" ? CALIDAD_JPEG : undefined;
+
+        const blobComprimido = await new Promise((resolve) =>
+          canvas.toBlob(resolve, tipoSalida, calidad)
+        );
+
+        if (!blobComprimido || blobComprimido.size >= archivo.size) {
+          return archivo; // la compresión no ayudó, se usa la original
+        }
+
+        const extensionNueva = tipoSalida === "image/png" ? "png" : "jpg";
+        const nombreNuevo = cambiarExtension(archivo.name, extensionNueva);
+
+        return new File([blobComprimido], nombreNuevo, { type: tipoSalida });
+      } catch (err) {
+        console.warn("No se pudo comprimir, se usa la imagen original:", err);
+        return archivo;
       }
-    );
-
-
-
-    /* =========================================================
-       LIMPIAR SELECCIÓN
-       ========================================================= */
-
-
-    $("btnLimpiar")
-      .addEventListener(
-        "click",
-        () => {
-
-
-          imagenesSeleccionadas =
-            [];
-
-
-          $("mensajeFinal")
-            .classList
-            .add("d-none");
-
-
-          $("progresoBox")
-            .classList
-            .add("d-none");
-
-
-          $("avisoFormato")
-            .classList
-            .add("d-none");
-
-
-          mostrarVistaPrevia();
-
-
-          revisarBotonSubir();
-
-        }
-      );
-
-
-
-    /* =========================================================
-       VISTA PREVIA
-       ========================================================= */
-
-
-    function mostrarVistaPrevia() {
-
-
-      const cont =
-        $("listaCapturas");
-
-
-      cont.innerHTML = "";
-
-
-      const capturas =
-        agruparImagenes(
-          imagenesSeleccionadas
-        );
-
-
-      capturas.forEach(
-        (par, idx) => {
-
-
-          const col =
-            document.createElement(
-              "div"
-            );
-
-
-          col.className =
-            "col";
-
-
-          const completa =
-            par[1] !== null;
-
-
-          const urlImagen1 =
-            URL.createObjectURL(
-              par[0]
-            );
-
-
-          const urlImagen2 =
-            completa
-              ? URL.createObjectURL(
-                  par[1]
-                )
-              : null;
-
-
-          col.innerHTML = `
-
-            <div class="captura-card card border">
-
-
-              <div class="captura-header">
-
-                <span>
-
-                  Captura ${idx + 1}
-
-                </span>
-
-
-                <i
-                  class="bi bi-clock-history estado-icono pendiente"
-                  data-captura="${idx}"
-                ></i>
-
-              </div>
-
-
-              <div class="captura-thumbs">
-
-
-                <img
-                  class="${completa ? "" : "unica"}"
-                  src="${urlImagen1}"
-                  alt="Imagen 1"
-                >
-
-
-                ${
-                  completa
-
-                    ? `
-
-                      <img
-                        src="${urlImagen2}"
-                        alt="Imagen 2"
-                      >
-
-                    `
-
-                    : ""
-                }
-
-
-              </div>
-
-
-            </div>
-
-          `;
-
-
-          cont.appendChild(
-            col
-          );
-
-        }
-      );
-
     }
 
+    /* ===========================================================
+       CONCURRENCIA GENÉRICA
+       =========================================================== */
 
-
-    /* =========================================================
-       EVENTOS DEL FORMULARIO
-       ========================================================= */
-
-
-    [
-      "curso",
-      "grupo"
-    ]
-    .forEach(
-      id => {
-
-        $(id).addEventListener(
-          "change",
-          revisarBotonSubir
-        );
-
-      }
-    );
-
-
-    document
-      .querySelectorAll(
-        'input[name="turno"]'
-      )
-      .forEach(
-        radio => {
-
-          radio.addEventListener(
-            "change",
-            revisarBotonSubir
-          );
-
-        }
-      );
-
-
-
-    /* =========================================================
-       REVISAR BOTÓN SUBIR
-       ========================================================= */
-
-
-    function revisarBotonSubir() {
-
-
-      const btn =
-        $("btnSubir");
-
-
-      const invalidosPresentes =
-        !$("avisoFormato")
-          .classList
-          .contains("d-none");
-
-
-      btn.disabled =
-
-        subiendo ||
-
-        !formularioValido() ||
-
-        imagenesSeleccionadas.length === 0 ||
-
-        invalidosPresentes;
-
-    }
-
-
-
-    /* =========================================================
-       ACTUALIZAR ICONO DE CAPTURA
-       ========================================================= */
-
-
-    function actualizarIconoCaptura(
-      idx,
-      estado
-    ) {
-
-
-      const icono =
-        document.querySelector(
-          `i[data-captura="${idx}"]`
-        );
-
-
-      if (!icono) return;
-
-
-      icono.className =
-
-        `bi ${
-          estado === "ok"
-
-            ? "bi-check-circle-fill"
-
-            : estado === "error"
-
-              ? "bi-x-circle-fill"
-
-              : "bi-arrow-repeat"
-
-        } estado-icono ${estado}`;
-
-    }
-
-
-
-    /* =========================================================
-       SUBIDA CON CONCURRENCIA
-       ========================================================= */
-
-
-    async function subirConConcurrencia(
-      tareas,
-      concurrencia,
-      onResultado
-    ) {
-
-
+    async function procesarConConcurrencia(items, concurrencia, procesador) {
       let cursor = 0;
 
-
       async function trabajador() {
-
-
-        while (
-          cursor <
-          tareas.length
-        ) {
-
-
-          const tarea =
-            tareas[cursor++];
-
-
-          try {
-
-
-            const resultado =
-              await cargarImagen(
-                tarea.blob,
-                tarea.nombreFinal,
-                tarea.ruta
-              );
-
-
-            onResultado(
-              tarea,
-              resultado.ok,
-              resultado.ok
-                ? null
-                : resultado.error
-            );
-
-          }
-
-
-          catch (err) {
-
-
-            onResultado(
-              tarea,
-              false,
-              err.message
-            );
-
-          }
-
+        while (cursor < items.length) {
+          const idx = cursor++;
+          await procesador(items[idx], idx);
         }
-
       }
 
-
-      const trabajadores =
-        Array.from(
-          {
-            length:
-              Math.min(
-                concurrencia,
-                tareas.length
-              )
-          },
-          trabajador
-        );
-
-
-      await Promise.all(
-        trabajadores
+      const trabajadores = Array.from(
+        { length: Math.min(concurrencia, items.length) },
+        trabajador
       );
 
+      await Promise.all(trabajadores);
     }
 
-
-
-    /* =========================================================
-       BOTÓN CARGAR IMÁGENES
-       ========================================================= */
-
-
-    $("btnSubir")
-      .addEventListener(
-        "click",
-        async () => {
-
-
-          if (subiendo) return;
-
-
-          subiendo = true;
-
-
-          revisarBotonSubir();
-
-
-          $("btnSubir").innerHTML = `
-
-            <span
-              class="spinner-border spinner-border-sm me-1"
-            ></span>
-
-            Cargando...
-
-          `;
-
-
-          $("mensajeFinal")
-            .classList
-            .add("d-none");
-
-
-
-          /* ===================================================
-             DATOS DEL FORMULARIO
-             =================================================== */
-
-
-          const curso =
-            $("curso").value;
-
-
-          const grupo =
-            $("grupo").value;
-
-
-          const turno =
-            document.querySelector(
-              'input[name="turno"]:checked'
-            ).value;
-
-
-          const {
-            dia,
-            mes,
-            anio
-          } =
-            partesFecha(
-              new Date()
-            );
-
-
-          const ruta = {
-
-            curso,
-
-            anio,
-
-            mes,
-
-            dia
-
-          };
-
-
-
-          /* ===================================================
-             AGRUPAR CAPTURAS
-             =================================================== */
-
-
-          const capturas =
-            agruparImagenes(
-              imagenesSeleccionadas
-            );
-
-
-          const total =
-            imagenesSeleccionadas.length;
-
-
-
-          /* ===================================================
-             PROGRESO
-             =================================================== */
-
-
-          const progresoBox =
-            $("progresoBox");
-
-
-          const barra =
-            $("barraProgreso");
-
-
-          progresoBox
-            .classList
-            .remove("d-none");
-
-
-          barra.style.width =
-            "0%";
-
-
-
-          try {
-
-
-            /* ================================================
-               1. CONSULTAR DRIVE
-               ================================================ */
-
-
-            const archivosExistentes =
-              await listarArchivosEnCarpeta(
-                ruta
-              );
-
-
-            /*
-               Calculamos el último número
-               de captura utilizado.
-
-               No importa la extensión.
-            */
-
-
-            let numeroCaptura =
-              obtenerUltimaCaptura(
-                archivosExistentes,
-                curso,
-                grupo,
-                turno
-              );
-
-
-
-            /* ================================================
-               2. PREPARAR TODAS LAS TAREAS
-               ================================================ */
-
-
-            const tareas = [];
-
-
-            const numeroPorCaptura =
-              [];
-
-
-            capturas.forEach(
-              (par) => {
-
-
-                numeroCaptura += 1;
-
-
-                numeroPorCaptura.push(
-                  numeroCaptura
-                );
-
-
-                [
-                  [1, par[0]],
-                  [2, par[1]]
-                ]
-                .forEach(
-                  ([orden, img]) => {
-
-
-                    if (!img) return;
-
-
-                    /*
-                       Conservamos la extensión
-                       original.
-                    */
-
-
-                    const extension =
-                      obtenerExtension(
-                        img.name
-                      );
-
-
-                    tareas.push({
-
-                      capturaIdx:
-                        numeroPorCaptura.length - 1,
-
-
-                      nombreFinal:
-
-                        `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${orden}.${extension}`,
-
-
-                      blob:
-                        img,
-
-
-                      ruta
-
-                    });
-
-                  }
-                );
-
-              }
-            );
-
-
-
-            /* ================================================
-               3. ICONOS EN ESTADO SUBIENDO
-               ================================================ */
-
-
-            tareas.forEach(
-              t => {
-
-                actualizarIconoCaptura(
-                  t.capturaIdx,
-                  "subiendo"
-                );
-
-              }
-            );
-
-
-
-            /* ================================================
-               4. VARIABLES
-               ================================================ */
-
-
-            let completadas = 0;
-
-            let exitosas = 0;
-
-
-            const capturasConError =
-              new Set();
-
-
-
-            /* ================================================
-               5. SUBIR
-               ================================================ */
-
-
-            await subirConConcurrencia(
-
-              tareas,
-
-              CONCURRENCIA_SUBIDA,
-
-              (
-                tarea,
-                ok,
-                error
-              ) => {
-
-
-                completadas++;
-
-
-                if (ok) {
-
-                  exitosas++;
-
-                }
-                else {
-
-
-                  capturasConError.add(
-                    tarea.capturaIdx
-                  );
-
-
-                  console.error(
-                    `Error en ${tarea.nombreFinal}:`,
-                    error
-                  );
-
-                }
-
-
-                const pct =
-                  Math.round(
-                    (
-                      completadas /
-                      tareas.length
-                    ) * 100
-                  );
-
-
-                barra.style.width =
-                  pct + "%";
-
-              }
-
-            );
-
-
-
-            /* ================================================
-               6. ACTUALIZAR ICONOS
-               ================================================ */
-
-
-            numeroPorCaptura.forEach(
-              (_, idx) => {
-
-
-                actualizarIconoCaptura(
-
-                  idx,
-
-                  capturasConError.has(
-                    idx
-                  )
-
-                    ? "error"
-
-                    : "ok"
-
-                );
-
-              }
-            );
-
-
-
-            /* ================================================
-               7. MENSAJE FINAL
-               ================================================ */
-
-
-            const mensajeFinal =
-              $("mensajeFinal");
-
-
-            mensajeFinal.className =
-
-              `alert py-2 ${
-                capturasConError.size > 0
-                  ? "alert-warning"
-                  : "alert-success"
-              }`;
-
-
-            mensajeFinal.textContent =
-
-              capturasConError.size > 0
-
-                ? `Imágenes cargadas: ${exitosas} de ${total}. ` +
-                  `Hubo errores en ${capturasConError.size} captura(s); ` +
-                  `vuelve a intentar con esas imágenes.`
-
-                : `Imágenes cargadas: ${exitosas}.`;
-
-
-            mensajeFinal
-              .classList
-              .remove("d-none");
-
-
-
-            /* ================================================
-               8. LIMPIAR SELECCIÓN
-               ================================================ */
-
-
-            imagenesSeleccionadas = [];
-
-
-            mostrarVistaPrevia();
-
-          }
-
-
-          catch (errGeneral) {
-
-
-            const mensajeFinal =
-              $("mensajeFinal");
-
-
-            mensajeFinal.className =
-              "alert alert-danger py-2";
-
-
-            mensajeFinal.textContent =
-
-              `Error durante la carga: ` +
-              `${errGeneral.message}`;
-
-
-            mensajeFinal
-              .classList
-              .remove("d-none");
-
-          }
-
-
-          finally {
-
-
-            subiendo = false;
-
-
-            $("btnSubir").innerHTML = `
-
-              <i class="bi bi-upload me-1"></i>
-
-              Cargar imágenes
-
-            `;
-
-
-            revisarBotonSubir();
-
-          }
-
+    /* ===========================================================
+       RED: TIMEOUT + REINTENTOS
+       Evita que la carga se quede "trabada" si Apps Script
+       tarda demasiado o no responde.
+       =========================================================== */
+
+    async function fetchConTimeout(url, opciones = {}, timeoutMs = TIMEOUT_MS) {
+      const controlador = new AbortController();
+      const id = setTimeout(() => controlador.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...opciones, signal: controlador.signal });
+      } finally {
+        clearTimeout(id);
+      }
+    }
+
+    async function fetchJSON(url, opciones = {}, intentos = MAX_REINTENTOS_RED) {
+      let ultimoError;
+
+      for (let intento = 0; intento <= intentos; intento++) {
+        try {
+          const resp = await fetchConTimeout(url, opciones);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const data = await resp.json();
+          if (!data.ok) throw new Error(data.error || "Respuesta con error del servidor");
+          return data;
+        } catch (err) {
+          ultimoError = err.name === "AbortError"
+            ? new Error("Tiempo de espera agotado: el servidor no respondió")
+            : err;
+
+          if (intento < intentos) await esperar(600 * (intento + 1));
         }
+      }
+
+      throw ultimoError;
+    }
+
+    async function prepararCarpeta(ruta) {
+      const qs = new URLSearchParams({ accion: "preparar", ...ruta });
+      return fetchJSON(`${APPS_SCRIPT_URL}?${qs.toString()}`);
+    }
+
+    async function subirLote(ruta, archivos) {
+      return fetchJSON(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ accion: "subirLote", ...ruta, archivos })
+      });
+    }
+
+    /* ===========================================================
+       NUMERACIÓN Y AGRUPACIÓN
+       =========================================================== */
+
+    function obtenerUltimaCaptura(nombres, curso, grupo, turno) {
+      const prefijo = `${curso}_${grupo}_${turno}_Captura_`;
+
+      const patron = new RegExp(
+        `^${prefijo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d+)_[12]\\.[^.]+$`,
+        "i"
       );
 
+      let maximo = 0;
+      for (const nombre of nombres) {
+        const m = nombre.match(patron);
+        if (m) maximo = Math.max(maximo, parseInt(m[1], 10));
+      }
 
+      return maximo;
+    }
 
-    /* =========================================================
+    function agruparImagenes(archivos) {
+      const capturas = [];
+      for (let i = 0; i < archivos.length; i += 2) {
+        capturas.push([archivos[i], archivos[i + 1] || null]);
+      }
+      return capturas;
+    }
+
+    /* ===========================================================
+       SELECCIÓN DE ARCHIVOS
+       =========================================================== */
+
+    function validarArchivos(archivos) {
+      return archivos.filter((f) => !f.type || !f.type.startsWith("image/"));
+    }
+
+    function agregarImagenes(nuevosArchivos) {
+      const invalidos = validarArchivos(nuevosArchivos);
+      const avisoFormato = $("avisoFormato");
+
+      if (invalidos.length > 0) {
+        avisoFormato.textContent =
+          `Estos archivos no son imágenes válidas y no fueron agregados: ` +
+          `${invalidos.map((f) => f.name).join(", ")}`;
+        avisoFormato.classList.remove("d-none");
+      } else {
+        avisoFormato.classList.add("d-none");
+      }
+
+      const validos = nuevosArchivos.filter((f) => !invalidos.includes(f));
+
+      imagenesSeleccionadas = imagenesSeleccionadas.concat(validos);
+
+      $("mensajeFinal").classList.add("d-none");
+      $("reintentarBox").classList.add("d-none");
+
+      mostrarVistaPrevia();
+      revisarBotonSubir();
+    }
+
+    $("inputImagenes").addEventListener("change", (e) => {
+      agregarImagenes(Array.from(e.target.files));
+      e.target.value = ""; // permite volver a seleccionar el mismo archivo
+    });
+
+    const dropzone = $("dropzone");
+
+    ["dragenter", "dragover"].forEach((evt) => {
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        if (!subiendo) dropzone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach((evt) => {
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+      });
+    });
+
+    dropzone.addEventListener("drop", (e) => {
+      if (subiendo) return;
+      const archivos = Array.from(e.dataTransfer.files || []);
+      if (archivos.length) agregarImagenes(archivos);
+    });
+
+    $("btnLimpiar").addEventListener("click", () => {
+      if (subiendo) return;
+
+      imagenesSeleccionadas = [];
+      tareasActuales = [];
+
+      $("mensajeFinal").classList.add("d-none");
+      $("reintentarBox").classList.add("d-none");
+      $("progresoBox").classList.add("d-none");
+      $("avisoFormato").classList.add("d-none");
+      mostrarEstado(null);
+
+      mostrarVistaPrevia();
+      revisarBotonSubir();
+    });
+
+    /* ===========================================================
+       VISTA PREVIA
+       =========================================================== */
+
+    function mostrarVistaPrevia() {
+      const cont = $("listaCapturas");
+      cont.innerHTML = "";
+
+      const capturas = agruparImagenes(imagenesSeleccionadas);
+
+      capturas.forEach((par, idx) => {
+        const col = document.createElement("div");
+        col.className = "col";
+
+        const completa = par[1] !== null;
+        const urlImagen1 = URL.createObjectURL(par[0]);
+        const urlImagen2 = completa ? URL.createObjectURL(par[1]) : null;
+
+        col.innerHTML = `
+          <div class="captura-card card border">
+            <div class="captura-header">
+              <span>Captura ${idx + 1}</span>
+              <i class="bi bi-clock-history estado-icono pendiente" data-captura="${idx}"></i>
+            </div>
+            <div class="captura-thumbs">
+              <img class="${completa ? "" : "unica"}" src="${urlImagen1}" alt="Imagen 1">
+              ${completa ? `<img src="${urlImagen2}" alt="Imagen 2">` : ""}
+            </div>
+          </div>
+        `;
+
+        cont.appendChild(col);
+      });
+    }
+
+    /* ===========================================================
+       FORMULARIO Y BOTÓN
+       =========================================================== */
+
+    function formularioValido() {
+      const curso = $("curso").value;
+      const grupo = $("grupo").value;
+      const turno = document.querySelector('input[name="turno"]:checked');
+      return curso && grupo && turno;
+    }
+
+    ["curso", "grupo"].forEach((id) => $(id).addEventListener("change", revisarBotonSubir));
+
+    document.querySelectorAll('input[name="turno"]').forEach((radio) => {
+      radio.addEventListener("change", revisarBotonSubir);
+    });
+
+    function revisarBotonSubir() {
+      const invalidosPresentes = !$("avisoFormato").classList.contains("d-none");
+
+      $("btnSubir").disabled =
+        subiendo ||
+        !formularioValido() ||
+        imagenesSeleccionadas.length === 0 ||
+        invalidosPresentes;
+    }
+
+    function bloquearUI(bloqueado) {
+      ["curso", "grupo"].forEach((id) => { $(id).disabled = bloqueado; });
+      document.querySelectorAll('input[name="turno"]').forEach((r) => { r.disabled = bloqueado; });
+      $("inputImagenes").disabled = bloqueado;
+      $("btnLimpiar").disabled = bloqueado;
+      dropzone.style.pointerEvents = bloqueado ? "none" : "";
+      dropzone.style.opacity = bloqueado ? "0.6" : "";
+    }
+
+    function mostrarEstado(texto) {
+      const el = $("estadoCarga");
+      if (!texto) {
+        el.classList.add("d-none");
+        return;
+      }
+      el.textContent = texto;
+      el.classList.remove("d-none");
+    }
+
+    function mostrarError(texto) {
+      const el = $("mensajeFinal");
+      el.className = "alert alert-danger py-2";
+      el.textContent = texto;
+      el.classList.remove("d-none");
+    }
+
+    /* ===========================================================
+       ÍCONOS DE ESTADO POR CAPTURA
+       =========================================================== */
+
+    function actualizarIconoCaptura(idx, estado) {
+      const icono = document.querySelector(`i[data-captura="${idx}"]`);
+      if (!icono) return;
+
+      icono.className =
+        `bi ${
+          estado === "ok" ? "bi-check-circle-fill" :
+          estado === "error" ? "bi-x-circle-fill" :
+          "bi-arrow-repeat"
+        } estado-icono ${estado}`;
+    }
+
+    /* ===========================================================
+       CONSTRUCCIÓN DE TAREAS
+       (compresión + numeración, sin tocar la red de subida)
+       =========================================================== */
+
+    async function construirGruposPorCaptura(archivosOriginales, ruta, curso, grupo, turno) {
+      mostrarEstado("Consultando carpeta en Drive...");
+      const { files: existentes } = await prepararCarpeta(ruta);
+
+      mostrarEstado(`Comprimiendo imágenes (0/${archivosOriginales.length})...`);
+      const comprimidas = new Array(archivosOriginales.length);
+      let listas = 0;
+
+      await procesarConConcurrencia(archivosOriginales, CONCURRENCIA_COMPRESION, async (archivo, idx) => {
+        comprimidas[idx] = await comprimirSiNecesario(archivo);
+        listas++;
+        mostrarEstado(`Comprimiendo imágenes (${listas}/${archivosOriginales.length})...`);
+      });
+
+      const capturas = agruparImagenes(comprimidas);
+      let numeroCaptura = obtenerUltimaCaptura(existentes, curso, grupo, turno);
+
+      const gruposPorCaptura = [];
+
+      capturas.forEach((par) => {
+        numeroCaptura += 1;
+        const idxCaptura = gruposPorCaptura.length;
+        const tareasCaptura = [];
+
+        [[1, par[0]], [2, par[1]]].forEach(([orden, img]) => {
+          if (!img) return;
+
+          const extension = obtenerExtension(img.name);
+
+          tareasCaptura.push({
+            capturaIdx: idxCaptura,
+            nombreFinal: `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${orden}.${extension}`,
+            blob: img
+          });
+        });
+
+        gruposPorCaptura.push(tareasCaptura);
+      });
+
+      return gruposPorCaptura;
+    }
+
+    /* ===========================================================
+       SUBIDA POR LOTES
+       Varias imágenes viajan en una sola petición, y la
+       ubicación de la carpeta se resuelve una sola vez
+       (con caché) del lado del servidor.
+       =========================================================== */
+
+    async function subirGrupos(gruposPorCaptura, ruta, onProgreso) {
+      const lotes = [];
+      for (let i = 0; i < gruposPorCaptura.length; i += CAPTURAS_POR_LOTE) {
+        lotes.push(gruposPorCaptura.slice(i, i + CAPTURAS_POR_LOTE));
+      }
+
+      const totalTareas = gruposPorCaptura.reduce((n, g) => n + g.length, 0);
+      let completadas = 0;
+
+      await procesarConConcurrencia(lotes, CONCURRENCIA_LOTES, async (lote) => {
+        const tareasLote = lote.flat();
+        if (tareasLote.length === 0) return;
+
+        tareasLote.forEach((t) => actualizarIconoCaptura(t.capturaIdx, "subiendo"));
+
+        try {
+          const archivos = await Promise.all(
+            tareasLote.map(async (t) => ({
+              nombre: t.nombreFinal,
+              contenidoBase64: await blobABase64(t.blob)
+            }))
+          );
+
+          const respuesta = await subirLote(ruta, archivos);
+          const porNombre = new Map((respuesta.resultados || []).map((r) => [r.nombre, r]));
+
+          tareasLote.forEach((t) => {
+            const r = porNombre.get(t.nombreFinal);
+            t.ok = !!(r && r.ok);
+            t.error = r ? r.error : "Sin respuesta del servidor";
+          });
+        } catch (err) {
+          tareasLote.forEach((t) => { t.ok = false; t.error = err.message; });
+        }
+
+        completadas += tareasLote.length;
+        onProgreso(Math.round((completadas / totalTareas) * 100));
+
+        lote.forEach((tareasCaptura) => {
+          if (tareasCaptura.length === 0) return;
+          const exito = tareasCaptura.every((t) => t.ok);
+          actualizarIconoCaptura(tareasCaptura[0].capturaIdx, exito ? "ok" : "error");
+        });
+      });
+    }
+
+    function resumenResultado(gruposPorCaptura) {
+      const tareas = gruposPorCaptura.flat();
+      const exitosas = tareas.filter((t) => t.ok).length;
+      const capturasConError = gruposPorCaptura.filter((g) => g.length > 0 && g.some((t) => !t.ok));
+
+      const mensajeFinal = $("mensajeFinal");
+      mensajeFinal.className = `alert py-2 ${capturasConError.length > 0 ? "alert-warning" : "alert-success"}`;
+      mensajeFinal.textContent = capturasConError.length > 0
+        ? `Imágenes cargadas: ${exitosas} de ${tareas.length}. ` +
+          `Hubo errores en ${capturasConError.length} captura(s); puedes reintentar solo esas.`
+        : `Imágenes cargadas: ${exitosas}.`;
+      mensajeFinal.classList.remove("d-none");
+
+      $("reintentarBox").classList.toggle("d-none", capturasConError.length === 0);
+
+      return capturasConError;
+    }
+
+    /* ===========================================================
+       BOTÓN CARGAR IMÁGENES
+       =========================================================== */
+
+    $("btnSubir").addEventListener("click", async () => {
+      if (subiendo) return;
+
+      subiendo = true;
+      bloquearUI(true);
+
+      const btn = $("btnSubir");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Cargando...`;
+
+      $("mensajeFinal").classList.add("d-none");
+      $("reintentarBox").classList.add("d-none");
+      $("progresoBox").classList.remove("d-none");
+      $("barraProgreso").style.width = "0%";
+
+      const curso = $("curso").value;
+      const grupo = $("grupo").value;
+      const turno = document.querySelector('input[name="turno"]:checked').value;
+      const { dia, mes, anio } = partesFecha(new Date());
+      const ruta = { curso, anio, mes, dia };
+      rutaActual = ruta;
+
+      try {
+        const gruposPorCaptura = await construirGruposPorCaptura(
+          imagenesSeleccionadas, ruta, curso, grupo, turno
+        );
+        tareasActuales = gruposPorCaptura;
+
+        await subirGrupos(gruposPorCaptura, ruta, (pct) => {
+          $("barraProgreso").style.width = pct + "%";
+          mostrarEstado(`Subiendo imágenes... ${pct}%`);
+        });
+
+        const conError = resumenResultado(gruposPorCaptura);
+
+        if (conError.length === 0) {
+          imagenesSeleccionadas = [];
+          mostrarVistaPrevia();
+        }
+
+        mostrarEstado(null);
+      } catch (errGeneral) {
+        mostrarError(`Error durante la carga: ${errGeneral.message}`);
+        mostrarEstado(null);
+      } finally {
+        subiendo = false;
+        bloquearUI(false);
+        btn.innerHTML = `<i class="bi bi-upload me-1"></i> Cargar imágenes`;
+        revisarBotonSubir();
+      }
+    });
+
+    /* ===========================================================
+       REINTENTAR SOLO LAS CAPTURAS CON ERROR
+       =========================================================== */
+
+    $("btnReintentar").addEventListener("click", async () => {
+      if (subiendo || !rutaActual) return;
+
+      subiendo = true;
+      bloquearUI(true);
+      $("btnReintentar").disabled = true;
+
+      const gruposConError = tareasActuales.filter((g) => g.length > 0 && g.some((t) => !t.ok));
+      gruposConError.flat().forEach((t) => { t.ok = undefined; t.error = undefined; });
+
+      try {
+        mostrarEstado("Reintentando capturas con error...");
+
+        await subirGrupos(gruposConError, rutaActual, (pct) => {
+          $("barraProgreso").style.width = pct + "%";
+        });
+
+        const conError = resumenResultado(tareasActuales);
+
+        if (conError.length === 0) {
+          imagenesSeleccionadas = [];
+          mostrarVistaPrevia();
+        }
+
+        mostrarEstado(null);
+      } catch (err) {
+        mostrarError(`Error al reintentar: ${err.message}`);
+      } finally {
+        subiendo = false;
+        bloquearUI(false);
+        $("btnReintentar").disabled = false;
+        revisarBotonSubir();
+      }
+    });
+
+    /* ===========================================================
        ESTADO INICIAL
-       ========================================================= */
-
+       =========================================================== */
 
     revisarBotonSubir();
 
-
+  })();
   </script>
 
-
 </body>
-
 </html>
