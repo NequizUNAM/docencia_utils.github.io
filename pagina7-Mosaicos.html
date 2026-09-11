@@ -13,35 +13,26 @@
   .page-hero { background: linear-gradient(135deg, #001f5b, #1a1a2e); color:#fff; padding:48px 20px; }
   .badge-pagina { background:#ffffff22; border:1px solid #ffffff55; font-weight:600; letter-spacing:.02em; }
 
-  .estado-conexion { border-radius:.5rem; }
-  .estado-conexion.conectado { background:#e7f6ec; border:1px solid #b6e3c6; color:#1c6b34; }
-  .estado-conexion.desconectado { background:#fdeeee; border:1px solid #f3c2c2; color:#8a2c2c; }
-
   .dropzone {
-    border:2px dashed #a9b4d0; border-radius:.75rem; padding:36px 16px; text-align:center;
+    border:2px dashed #a9b4d0; border-radius:.6rem; padding:32px 16px; text-align:center;
     background:#f7f9fd; cursor:pointer; transition:border-color .15s ease, background .15s ease;
   }
   .dropzone.dragover { border-color:#001f5b; background:#eef2fb; }
-  .dropzone i { font-size:2rem; color:#001f5b; }
+  .dropzone i { font-size:1.8rem; color:#001f5b; }
 
-  .captura-card { border:1px solid #e3e7f0; border-radius:.75rem; overflow:hidden; background:#fff; }
+  .captura-card { overflow:hidden; }
   .captura-card .captura-header {
-    background:#f2f4fa; padding:.5rem .9rem; font-weight:600; font-size:.9rem; color:#001f5b;
+    background:#f2f4fa; padding:.4rem .75rem; font-weight:600; font-size:.85rem; color:#001f5b;
     display:flex; justify-content:space-between; align-items:center;
   }
-  .captura-thumbs { display:flex; gap:2px; }
-  .captura-thumbs img { width:50%; height:140px; object-fit:cover; display:block; }
-  .captura-card .estado-icono { font-size:1rem; }
+  .captura-thumbs { display:flex; gap:2px; background:#e9edf5; }
+  .captura-thumbs img { width:50%; height:120px; object-fit:cover; display:block; }
+  .captura-thumbs img.unica { width:100%; }
+  .estado-icono { font-size:1rem; }
   .estado-icono.pendiente { color:#8a94ab; }
   .estado-icono.subiendo { color:#0d6efd; }
   .estado-icono.ok { color:#1c6b34; }
   .estado-icono.error { color:#c0392b; }
-
-  .resumen-box { background:#f7f9fd; border:1px solid #e3e7f0; border-radius:.75rem; padding:1rem 1.25rem; }
-  .toast-container { z-index:1080; }
-  .paso-desactivado { opacity:.55; pointer-events:none; }
-
-  #panelSubida { display:block; }
 </style>
 </head>
 <body>
@@ -156,65 +147,40 @@
       </div>
     </form>
 
-    <!-- ===== ZONA DE CARGA ===== -->
-    <div id="panelSubida">
+    <!-- ===== CARD DE CARGA ===== -->
+    <div class="card border shadow-sm">
+      <div class="card-body">
 
-      <div id="ultimaCapturaInfo" class="small text-muted mb-2"></div>
+        <label id="dropzone" class="dropzone d-block mb-3" for="inputImagenes">
+          <i class="bi bi-cloud-arrow-up d-block mb-2"></i>
+          <strong>Arrastra imágenes .PNG aquí</strong> o haz clic para seleccionar
+          <input type="file" id="inputImagenes" accept=".png,image/png" multiple hidden>
+        </label>
 
-      <label id="dropzone" class="dropzone d-block mb-3" for="inputImagenes">
-        <i class="bi bi-cloud-arrow-up d-block mb-2"></i>
-        <strong>Arrastra imágenes .PNG aquí</strong> o haz clic para seleccionar
-        <div class="small text-muted mt-1">Puedes seleccionar cualquier cantidad de imágenes. Se agrupan de 2 en 2 por captura; la última puede quedar con 1 sola.</div>
-        <input type="file" id="inputImagenes" accept=".png,image/png" multiple hidden>
-      </label>
+        <div id="avisoFormato" class="alert alert-danger d-none py-2 small"></div>
 
-      <div id="avisoUltimaCaptura" class="alert alert-info d-none">
-        La última captura quedará con solo 1 imagen. Puedes agregar otra más tarde o subirla así.
-      </div>
-      <div id="avisoFormato" class="alert alert-danger d-none"></div>
+        <div id="listaCapturas" class="row row-cols-2 row-cols-md-3 g-2 mb-3"></div>
 
-      <!-- Vista previa agrupada por captura -->
-      <div id="listaCapturas" class="row row-cols-2 row-cols-md-3 g-3 mb-3"></div>
-
-      <!-- Resumen -->
-      <div id="resumenBox" class="resumen-box mb-3 d-none">
-        <h6 class="fw-bold mb-2"><i class="bi bi-clipboard-check me-1"></i> Resumen</h6>
-        <div class="row small">
-          <div class="col-6 col-md-3"><span class="text-muted">Curso:</span> <span id="rCurso">—</span></div>
-          <div class="col-6 col-md-3"><span class="text-muted">Turno:</span> <span id="rTurno">—</span></div>
-          <div class="col-6 col-md-3"><span class="text-muted">Grupo:</span> <span id="rGrupo">—</span></div>
-          <div class="col-6 col-md-3"><span class="text-muted">Imágenes:</span> <span id="rImagenes">0</span></div>
+        <div id="progresoBox" class="mb-3 d-none">
+          <div class="progress" role="progressbar" style="height:.6rem;">
+            <div id="barraProgreso" class="progress-bar" style="width:0%"></div>
+          </div>
         </div>
-        <div class="row small mt-2">
-          <div class="col-6 col-md-4"><span class="text-muted">Capturas a generar:</span> <span id="rCapturas">0</span></div>
-          <div class="col-6 col-md-4"><span class="text-muted">Primera captura:</span> <span id="rPrimera">—</span></div>
-          <div class="col-6 col-md-4"><span class="text-muted">Última captura:</span> <span id="rUltima">—</span></div>
+
+        <div id="mensajeFinal" class="alert alert-success py-2 d-none"></div>
+
+        <div class="d-flex gap-2">
+          <button id="btnSubir" class="btn btn-success" disabled>
+            <i class="bi bi-upload me-1"></i> Cargar imágenes
+          </button>
+          <button id="btnLimpiar" class="btn btn-outline-secondary" type="button">
+            <i class="bi bi-x-circle me-1"></i> Limpiar selección
+          </button>
         </div>
-      </div>
 
-      <div id="progresoBox" class="mb-3 d-none">
-        <div class="progress" role="progressbar" style="height:1.25rem;">
-          <div id="barraProgreso" class="progress-bar" style="width:0%">0%</div>
-        </div>
-        <div id="progresoTexto" class="small text-muted mt-1">Cargando 0 de 0...</div>
       </div>
-
-      <div class="d-flex gap-2">
-        <button id="btnSubir" class="btn btn-success" disabled>
-          <i class="bi bi-upload me-1"></i> Cargar imágenes
-        </button>
-        <button id="btnLimpiar" class="btn btn-outline-secondary" type="button">
-          <i class="bi bi-x-circle me-1"></i> Limpiar selección
-        </button>
-      </div>
-
-      <!-- Resultado -->
-      <div id="resultadoBox" class="mt-4 d-none">
-        <h6 class="fw-bold" id="resultadoTitulo"></h6>
-        <ul id="resultadoLista" class="list-group list-group-flush small"></ul>
-      </div>
-
     </div>
+
   </div>
 </main>
 
@@ -225,34 +191,28 @@
   </div>
 </footer>
 
-<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 /* =====================================================================
    PÁGINA 7 — MOSAICOS SDCP
    Backend mínimo vía Apps Script (Web App "Ejecutar como: Yo",
-   "Acceso: Cualquier usuario"). El visitante NO inicia sesión: Apps
-   Script sube con TUS permisos de Drive. Toda la lógica de negocio
-   (numeración, agrupación, nomenclatura, orden secuencial anti-colisión)
-   vive aquí en el HTML/JS — Apps Script solo "guarda" y "lista".
-   Ver Code.gs para el backend correspondiente.
+   "Acceso: Cualquier usuario"). El visitante NO inicia sesión.
+   Toda la lógica de negocio (numeración, agrupación, nomenclatura,
+   subida en paralelo controlada) vive aquí. Apps Script solo
+   "guarda" y "lista" archivos. Ver Code.gs para el backend.
+
+   RUTA EN DRIVE: CARPETA_DRIVE / CURSO / ANIO / MES / DIA / archivo.png
    ===================================================================== */
 
-// -------------------- CONFIGURACIÓN (editar aquí) --------------------
+// -------------------- CONFIGURACIÓN --------------------
 
-// URL de implementación (deployment) del Web App de Apps Script (Code.gs).
-// Se obtiene al hacer: Implementar > Nueva implementación > Aplicación web.
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyM785Mm5p9PyTz8aQuxrcR1q3wRrUDHtAVuk9M4k_avfNY2FJSwUeDFRrt2EjRugv-6A/exec"; // <-- CONFIGURAR
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyM785Mm5p9PyTz8aQuxrcR1q3wRrUDHtAVuk9M4k_avfNY2FJSwUeDFRrt2EjRugv-6A/exec";
 
-// Carpeta raíz en Google Drive (tomada de tu enlace), configurada también en Code.gs:
-// https://drive.google.com/drive/folders/1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp
-// (se deja aquí solo como referencia informativa; el ID real vive en Code.gs)
-const CARPETA_DRIVE_REF = "1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp";
-
-// Estructura de carpetas: CARPETA_DRIVE / DIA / MES / ANIO / archivo.png
-// (el curso/grupo/turno ya quedan identificados en el propio nombre del archivo)
+// Cuántas subidas simultáneas se permiten. Los nombres de archivo ya quedan
+// determinados ANTES de subir nada (ver más abajo), así que subir en paralelo
+// es seguro: no hay dos peticiones compitiendo por decidir el mismo número.
+const CONCURRENCIA_SUBIDA = 4;
 
 // -------------------- ESTADO EN MEMORIA --------------------
 
@@ -261,7 +221,7 @@ let subiendo = false;
 
 const $ = (id) => document.getElementById(id);
 
-// -------------------- 1. HELPERS: comunicación con Apps Script --------------------
+// -------------------- 1. COMUNICACIÓN CON APPS SCRIPT --------------------
 
 function partesFecha(fecha) {
   return {
@@ -271,20 +231,19 @@ function partesFecha(fecha) {
   };
 }
 
-// Pide a Apps Script la lista de nombres de archivo ya existentes para esa fecha.
-// Si la carpeta del día aún no existe, Code.gs responde con files: [] (no crea nada en un GET).
-async function listarArchivosEnCarpeta({ dia, mes, anio }) {
-  const url = `${APPS_SCRIPT_URL}?accion=listar&dia=${dia}&mes=${mes}&anio=${anio}`;
-  const resp = await fetch(url);
+// Lista los nombres de archivo ya existentes en CARPETA_DRIVE/CURSO/ANIO/MES/DIA.
+// Si la carpeta aún no existe, Code.gs responde files: [] sin crear nada.
+async function listarArchivosEnCarpeta({ curso, anio, mes, dia }) {
+  const qs = new URLSearchParams({ accion: "listar", curso, anio, mes, dia });
+  const resp = await fetch(`${APPS_SCRIPT_URL}?${qs.toString()}`);
   if (!resp.ok) throw new Error(`No se pudo consultar Drive (HTTP ${resp.status})`);
   const data = await resp.json();
   if (!data.ok) throw new Error(data.error || "Error al listar archivos existentes");
-  return data.files; // array de strings (nombres de archivo)
+  return data.files;
 }
 
-// A partir de los nombres existentes, obtiene el número de captura más alto
-// para la combinación CURSO+GRUPO+TURNO. El contador siempre se recalcula
-// desde Drive, nunca depende de una variable en memoria que se pierda al recargar.
+// Número de captura más alto ya usado para CURSO+GRUPO+TURNO. Siempre se
+// recalcula desde Drive, nunca depende de una variable que se pierda al recargar.
 function obtenerUltimaCaptura(nombres, curso, grupo, turno) {
   const prefijo = `${curso}_${grupo}_${turno}_Captura_`;
   const patron = new RegExp(`^${prefijo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d+)_[12]\\.png$`, "i");
@@ -293,7 +252,7 @@ function obtenerUltimaCaptura(nombres, curso, grupo, turno) {
     const m = nombre.match(patron);
     if (m) maximo = Math.max(maximo, parseInt(m[1], 10));
   }
-  return maximo; // 0 si no hay capturas previas
+  return maximo;
 }
 
 function blobABase64(blob) {
@@ -305,26 +264,17 @@ function blobABase64(blob) {
   });
 }
 
-// Sube un archivo individual. Se llama SIEMPRE en secuencia (nunca en Promise.all),
-// que es precisamente lo que evita el bug de renombrado que tenías antes: como cada
-// petición espera a que termine la anterior, nunca hay dos escrituras compitiendo
-// por el mismo número de captura. Content-Type: text/plain evita el preflight CORS
-// que Apps Script Web App no maneja bien con application/json.
-async function cargarImagen(blob, nombreFinal, { dia, mes, anio }) {
+// Sube un archivo. Content-Type: text/plain evita el preflight CORS que
+// Apps Script Web App no maneja con application/json.
+async function cargarImagen(blob, nombreFinal, { curso, anio, mes, dia }) {
   const contenidoBase64 = await blobABase64(blob);
   const resp = await fetch(APPS_SCRIPT_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ dia, mes, anio, nombre: nombreFinal, contenidoBase64 })
+    body: JSON.stringify({ curso, anio, mes, dia, nombre: nombreFinal, contenidoBase64 })
   });
   if (!resp.ok) throw new Error(`Fallo de red al subir ${nombreFinal} (HTTP ${resp.status})`);
-  const data = await resp.json();
-  return data; // { ok: true, nombre } ó { ok: false, error }
-}
-
-// Verifica en memoria (ya tenemos el listado del día) que el nombre no exista.
-function verificarArchivoExistente(nombres, nombre) {
-  return nombres.includes(nombre);
+  return resp.json(); // { ok:true, nombre } ó { ok:false, error }
 }
 
 // -------------------- 2. FORMULARIO Y SELECCIÓN DE ARCHIVOS --------------------
@@ -344,31 +294,12 @@ function agruparImagenes(archivos) {
   return capturas;
 }
 
-
-// -------------------- 3. FORMULARIO Y SELECCIÓN DE ARCHIVOS --------------------
-
-function formularioValido() {
-  const curso = $("curso").value;
-  const grupo = $("grupo").value;
-  const turno = document.querySelector('input[name="turno"]:checked');
-  return curso && grupo && turno;
-}
-
-function agruparImagenes(archivos) {
-  const capturas = [];
-  for (let i = 0; i < archivos.length; i += 2) {
-    capturas.push([archivos[i], archivos[i + 1] || null]);
-  }
-  return capturas;
-}
-
 function validarArchivos(archivos) {
-  const invalidos = archivos.filter(f => {
+  return archivos.filter(f => {
     const extOk = /\.png$/i.test(f.name);
-    const mimeOk = !f.type || f.type === "image/png"; // algunos navegadores no reportan MIME
+    const mimeOk = !f.type || f.type === "image/png";
     return !(extOk && mimeOk);
   });
-  return invalidos;
 }
 
 function agregarImagenes(nuevosArchivos) {
@@ -382,13 +313,14 @@ function agregarImagenes(nuevosArchivos) {
   }
   const validos = nuevosArchivos.filter(f => !invalidos.includes(f));
   imagenesSeleccionadas = imagenesSeleccionadas.concat(validos);
+  $("mensajeFinal").classList.add("d-none");
   mostrarVistaPrevia();
   revisarBotonSubir();
 }
 
 $("inputImagenes").addEventListener("change", (e) => {
   agregarImagenes(Array.from(e.target.files));
-  e.target.value = ""; // permite volver a seleccionar los mismos archivos si hace falta
+  e.target.value = "";
 });
 
 const dropzone = $("dropzone");
@@ -401,19 +333,17 @@ dropzone.addEventListener("drop", (e) => {
 
 $("btnLimpiar").addEventListener("click", () => {
   imagenesSeleccionadas = [];
+  $("mensajeFinal").classList.add("d-none");
+  $("progresoBox").classList.add("d-none");
   mostrarVistaPrevia();
   revisarBotonSubir();
 });
 
-// -------------------- 4. VISTA PREVIA + RESUMEN --------------------
+// -------------------- 3. VISTA PREVIA (card + border por captura) --------------------
 
 function mostrarVistaPrevia() {
   const cont = $("listaCapturas");
   cont.innerHTML = "";
-  const avisoUltimaCaptura = $("avisoUltimaCaptura");
-  const impar = imagenesSeleccionadas.length % 2 !== 0;
-  avisoUltimaCaptura.classList.toggle("d-none", !impar);
-
   const capturas = agruparImagenes(imagenesSeleccionadas);
 
   capturas.forEach((par, idx) => {
@@ -421,146 +351,137 @@ function mostrarVistaPrevia() {
     col.className = "col";
     const completa = par[1] !== null;
     col.innerHTML = `
-      <div class="captura-card">
+      <div class="captura-card card border">
         <div class="captura-header">
-          <span>Captura ${idx + 1}${completa ? "" : " (1 imagen)"}</span>
+          <span>Captura ${idx + 1}</span>
           <i class="bi bi-clock-history estado-icono pendiente" data-captura="${idx}"></i>
         </div>
         <div class="captura-thumbs">
-          <img src="${URL.createObjectURL(par[0])}" alt="Imagen 1" ${completa ? "" : 'style="width:100%;"'}>
+          <img class="${completa ? "" : "unica"}" src="${URL.createObjectURL(par[0])}" alt="Imagen 1">
           ${completa ? `<img src="${URL.createObjectURL(par[1])}" alt="Imagen 2">` : ""}
         </div>
       </div>`;
     cont.appendChild(col);
   });
-
-  actualizarResumenPreliminar(capturas.length);
 }
 
-async function actualizarResumenPreliminar(totalCapturas) {
-  const resumenBox = $("resumenBox");
-  if (imagenesSeleccionadas.length === 0 || !formularioValido()) {
-    resumenBox.classList.add("d-none");
-    return;
-  }
-  const curso = $("curso").value;
-  const grupo = $("grupo").value;
-  const turno = document.querySelector('input[name="turno"]:checked').value;
-
-  $("rCurso").textContent = curso;
-  $("rTurno").textContent = turno;
-  $("rGrupo").textContent = grupo;
-  $("rImagenes").textContent = imagenesSeleccionadas.length;
-  $("rCapturas").textContent = totalCapturas;
-
-  try {
-    const nombres = await listarArchivosEnCarpeta(partesFecha(new Date()));
-    const ultima = obtenerUltimaCaptura(nombres, curso, grupo, turno);
-    $("rPrimera").textContent = ultima + 1;
-    $("rUltima").textContent = ultima + totalCapturas;
-    $("ultimaCapturaInfo").textContent = `Última captura existente para ${curso} / ${grupo} / ${turno} hoy: ${ultima}`;
-  } catch (e) {
-    $("rPrimera").textContent = "—";
-    $("rUltima").textContent = "—";
-    $("ultimaCapturaInfo").textContent = "No se pudo consultar Apps Script. Revisa APPS_SCRIPT_URL.";
-  }
-  resumenBox.classList.remove("d-none");
-}
-
-["curso", "grupo"].forEach(id => $(id).addEventListener("change", mostrarVistaPrevia));
-document.querySelectorAll('input[name="turno"]').forEach(r => r.addEventListener("change", mostrarVistaPrevia));
+["curso", "grupo"].forEach(id => $(id).addEventListener("change", revisarBotonSubir));
+document.querySelectorAll('input[name="turno"]').forEach(r => r.addEventListener("change", revisarBotonSubir));
 
 function revisarBotonSubir() {
   const btn = $("btnSubir");
   const invalidosPresentes = !$("avisoFormato").classList.contains("d-none");
   btn.disabled = subiendo || !formularioValido() || imagenesSeleccionadas.length === 0 || invalidosPresentes;
 }
-["curso", "grupo"].forEach(id => $(id).addEventListener("change", revisarBotonSubir));
-document.querySelectorAll('input[name="turno"]').forEach(r => r.addEventListener("change", revisarBotonSubir));
 
-// -------------------- 5. CARGA (secuencial, sin Promise.all) --------------------
+// -------------------- 4. SUBIDA EN PARALELO CONTROLADA --------------------
+
+function actualizarIconoCaptura(idx, estado) {
+  const icono = document.querySelector(`i[data-captura="${idx}"]`);
+  if (!icono) return;
+  icono.className = `bi ${estado === "ok" ? "bi-check-circle-fill" : estado === "error" ? "bi-x-circle-fill" : "bi-arrow-repeat"} estado-icono ${estado}`;
+}
+
+// Ejecuta las tareas de subida con un pool de trabajadores en paralelo.
+// Los nombres de archivo ya vienen decididos en `tareas`, así que no hay
+// riesgo de colisión entre ellas por el orden de llegada.
+async function subirConConcurrencia(tareas, concurrencia, onResultado) {
+  let cursor = 0;
+  async function trabajador() {
+    while (cursor < tareas.length) {
+      const tarea = tareas[cursor++];
+      try {
+        const resultado = await cargarImagen(tarea.blob, tarea.nombreFinal, tarea.ruta);
+        onResultado(tarea, resultado.ok, resultado.ok ? null : resultado.error);
+      } catch (err) {
+        onResultado(tarea, false, err.message);
+      }
+    }
+  }
+  const trabajadores = Array.from({ length: Math.min(concurrencia, tareas.length) }, trabajador);
+  await Promise.all(trabajadores);
+}
 
 $("btnSubir").addEventListener("click", async () => {
   if (subiendo) return;
   subiendo = true;
   revisarBotonSubir();
   $("btnSubir").innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Cargando...`;
+  $("mensajeFinal").classList.add("d-none");
 
   const curso = $("curso").value;
   const grupo = $("grupo").value;
   const turno = document.querySelector('input[name="turno"]:checked').value;
-  const fecha = new Date();
+  const { dia, mes, anio } = partesFecha(new Date());
+  const ruta = { curso, anio, mes, dia };
+
   const capturas = agruparImagenes(imagenesSeleccionadas);
   const total = imagenesSeleccionadas.length;
 
   const progresoBox = $("progresoBox");
   const barra = $("barraProgreso");
-  const progresoTexto = $("progresoTexto");
   progresoBox.classList.remove("d-none");
-
-  const resultados = []; // { captura, ok, error }
+  barra.style.width = "0%";
 
   try {
-    const infoFecha = partesFecha(fecha);
-    let archivosExistentes = await listarArchivosEnCarpeta(infoFecha);
+    // 1) Se calcula el número inicial UNA sola vez y se arman TODOS los
+    //    nombres por adelantado (esto es lo que permite subir en paralelo
+    //    sin arriesgarse a repetir un número de captura).
+    const archivosExistentes = await listarArchivosEnCarpeta(ruta);
     let numeroCaptura = obtenerUltimaCaptura(archivosExistentes, curso, grupo, turno);
 
-    let subidas = 0;
-    // Bucle FOR con await: procesamiento estrictamente en serie.
-    // Esto es lo que elimina el problema de nombres cruzados: nunca hay dos
-    // peticiones a Apps Script compitiendo por el mismo número de captura.
-    for (let i = 0; i < capturas.length; i++) {
-      const [img1, img2] = capturas[i];
+    const tareas = [];
+    const numeroPorCaptura = [];
+    capturas.forEach((par) => {
       numeroCaptura += 1;
+      numeroPorCaptura.push(numeroCaptura);
+      [[1, par[0]], [2, par[1]]].forEach(([orden, img]) => {
+        if (!img) return;
+        tareas.push({
+          capturaIdx: numeroPorCaptura.length - 1,
+          nombreFinal: `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${orden}.png`,
+          blob: img,
+          ruta
+        });
+      });
+    });
 
-      try {
-        for (const [idx, img] of [[1, img1], [2, img2]]) {
-          if (!img) continue; // ocurre en la última captura cuando el total de imágenes es impar (1 imagen)
-          let nombreFinal = `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${idx}.png`;
+    tareas.forEach(t => actualizarIconoCaptura(t.capturaIdx, "subiendo"));
 
-          // Guardia anti-colisión en el cliente (lista que ya tenemos en memoria).
-          while (verificarArchivoExistente(archivosExistentes, nombreFinal)) {
-            numeroCaptura += 1;
-            nombreFinal = `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${idx}.png`;
-          }
+    let completadas = 0;
+    let exitosas = 0;
+    const capturasConError = new Set();
 
-          // Guardia anti-colisión en el servidor: Apps Script también verifica antes de
-          // guardar y responde { ok:false, error:"exists" } si alguien más ya usó ese nombre
-          // (por ejemplo, otra pestaña/sesión). Si pasa, se reintenta con el siguiente número.
-          let resultadoSubida = await cargarImagen(img, nombreFinal, infoFecha);
-          while (!resultadoSubida.ok && resultadoSubida.error === "exists") {
-            numeroCaptura += 1;
-            nombreFinal = `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${idx}.png`;
-            resultadoSubida = await cargarImagen(img, nombreFinal, infoFecha);
-          }
-          if (!resultadoSubida.ok) throw new Error(resultadoSubida.error || "Error desconocido al subir");
-
-          archivosExistentes.push(nombreFinal);
-
-          subidas++;
-          const pct = Math.round((subidas / total) * 100);
-          barra.style.width = pct + "%";
-          barra.textContent = pct + "%";
-          progresoTexto.textContent = `Cargando ${subidas} de ${total}...`;
-        }
-        resultados.push({ captura: numeroCaptura, ok: true });
-        actualizarIconoCaptura(i, "ok");
-      } catch (errCaptura) {
-        resultados.push({ captura: numeroCaptura, ok: false, error: errCaptura.message });
-        actualizarIconoCaptura(i, "error");
+    await subirConConcurrencia(tareas, CONCURRENCIA_SUBIDA, (tarea, ok, error) => {
+      completadas++;
+      if (ok) {
+        exitosas++;
+      } else {
+        capturasConError.add(tarea.capturaIdx);
       }
-    }
+      const pct = Math.round((completadas / tareas.length) * 100);
+      barra.style.width = pct + "%";
+    });
 
-    progresoTexto.textContent = `Carga completada: ${subidas} imágenes / ${capturas.length} capturas.`;
-    mostrarResultado(curso, grupo, turno, subidas, resultados);
-    mostrarToast("Carga completada.", "success");
+    numeroPorCaptura.forEach((_, idx) => {
+      actualizarIconoCaptura(idx, capturasConError.has(idx) ? "error" : "ok");
+    });
 
-    // Reinicio parcial: conserva curso/turno/grupo, limpia solo imágenes (regla 26).
+    const mensajeFinal = $("mensajeFinal");
+    mensajeFinal.className = `alert py-2 ${capturasConError.size > 0 ? "alert-warning" : "alert-success"}`;
+    mensajeFinal.textContent = capturasConError.size > 0
+      ? `Imágenes cargadas: ${exitosas} de ${total}. Hubo errores en ${capturasConError.size} captura(s); vuelve a intentar con esas imágenes.`
+      : `Imágenes cargadas: ${exitosas}.`;
+    mensajeFinal.classList.remove("d-none");
+
     imagenesSeleccionadas = [];
     mostrarVistaPrevia();
 
   } catch (errGeneral) {
-    mostrarToast(`Error durante la carga: ${errGeneral.message}`, "danger");
+    const mensajeFinal = $("mensajeFinal");
+    mensajeFinal.className = "alert alert-danger py-2";
+    mensajeFinal.textContent = `Error durante la carga: ${errGeneral.message}`;
+    mensajeFinal.classList.remove("d-none");
   } finally {
     subiendo = false;
     $("btnSubir").innerHTML = `<i class="bi bi-upload me-1"></i> Cargar imágenes`;
@@ -568,54 +489,8 @@ $("btnSubir").addEventListener("click", async () => {
   }
 });
 
-function actualizarIconoCaptura(idx, estado) {
-  const icono = document.querySelector(`i[data-captura="${idx}"]`);
-  if (!icono) return;
-  icono.className = `bi ${estado === "ok" ? "bi-check-circle-fill" : "bi-x-circle-fill"} estado-icono ${estado}`;
-}
-
-function mostrarResultado(curso, grupo, turno, subidas, resultados) {
-  const box = $("resultadoBox");
-  const titulo = $("resultadoTitulo");
-  const lista = $("resultadoLista");
-  const huboErrores = resultados.some(r => !r.ok);
-
-  titulo.innerHTML = huboErrores
-    ? `<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i> Carga completada con errores`
-    : `<i class="bi bi-check-circle-fill text-success me-1"></i> Carga completada correctamente`;
-
-  lista.innerHTML = `
-    <li class="list-group-item">Curso: <strong>${curso}</strong> — Grupo: <strong>${grupo}</strong> — Turno: <strong>${turno}</strong></li>
-    <li class="list-group-item">Imágenes cargadas: <strong>${subidas}</strong></li>
-  ` + resultados.map(r =>
-    `<li class="list-group-item d-flex justify-content-between">
-       <span>Captura ${r.captura}</span>
-       <span class="${r.ok ? "text-success" : "text-danger"}">${r.ok ? "OK" : "Error: " + r.error}</span>
-     </li>`
-  ).join("");
-
-  box.classList.remove("d-none");
-}
-
-// -------------------- 6. UTILIDAD: TOASTS --------------------
-
-function mostrarToast(mensaje, tipo) {
-  const cont = $("toastContainer");
-  const el = document.createElement("div");
-  el.className = `toast align-items-center text-bg-${tipo} border-0`;
-  el.setAttribute("role", "alert");
-  el.innerHTML = `<div class="d-flex">
-      <div class="toast-body">${mensaje}</div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-    </div>`;
-  cont.appendChild(el);
-  new bootstrap.Toast(el, { delay: 4000 }).show();
-  el.addEventListener("hidden.bs.toast", () => el.remove());
-}
-
 // Estado inicial del botón al cargar la página.
 revisarBotonSubir();
-
 </script>
 </body>
 </html>
