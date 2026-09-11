@@ -104,7 +104,20 @@
   <div class="page-hero text-center">
     <span class="badge badge-pagina rounded-pill px-3 py-2 mb-2">PÁGINA 7</span>
     <h1 class="display-6 fw-bold mb-1">Mosaicos SDCP</h1>
-    <p class="lead mb-0">Carga y organización de imágenes por captura, con numeración continua en Google Drive</p>
+    <p class="lead mb-3">
+      Carga y organización de imágenes por captura, con numeración continua en Google Drive
+    </p>
+
+    <!-- ===== BOTÓN GOOGLE DRIVE ===== -->
+    <a 
+      href="https://drive.google.com/drive/folders/1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp?usp=drive_link"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="btn btn-primary"
+    >
+      <i class="bi bi-google me-1"></i>
+      Abrir carpeta de Google Drive
+    </a>
   </div>
 
   <div class="container my-4" style="max-width: 900px;">
@@ -112,38 +125,75 @@
     <!-- ===== FORMULARIO ===== -->
     <form id="formMosaicos" class="mb-4" novalidate>
       <div class="row g-3">
+
         <div class="col-md-4">
           <label for="curso" class="form-label fw-semibold">Curso</label>
           <select id="curso" class="form-select" required>
             <option value="" selected disabled>Seleccione un curso</option>
-            <option>ADOB</option><option>ADOI</option><option>HTICIPB</option><option>HTICIPI</option>
-            <option>MBCIWB</option><option>MBCIWI</option><option>MEB</option><option>MEI</option>
-            <option>MWB</option><option>MWI</option><option>PMIWEB</option><option>PMIWEI</option>
-            <option>SMECI</option><option>TCNI</option>
+            <option>ADOB</option>
+            <option>ADOI</option>
+            <option>HTICIPB</option>
+            <option>HTICIPI</option>
+            <option>MBCIWB</option>
+            <option>MBCIWI</option>
+            <option>MEB</option>
+            <option>MEI</option>
+            <option>MWB</option>
+            <option>MWI</option>
+            <option>PMIWEB</option>
+            <option>PMIWEI</option>
+            <option>SMECI</option>
+            <option>TCNI</option>
           </select>
         </div>
 
         <div class="col-md-4">
           <label class="form-label fw-semibold d-block">Turno</label>
+
           <div class="d-flex gap-3 pt-2">
             <div class="form-check">
-              <input class="form-check-input" type="radio" name="turno" id="turnoMatutino" value="MATUTINO" required>
-              <label class="form-check-label" for="turnoMatutino">Matutino</label>
+              <input
+                class="form-check-input"
+                type="radio"
+                name="turno"
+                id="turnoMatutino"
+                value="MATUTINO"
+                required
+              >
+              <label class="form-check-label" for="turnoMatutino">
+                Matutino
+              </label>
             </div>
+
             <div class="form-check">
-              <input class="form-check-input" type="radio" name="turno" id="turnoVespertino" value="VESPERTINO" required>
-              <label class="form-check-label" for="turnoVespertino">Vespertino</label>
+              <input
+                class="form-check-input"
+                type="radio"
+                name="turno"
+                id="turnoVespertino"
+                value="VESPERTINO"
+                required
+              >
+              <label class="form-check-label" for="turnoVespertino">
+                Vespertino
+              </label>
             </div>
           </div>
         </div>
 
         <div class="col-md-4">
           <label for="grupo" class="form-label fw-semibold">Grupo</label>
+
           <select id="grupo" class="form-select" required>
             <option value="" selected disabled>Seleccione un grupo</option>
-            <option>gpo01</option><option>gpo02</option><option>gpo03</option><option>gpo04</option><option>gpo05</option>
+            <option>gpo01</option>
+            <option>gpo02</option>
+            <option>gpo03</option>
+            <option>gpo04</option>
+            <option>gpo05</option>
           </select>
         </div>
+
       </div>
     </form>
 
@@ -153,8 +203,16 @@
 
         <label id="dropzone" class="dropzone d-block mb-3" for="inputImagenes">
           <i class="bi bi-cloud-arrow-up d-block mb-2"></i>
-          <strong>Arrastra imágenes .PNG aquí</strong> o haz clic para seleccionar
-          <input type="file" id="inputImagenes" accept=".png,image/png" multiple hidden>
+          <strong>Arrastra imágenes .PNG aquí</strong>
+          o haz clic para seleccionar
+
+          <input
+            type="file"
+            id="inputImagenes"
+            accept=".png,image/png"
+            multiple
+            hidden
+          >
         </label>
 
         <div id="avisoFormato" class="alert alert-danger d-none py-2 small"></div>
@@ -163,7 +221,11 @@
 
         <div id="progresoBox" class="mb-3 d-none">
           <div class="progress" role="progressbar" style="height:.6rem;">
-            <div id="barraProgreso" class="progress-bar" style="width:0%"></div>
+            <div
+              id="barraProgreso"
+              class="progress-bar"
+              style="width:0%"
+            ></div>
           </div>
         </div>
 
@@ -171,10 +233,17 @@
 
         <div class="d-flex gap-2">
           <button id="btnSubir" class="btn btn-success" disabled>
-            <i class="bi bi-upload me-1"></i> Cargar imágenes
+            <i class="bi bi-upload me-1"></i>
+            Cargar imágenes
           </button>
-          <button id="btnLimpiar" class="btn btn-outline-secondary" type="button">
-            <i class="bi bi-x-circle me-1"></i> Limpiar selección
+
+          <button
+            id="btnLimpiar"
+            class="btn btn-outline-secondary"
+            type="button"
+          >
+            <i class="bi bi-x-circle me-1"></i>
+            Limpiar selección
           </button>
         </div>
 
