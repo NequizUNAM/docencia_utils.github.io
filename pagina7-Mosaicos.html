@@ -8,9 +8,6 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
-<!-- Google Identity Services: reemplaza el flujo de Apps Script. Sin backend, sin secretos en el HTML. -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-
 <style>
   body { background-color:#ffffff; color:#1a1a2e; display:flex; flex-direction:column; min-height:100vh; }
   .page-hero { background: linear-gradient(135deg, #001f5b, #1a1a2e); color:#fff; padding:48px 20px; }
@@ -44,7 +41,7 @@
   .toast-container { z-index:1080; }
   .paso-desactivado { opacity:.55; pointer-events:none; }
 
-  #panelSubida { display:none; }
+  #panelSubida { display:block; }
 </style>
 </head>
 <body>
@@ -121,20 +118,8 @@
 
   <div class="container my-4" style="max-width: 900px;">
 
-    <!-- Estado de conexión con Drive -->
-    <div id="estadoConexion" class="estado-conexion desconectado d-flex align-items-center justify-content-between p-3 mb-4">
-      <div>
-        <i class="bi bi-google me-2"></i>
-        <strong id="estadoConexionTexto">No conectado a Google Drive</strong>
-        <div class="small mt-1">Necesitas iniciar sesión con tu cuenta de Google para poder subir imágenes.</div>
-      </div>
-      <button id="btnConectar" class="btn btn-primary">
-        <i class="bi bi-box-arrow-in-right me-1"></i> Conectar con Google Drive
-      </button>
-    </div>
-
     <!-- ===== FORMULARIO ===== -->
-    <form id="formMosaicos" class="mb-4 paso-desactivado" novalidate>
+    <form id="formMosaicos" class="mb-4" novalidate>
       <div class="row g-3">
         <div class="col-md-4">
           <label for="curso" class="form-label fw-semibold">Curso</label>
@@ -247,180 +232,119 @@
 <script>
 /* =====================================================================
    PÁGINA 7 — MOSAICOS SDCP
-   Sin Apps Script. Toda la lógica corre en el navegador y sube directo
-   a Google Drive vía la API REST (Drive v3) usando OAuth de Google
-   Identity Services (GIS). No hay backend ni secretos en este archivo:
-   el CLIENT_ID de OAuth es público por diseño (no es una API key
-   secreta), pero debe estar restringido a tu dominio en Google Cloud
-   Console (APIs & Services > Credentials > Authorized JavaScript
-   origins).
+   Backend mínimo vía Apps Script (Web App "Ejecutar como: Yo",
+   "Acceso: Cualquier usuario"). El visitante NO inicia sesión: Apps
+   Script sube con TUS permisos de Drive. Toda la lógica de negocio
+   (numeración, agrupación, nomenclatura, orden secuencial anti-colisión)
+   vive aquí en el HTML/JS — Apps Script solo "guarda" y "lista".
+   Ver Code.gs para el backend correspondiente.
    ===================================================================== */
 
 // -------------------- CONFIGURACIÓN (editar aquí) --------------------
 
-// Carpeta raíz en Google Drive (tomada de tu enlace):
+// URL de implementación (deployment) del Web App de Apps Script (Code.gs).
+// Se obtiene al hacer: Implementar > Nueva implementación > Aplicación web.
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyM785Mm5p9PyTz8aQuxrcR1q3wRrUDHtAVuk9M4k_avfNY2FJSwUeDFRrt2EjRugv-6A/exec"; // <-- CONFIGURAR
+
+// Carpeta raíz en Google Drive (tomada de tu enlace), configurada también en Code.gs:
 // https://drive.google.com/drive/folders/1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp
-const CARPETA_DRIVE = "1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp";
+// (se deja aquí solo como referencia informativa; el ID real vive en Code.gs)
+const CARPETA_DRIVE_REF = "1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp";
+  
 
-// OAuth Client ID (Google Cloud Console > Credentials > OAuth client ID > Web application).
-// Debe tener este sitio en "Authorized JavaScript origins". NO es secreto, pero restríngelo por dominio.
-const CLIENT_ID = "TU_CLIENT_ID.apps.googleusercontent.com"; // <-- CONFIGURAR
-
-// Permiso solicitado. "drive" (amplio) es necesario aquí porque el script debe poder
-// LEER capturas que ya existan en la carpeta (para no reiniciar el contador ni sobrescribir),
-// no solo crear archivos nuevos. Si más adelante solo subes desde aquí y nunca necesitas leer
-// archivos creados por otro medio, puedes reducirlo a "drive.file".
-const SCOPES = "https://www.googleapis.com/auth/drive";
-
-// Estructura de carpetas solicitada: CARPETA_DRIVE / DIA / MES / ANIO / archivo.png
+// Estructura de carpetas: CARPETA_DRIVE / DIA / MES / ANIO / archivo.png
 // (el curso/grupo/turno ya quedan identificados en el propio nombre del archivo)
 
 // -------------------- ESTADO EN MEMORIA --------------------
 
-let tokenAcceso = null;          // token OAuth vigente (memoria, nunca persistido)
-let clienteToken = null;         // cliente GIS
 let imagenesSeleccionadas = [];  // File[] en el orden en que fueron elegidas
 let subiendo = false;
 
 const $ = (id) => document.getElementById(id);
 
-// -------------------- 1. AUTENTICACIÓN (reemplaza a Apps Script) --------------------
+// -------------------- 1. HELPERS: comunicación con Apps Script --------------------
 
-function inicializarAuth() {
-  clienteToken = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (resp) => {
-      if (resp.error) {
-        mostrarToast("No se pudo conectar con Google Drive.", "danger");
-        return;
-      }
-      tokenAcceso = resp.access_token;
-      actualizarEstadoConexion(true);
-    }
-  });
+function partesFecha(fecha) {
+  return {
+    dia: String(fecha.getDate()).padStart(2, "0"),
+    mes: String(fecha.getMonth() + 1).padStart(2, "0"),
+    anio: String(fecha.getFullYear())
+  };
 }
 
-$("btnConectar").addEventListener("click", () => {
-  if (!clienteToken) { mostrarToast("Configura CLIENT_ID antes de continuar.", "danger"); return; }
-  clienteToken.requestAccessToken({ prompt: tokenAcceso ? "" : "consent" });
-});
-
-function actualizarEstadoConexion(conectado) {
-  const box = $("estadoConexion");
-  const btn = $("btnConectar");
-  const form = $("formMosaicos");
-  box.classList.toggle("conectado", conectado);
-  box.classList.toggle("desconectado", !conectado);
-  $("estadoConexionTexto").textContent = conectado
-    ? "Conectado a Google Drive"
-    : "No conectado a Google Drive";
-  btn.textContent = conectado ? "Reconectar" : "Conectar con Google Drive";
-  form.classList.toggle("paso-desactivado", !conectado);
+// Pide a Apps Script la lista de nombres de archivo ya existentes para esa fecha.
+// Si la carpeta del día aún no existe, Code.gs responde con files: [] (no crea nada en un GET).
+async function listarArchivosEnCarpeta({ dia, mes, anio }) {
+  const url = `${APPS_SCRIPT_URL}?accion=listar&dia=${dia}&mes=${mes}&anio=${anio}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`No se pudo consultar Drive (HTTP ${resp.status})`);
+  const data = await resp.json();
+  if (!data.ok) throw new Error(data.error || "Error al listar archivos existentes");
+  return data.files; // array de strings (nombres de archivo)
 }
 
-window.addEventListener("load", inicializarAuth);
-
-// -------------------- 2. HELPERS DE DRIVE API v3 --------------------
-
-async function driveFetch(url, opciones = {}) {
-  const resp = await fetch(url, {
-    ...opciones,
-    headers: { ...(opciones.headers || {}), Authorization: `Bearer ${tokenAcceso}` }
-  });
-  if (!resp.ok) {
-    const detalle = await resp.text().catch(() => "");
-    throw new Error(`Drive API ${resp.status}: ${detalle}`);
-  }
-  return resp.json();
-}
-
-// Busca una subcarpeta por nombre dentro de un padre; si no existe, la crea.
-async function buscarOCrearCarpeta(nombre, idPadre) {
-  const q = encodeURIComponent(
-    `name='${nombre.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${idPadre}' in parents and trashed=false`
-  );
-  const listado = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
-  if (listado.files && listado.files.length > 0) return listado.files[0].id;
-
-  const creada = await driveFetch("https://www.googleapis.com/drive/v3/files", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: nombre, mimeType: "application/vnd.google-apps.folder", parents: [idPadre] })
-  });
-  return creada.id;
-}
-
-// Construye (creando si hace falta) la ruta CARPETA_DRIVE/DIA/MES/ANIO y devuelve el ID final.
-async function generarRutaDestino(fecha) {
-  const dia = String(fecha.getDate()).padStart(2, "0");
-  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
-  const anio = String(fecha.getFullYear());
-
-  let idActual = CARPETA_DRIVE;
-  for (const nombre of [dia, mes, anio]) {
-    idActual = await buscarOCrearCarpeta(nombre, idActual);
-  }
-  return idActual;
-}
-
-// Lista todos los archivos .png en una carpeta (paginado).
-async function listarArchivosEnCarpeta(idCarpeta) {
-  let archivos = [];
-  let pageToken = "";
-  do {
-    const q = encodeURIComponent(`'${idCarpeta}' in parents and trashed=false`);
-    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name)&pageSize=1000${pageToken ? `&pageToken=${pageToken}` : ""}`;
-    const resp = await driveFetch(url);
-    archivos = archivos.concat(resp.files || []);
-    pageToken = resp.nextPageToken || "";
-  } while (pageToken);
-  return archivos;
-}
-
-// A partir de los archivos existentes, obtiene el número de captura más alto
-// para la combinación CURSO+GRUPO+TURNO. Esto es lo que sustituye a la variable
-// "let numeroCaptura = 1" — el contador siempre se recalcula desde Drive.
-function obtenerUltimaCaptura(archivos, curso, grupo, turno) {
+// A partir de los nombres existentes, obtiene el número de captura más alto
+// para la combinación CURSO+GRUPO+TURNO. El contador siempre se recalcula
+// desde Drive, nunca depende de una variable en memoria que se pierda al recargar.
+function obtenerUltimaCaptura(nombres, curso, grupo, turno) {
   const prefijo = `${curso}_${grupo}_${turno}_Captura_`;
   const patron = new RegExp(`^${prefijo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d+)_[12]\\.png$`, "i");
   let maximo = 0;
-  for (const archivo of archivos) {
-    const m = archivo.name.match(patron);
+  for (const nombre of nombres) {
+    const m = nombre.match(patron);
     if (m) maximo = Math.max(maximo, parseInt(m[1], 10));
   }
   return maximo; // 0 si no hay capturas previas
 }
 
-// Sube un archivo individual (multipart). Se llama SIEMPRE en secuencia (nunca en Promise.all),
-// que es precisamente lo que evita el bug de renombrado que tenías en Apps Script.
-async function cargarImagen(blob, nombreFinal, idCarpeta) {
-  const metadata = { name: nombreFinal, parents: [idCarpeta] };
-  const boundary = "mosaicos_sdcp_" + Date.now();
-  const delimiter = `\r\n--${boundary}\r\n`;
-  const cierre = `\r\n--${boundary}--`;
-
-  const bufferBlob = await blob.arrayBuffer();
-  const partes = [
-    delimiter, "Content-Type: application/json; charset=UTF-8\r\n\r\n", JSON.stringify(metadata),
-    delimiter, "Content-Type: image/png\r\n\r\n"
-  ].join("");
-
-  const cuerpo = new Blob([partes, bufferBlob, cierre]);
-
-  const resp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${tokenAcceso}`, "Content-Type": `multipart/related; boundary=${boundary}` },
-    body: cuerpo
+function blobABase64(blob) {
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onload = () => resolve(lector.result.split(",")[1]);
+    lector.onerror = reject;
+    lector.readAsDataURL(blob);
   });
-  if (!resp.ok) throw new Error(`Fallo al subir ${nombreFinal}: HTTP ${resp.status}`);
-  return resp.json();
 }
 
-// Verifica en memoria (ya tenemos el listado de la carpeta) que el nombre no exista.
-function verificarArchivoExistente(archivos, nombre) {
-  return archivos.some(a => a.name === nombre);
+// Sube un archivo individual. Se llama SIEMPRE en secuencia (nunca en Promise.all),
+// que es precisamente lo que evita el bug de renombrado que tenías antes: como cada
+// petición espera a que termine la anterior, nunca hay dos escrituras compitiendo
+// por el mismo número de captura. Content-Type: text/plain evita el preflight CORS
+// que Apps Script Web App no maneja bien con application/json.
+async function cargarImagen(blob, nombreFinal, { dia, mes, anio }) {
+  const contenidoBase64 = await blobABase64(blob);
+  const resp = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ dia, mes, anio, nombre: nombreFinal, contenidoBase64 })
+  });
+  if (!resp.ok) throw new Error(`Fallo de red al subir ${nombreFinal} (HTTP ${resp.status})`);
+  const data = await resp.json();
+  return data; // { ok: true, nombre } ó { ok: false, error }
 }
+
+// Verifica en memoria (ya tenemos el listado del día) que el nombre no exista.
+function verificarArchivoExistente(nombres, nombre) {
+  return nombres.includes(nombre);
+}
+
+// -------------------- 2. FORMULARIO Y SELECCIÓN DE ARCHIVOS --------------------
+
+function formularioValido() {
+  const curso = $("curso").value;
+  const grupo = $("grupo").value;
+  const turno = document.querySelector('input[name="turno"]:checked');
+  return curso && grupo && turno;
+}
+
+function agruparImagenes(archivos) {
+  const capturas = [];
+  for (let i = 0; i < archivos.length; i += 2) {
+    capturas.push([archivos[i], archivos[i + 1] || null]);
+  }
+  return capturas;
+}
+
 
 // -------------------- 3. FORMULARIO Y SELECCIÓN DE ARCHIVOS --------------------
 
@@ -530,19 +454,16 @@ async function actualizarResumenPreliminar(totalCapturas) {
   $("rImagenes").textContent = imagenesSeleccionadas.length;
   $("rCapturas").textContent = totalCapturas;
 
-  // Solo consultamos Drive para calcular primera/última captura si ya estamos conectados.
-  if (tokenAcceso) {
-    try {
-      const idCarpeta = await generarRutaDestino(new Date());
-      const archivos = await listarArchivosEnCarpeta(idCarpeta);
-      const ultima = obtenerUltimaCaptura(archivos, curso, grupo, turno);
-      $("rPrimera").textContent = ultima + 1;
-      $("rUltima").textContent = ultima + totalCapturas;
-      $("ultimaCapturaInfo").textContent = `Última captura existente para ${curso} / ${grupo} / ${turno} hoy: ${ultima}`;
-    } catch (e) {
-      $("rPrimera").textContent = "—";
-      $("rUltima").textContent = "—";
-    }
+  try {
+    const nombres = await listarArchivosEnCarpeta(partesFecha(new Date()));
+    const ultima = obtenerUltimaCaptura(nombres, curso, grupo, turno);
+    $("rPrimera").textContent = ultima + 1;
+    $("rUltima").textContent = ultima + totalCapturas;
+    $("ultimaCapturaInfo").textContent = `Última captura existente para ${curso} / ${grupo} / ${turno} hoy: ${ultima}`;
+  } catch (e) {
+    $("rPrimera").textContent = "—";
+    $("rUltima").textContent = "—";
+    $("ultimaCapturaInfo").textContent = "No se pudo consultar Apps Script. Revisa APPS_SCRIPT_URL.";
   }
   resumenBox.classList.remove("d-none");
 }
@@ -554,7 +475,7 @@ function revisarBotonSubir() {
   const btn = $("btnSubir");
   const impar = imagenesSeleccionadas.length % 2 !== 0;
   const invalidosPresentes = !$("avisoFormato").classList.contains("d-none");
-  btn.disabled = subiendo || !formularioValido() || imagenesSeleccionadas.length === 0 || impar || invalidosPresentes || !tokenAcceso;
+  btn.disabled = subiendo || !formularioValido() || imagenesSeleccionadas.length === 0 || impar || invalidosPresentes;
 }
 ["curso", "grupo"].forEach(id => $(id).addEventListener("change", revisarBotonSubir));
 document.querySelectorAll('input[name="turno"]').forEach(r => r.addEventListener("change", revisarBotonSubir));
@@ -582,13 +503,14 @@ $("btnSubir").addEventListener("click", async () => {
   const resultados = []; // { captura, ok, error }
 
   try {
-    const idCarpeta = await generarRutaDestino(fecha);
-    let archivosExistentes = await listarArchivosEnCarpeta(idCarpeta);
+    const infoFecha = partesFecha(fecha);
+    let archivosExistentes = await listarArchivosEnCarpeta(infoFecha);
     let numeroCaptura = obtenerUltimaCaptura(archivosExistentes, curso, grupo, turno);
 
     let subidas = 0;
     // Bucle FOR con await: procesamiento estrictamente en serie.
-    // Esto es lo que elimina el problema de nombres cruzados que tenías con Apps Script.
+    // Esto es lo que elimina el problema de nombres cruzados: nunca hay dos
+    // peticiones a Apps Script compitiendo por el mismo número de captura.
     for (let i = 0; i < capturas.length; i++) {
       const [img1, img2] = capturas[i];
       numeroCaptura += 1;
@@ -598,14 +520,24 @@ $("btnSubir").addEventListener("click", async () => {
           if (!img) continue; // no debería pasar: el botón está deshabilitado si es impar
           let nombreFinal = `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${idx}.png`;
 
-          // Guardia extra anti-colisión: si por cualquier motivo el nombre ya existe, se avanza el número.
+          // Guardia anti-colisión en el cliente (lista que ya tenemos en memoria).
           while (verificarArchivoExistente(archivosExistentes, nombreFinal)) {
             numeroCaptura += 1;
             nombreFinal = `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${idx}.png`;
           }
 
-          await cargarImagen(img, nombreFinal, idCarpeta);
-          archivosExistentes.push({ name: nombreFinal });
+          // Guardia anti-colisión en el servidor: Apps Script también verifica antes de
+          // guardar y responde { ok:false, error:"exists" } si alguien más ya usó ese nombre
+          // (por ejemplo, otra pestaña/sesión). Si pasa, se reintenta con el siguiente número.
+          let resultadoSubida = await cargarImagen(img, nombreFinal, infoFecha);
+          while (!resultadoSubida.ok && resultadoSubida.error === "exists") {
+            numeroCaptura += 1;
+            nombreFinal = `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${idx}.png`;
+            resultadoSubida = await cargarImagen(img, nombreFinal, infoFecha);
+          }
+          if (!resultadoSubida.ok) throw new Error(resultadoSubida.error || "Error desconocido al subir");
+
+          archivosExistentes.push(nombreFinal);
 
           subidas++;
           const pct = Math.round((subidas / total) * 100);
@@ -683,14 +615,8 @@ function mostrarToast(mensaje, tipo) {
   el.addEventListener("hidden.bs.toast", () => el.remove());
 }
 
-// -------------------- 7. Mostrar/ocultar panel de subida según conexión --------------------
-
-const observador = new MutationObserver(() => {
-  const conectado = $("estadoConexion").classList.contains("conectado");
-  $("panelSubida").style.display = conectado ? "block" : "none";
-  revisarBotonSubir();
-});
-observador.observe($("estadoConexion"), { attributes: true, attributeFilter: ["class"] });
+// Estado inicial del botón al cargar la página.
+revisarBotonSubir();
 
 </script>
 </body>
