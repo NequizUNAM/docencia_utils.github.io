@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mosaicos SDCP — Página 7</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<!-- Google Identity Services: reemplaza el flujo de Apps Script. Sin backend, sin secretos en el HTML. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<style>
+  body { background-color:#ffffff; color:#1a1a2e; display:flex; flex-direction:column; min-height:100vh; }
+  .page-hero { background: linear-gradient(135deg, #001f5b, #1a1a2e); color:#fff; padding:48px 20px; }
+  .badge-pagina { background:#ffffff22; border:1px solid #ffffff55; font-weight:600; letter-spacing:.02em; }
+
+  .estado-conexion { border-radius:.5rem; }
+  .estado-conexion.conectado { background:#e7f6ec; border:1px solid #b6e3c6; color:#1c6b34; }
+  .estado-conexion.desconectado { background:#fdeeee; border:1px solid #f3c2c2; color:#8a2c2c; }
+
+  .dropzone {
+    border:2px dashed #a9b4d0; border-radius:.75rem; padding:36px 16px; text-align:center;
+    background:#f7f9fd; cursor:pointer; transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone.dragover { border-color:#001f5b; background:#eef2fb; }
+  .dropzone i { font-size:2rem; color:#001f5b; }
+
+  .captura-card { border:1px solid #e3e7f0; border-radius:.75rem; overflow:hidden; background:#fff; }
+  .captura-card .captura-header {
+    background:#f2f4fa; padding:.5rem .9rem; font-weight:600; font-size:.9rem; color:#001f5b;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .captura-thumbs { display:flex; gap:2px; }
+  .captura-thumbs img { width:50%; height:140px; object-fit:cover; display:block; }
+  .captura-card .estado-icono { font-size:1rem; }
+  .estado-icono.pendiente { color:#8a94ab; }
+  .estado-icono.subiendo { color:#0d6efd; }
+  .estado-icono.ok { color:#1c6b34; }
+  .estado-icono.error { color:#c0392b; }
+
+  .resumen-box { background:#f7f9fd; border:1px solid #e3e7f0; border-radius:.75rem; padding:1rem 1.25rem; }
+  .toast-container { z-index:1080; }
+  .paso-desactivado { opacity:.55; pointer-events:none; }
+
+  #panelSubida { display:none; }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER (sin modificar) ===== -->
+<nav class="navbar navbar-expand-lg sticky-top shadow-sm" style="background-color: #001f5b;" data-bs-theme="dark">
+  <div class="container-fluid px-3 px-lg-4">
+    <a class="navbar-brand fw-bold d-flex align-items-center me-4" href="index.html">
+      <i class="bi bi-shield-check me-2 fs-4"></i>
+      <span>DGTIC</span>
+    </a>
+    <button class="navbar-toggler border-0 shadow-none" type="button"
+            data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar"
+            aria-controls="offcanvasNavbar" aria-label="Abrir menú">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+      <div class="offcanvas-header border-bottom border-secondary">
+        <h5 class="offcanvas-title fw-bold text-white" id="offcanvasNavbarLabel">
+          <i class="bi bi-compass me-2"></i>MENÚ DE NAVEGACIÓN
+        </h5>
+        <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+      </div>
+      <div class="offcanvas-body">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-lg-1">
+          <li class="nav-item">
+            <a class="nav-link text-white fw-semibold px-3" href="index.html">
+              <i class="bi bi-house-door me-1"></i> INICIO
+            </a>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-white fw-semibold px-3" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-folder-check me-1"></i> REGISTROS
+            </a>
+            <ul class="dropdown-menu shadow border-0">
+              <li><a class="dropdown-item py-2" href="pagina6-asistencias.html"><i class="bi bi-person-check text-primary me-2"></i> Asistencias SDPC</a></li>
+              <li><a class="dropdown-item py-2" href="pagina1-formulario.html"><i class="bi bi-ui-checks text-primary me-2"></i> Formulario Principal</a></li>
+              <li><a class="dropdown-item py-2 active" href="pagina7-mosaicos-sdcp.html"><i class="bi bi-grid-3x3-gap text-primary me-2"></i> Mosaicos SDCP</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-white fw-semibold px-3" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-tools me-1"></i> HERRAMIENTAS
+            </a>
+            <ul class="dropdown-menu shadow border-0">
+              <li><a class="dropdown-item py-2" href="pagina2-convertidor-drive.html"><i class="bi bi-images text-primary me-2"></i> Convertidor INE / Fotos</a></li>
+              <li><a class="dropdown-item py-2" href="pagina3-pdf.html"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> Documento PDF</a></li>
+              <li><a class="dropdown-item py-2" href="pagina5-iframe.html"><i class="bi bi-map text-success me-2"></i> Mapa / Embed</a></li>
+            </ul>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white fw-semibold px-3" href="pagina4-itinerario.html">
+              <i class="bi bi-calendar3 me-1"></i> ITINERARIO
+            </a>
+          </li>
+        </ul>
+        <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0 pt-3 pt-lg-0 border-top border-lg-0">
+          <a href="manual.html" class="btn btn-outline-light btn-sm fw-semibold w-100 w-lg-auto px-3">
+            <i class="bi bi-book me-1"></i> Manual de Uso
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="flex-grow-1 py-4">
+
+  <div class="page-hero text-center">
+    <span class="badge badge-pagina rounded-pill px-3 py-2 mb-2">PÁGINA 7</span>
+    <h1 class="display-6 fw-bold mb-1">Mosaicos SDCP</h1>
+    <p class="lead mb-0">Carga y organización de imágenes por captura, con numeración continua en Google Drive</p>
+  </div>
+
+  <div class="container my-4" style="max-width: 900px;">
+
+    <!-- Estado de conexión con Drive -->
+    <div id="estadoConexion" class="estado-conexion desconectado d-flex align-items-center justify-content-between p-3 mb-4">
+      <div>
+        <i class="bi bi-google me-2"></i>
+        <strong id="estadoConexionTexto">No conectado a Google Drive</strong>
+        <div class="small mt-1">Necesitas iniciar sesión con tu cuenta de Google para poder subir imágenes.</div>
+      </div>
+      <button id="btnConectar" class="btn btn-primary">
+        <i class="bi bi-box-arrow-in-right me-1"></i> Conectar con Google Drive
+      </button>
+    </div>
+
+    <!-- ===== FORMULARIO ===== -->
+    <form id="formMosaicos" class="mb-4 paso-desactivado" novalidate>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label for="curso" class="form-label fw-semibold">Curso</label>
+          <select id="curso" class="form-select" required>
+            <option value="" selected disabled>Seleccione un curso</option>
+            <option>ADOB</option><option>ADOI</option><option>HTICIPB</option><option>HTICIPI</option>
+            <option>MBCIWB</option><option>MBCIWI</option><option>MEB</option><option>MEI</option>
+            <option>MWB</option><option>MWI</option><option>PMIWEB</option><option>PMIWEI</option>
+            <option>SMECI</option><option>TCNI</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold d-block">Turno</label>
+          <div class="d-flex gap-3 pt-2">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="turno" id="turnoMatutino" value="MATUTINO" required>
+              <label class="form-check-label" for="turnoMatutino">Matutino</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="turno" id="turnoVespertino" value="VESPERTINO" required>
+              <label class="form-check-label" for="turnoVespertino">Vespertino</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label for="grupo" class="form-label fw-semibold">Grupo</label>
+          <select id="grupo" class="form-select" required>
+            <option value="" selected disabled>Seleccione un grupo</option>
+            <option>gpo01</option><option>gpo02</option><option>gpo03</option><option>gpo04</option><option>gpo05</option>
+          </select>
+        </div>
+      </div>
+    </form>
+
+    <!-- ===== ZONA DE CARGA ===== -->
+    <div id="panelSubida">
+
+      <div id="ultimaCapturaInfo" class="small text-muted mb-2"></div>
+
+      <label id="dropzone" class="dropzone d-block mb-3" for="inputImagenes">
+        <i class="bi bi-cloud-arrow-up d-block mb-2"></i>
+        <strong>Arrastra imágenes .PNG aquí</strong> o haz clic para seleccionar
+        <div class="small text-muted mt-1">Puedes seleccionar cualquier cantidad de imágenes. Se agrupan de 2 en 2 por captura.</div>
+        <input type="file" id="inputImagenes" accept=".png,image/png" multiple hidden>
+      </label>
+
+      <div id="avisoImpar" class="alert alert-warning d-none">
+        Debe seleccionar un número par de imágenes porque cada captura requiere exactamente 2 imágenes.
+      </div>
+      <div id="avisoFormato" class="alert alert-danger d-none"></div>
+
+      <!-- Vista previa agrupada por captura -->
+      <div id="listaCapturas" class="row row-cols-2 row-cols-md-3 g-3 mb-3"></div>
+
+      <!-- Resumen -->
+      <div id="resumenBox" class="resumen-box mb-3 d-none">
+        <h6 class="fw-bold mb-2"><i class="bi bi-clipboard-check me-1"></i> Resumen</h6>
+        <div class="row small">
+          <div class="col-6 col-md-3"><span class="text-muted">Curso:</span> <span id="rCurso">—</span></div>
+          <div class="col-6 col-md-3"><span class="text-muted">Turno:</span> <span id="rTurno">—</span></div>
+          <div class="col-6 col-md-3"><span class="text-muted">Grupo:</span> <span id="rGrupo">—</span></div>
+          <div class="col-6 col-md-3"><span class="text-muted">Imágenes:</span> <span id="rImagenes">0</span></div>
+        </div>
+        <div class="row small mt-2">
+          <div class="col-6 col-md-4"><span class="text-muted">Capturas a generar:</span> <span id="rCapturas">0</span></div>
+          <div class="col-6 col-md-4"><span class="text-muted">Primera captura:</span> <span id="rPrimera">—</span></div>
+          <div class="col-6 col-md-4"><span class="text-muted">Última captura:</span> <span id="rUltima">—</span></div>
+        </div>
+      </div>
+
+      <div id="progresoBox" class="mb-3 d-none">
+        <div class="progress" role="progressbar" style="height:1.25rem;">
+          <div id="barraProgreso" class="progress-bar" style="width:0%">0%</div>
+        </div>
+        <div id="progresoTexto" class="small text-muted mt-1">Cargando 0 de 0...</div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button id="btnSubir" class="btn btn-success" disabled>
+          <i class="bi bi-upload me-1"></i> Cargar imágenes
+        </button>
+        <button id="btnLimpiar" class="btn btn-outline-secondary" type="button">
+          <i class="bi bi-x-circle me-1"></i> Limpiar selección
+        </button>
+      </div>
+
+      <!-- Resultado -->
+      <div id="resultadoBox" class="mt-4 d-none">
+        <h6 class="fw-bold" id="resultadoTitulo"></h6>
+        <ul id="resultadoLista" class="list-group list-group-flush small"></ul>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<!-- ===== FOOTER (sin modificar) ===== -->
+<footer class="bg-dark text-white text-center py-3 mt-auto">
+  <div class="container">
+    <small>&copy; 2026 MiSitio. Todos los derechos reservados.</small>
+  </div>
+</footer>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* =====================================================================
+   PÁGINA 7 — MOSAICOS SDCP
+   Sin Apps Script. Toda la lógica corre en el navegador y sube directo
+   a Google Drive vía la API REST (Drive v3) usando OAuth de Google
+   Identity Services (GIS). No hay backend ni secretos en este archivo:
+   el CLIENT_ID de OAuth es público por diseño (no es una API key
+   secreta), pero debe estar restringido a tu dominio en Google Cloud
+   Console (APIs & Services > Credentials > Authorized JavaScript
+   origins).
+   ===================================================================== */
+
+// -------------------- CONFIGURACIÓN (editar aquí) --------------------
+
+// Carpeta raíz en Google Drive (tomada de tu enlace):
+// https://drive.google.com/drive/folders/1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp
+const CARPETA_DRIVE = "1wANpKZvUpoSGIVAUtzhSJgx31YTkWIEp";
+
+// OAuth Client ID (Google Cloud Console > Credentials > OAuth client ID > Web application).
+// Debe tener este sitio en "Authorized JavaScript origins". NO es secreto, pero restríngelo por dominio.
+const CLIENT_ID = "TU_CLIENT_ID.apps.googleusercontent.com"; // <-- CONFIGURAR
+
+// Permiso solicitado. "drive" (amplio) es necesario aquí porque el script debe poder
+// LEER capturas que ya existan en la carpeta (para no reiniciar el contador ni sobrescribir),
+// no solo crear archivos nuevos. Si más adelante solo subes desde aquí y nunca necesitas leer
+// archivos creados por otro medio, puedes reducirlo a "drive.file".
+const SCOPES = "https://www.googleapis.com/auth/drive";
+
+// Estructura de carpetas solicitada: CARPETA_DRIVE / DIA / MES / ANIO / archivo.png
+// (el curso/grupo/turno ya quedan identificados en el propio nombre del archivo)
+
+// -------------------- ESTADO EN MEMORIA --------------------
+
+let tokenAcceso = null;          // token OAuth vigente (memoria, nunca persistido)
+let clienteToken = null;         // cliente GIS
+let imagenesSeleccionadas = [];  // File[] en el orden en que fueron elegidas
+let subiendo = false;
+
+const $ = (id) => document.getElementById(id);
+
+// -------------------- 1. AUTENTICACIÓN (reemplaza a Apps Script) --------------------
+
+function inicializarAuth() {
+  clienteToken = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) {
+        mostrarToast("No se pudo conectar con Google Drive.", "danger");
+        return;
+      }
+      tokenAcceso = resp.access_token;
+      actualizarEstadoConexion(true);
+    }
+  });
+}
+
+$("btnConectar").addEventListener("click", () => {
+  if (!clienteToken) { mostrarToast("Configura CLIENT_ID antes de continuar.", "danger"); return; }
+  clienteToken.requestAccessToken({ prompt: tokenAcceso ? "" : "consent" });
+});
+
+function actualizarEstadoConexion(conectado) {
+  const box = $("estadoConexion");
+  const btn = $("btnConectar");
+  const form = $("formMosaicos");
+  box.classList.toggle("conectado", conectado);
+  box.classList.toggle("desconectado", !conectado);
+  $("estadoConexionTexto").textContent = conectado
+    ? "Conectado a Google Drive"
+    : "No conectado a Google Drive";
+  btn.textContent = conectado ? "Reconectar" : "Conectar con Google Drive";
+  form.classList.toggle("paso-desactivado", !conectado);
+}
+
+window.addEventListener("load", inicializarAuth);
+
+// -------------------- 2. HELPERS DE DRIVE API v3 --------------------
+
+async function driveFetch(url, opciones = {}) {
+  const resp = await fetch(url, {
+    ...opciones,
+    headers: { ...(opciones.headers || {}), Authorization: `Bearer ${tokenAcceso}` }
+  });
+  if (!resp.ok) {
+    const detalle = await resp.text().catch(() => "");
+    throw new Error(`Drive API ${resp.status}: ${detalle}`);
+  }
+  return resp.json();
+}
+
+// Busca una subcarpeta por nombre dentro de un padre; si no existe, la crea.
+async function buscarOCrearCarpeta(nombre, idPadre) {
+  const q = encodeURIComponent(
+    `name='${nombre.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${idPadre}' in parents and trashed=false`
+  );
+  const listado = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
+  if (listado.files && listado.files.length > 0) return listado.files[0].id;
+
+  const creada = await driveFetch("https://www.googleapis.com/drive/v3/files", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: nombre, mimeType: "application/vnd.google-apps.folder", parents: [idPadre] })
+  });
+  return creada.id;
+}
+
+// Construye (creando si hace falta) la ruta CARPETA_DRIVE/DIA/MES/ANIO y devuelve el ID final.
+async function generarRutaDestino(fecha) {
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const anio = String(fecha.getFullYear());
+
+  let idActual = CARPETA_DRIVE;
+  for (const nombre of [dia, mes, anio]) {
+    idActual = await buscarOCrearCarpeta(nombre, idActual);
+  }
+  return idActual;
+}
+
+// Lista todos los archivos .png en una carpeta (paginado).
+async function listarArchivosEnCarpeta(idCarpeta) {
+  let archivos = [];
+  let pageToken = "";
+  do {
+    const q = encodeURIComponent(`'${idCarpeta}' in parents and trashed=false`);
+    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name)&pageSize=1000${pageToken ? `&pageToken=${pageToken}` : ""}`;
+    const resp = await driveFetch(url);
+    archivos = archivos.concat(resp.files || []);
+    pageToken = resp.nextPageToken || "";
+  } while (pageToken);
+  return archivos;
+}
+
+// A partir de los archivos existentes, obtiene el número de captura más alto
+// para la combinación CURSO+GRUPO+TURNO. Esto es lo que sustituye a la variable
+// "let numeroCaptura = 1" — el contador siempre se recalcula desde Drive.
+function obtenerUltimaCaptura(archivos, curso, grupo, turno) {
+  const prefijo = `${curso}_${grupo}_${turno}_Captura_`;
+  const patron = new RegExp(`^${prefijo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d+)_[12]\\.png$`, "i");
+  let maximo = 0;
+  for (const archivo of archivos) {
+    const m = archivo.name.match(patron);
+    if (m) maximo = Math.max(maximo, parseInt(m[1], 10));
+  }
+  return maximo; // 0 si no hay capturas previas
+}
+
+// Sube un archivo individual (multipart). Se llama SIEMPRE en secuencia (nunca en Promise.all),
+// que es precisamente lo que evita el bug de renombrado que tenías en Apps Script.
+async function cargarImagen(blob, nombreFinal, idCarpeta) {
+  const metadata = { name: nombreFinal, parents: [idCarpeta] };
+  const boundary = "mosaicos_sdcp_" + Date.now();
+  const delimiter = `\r\n--${boundary}\r\n`;
+  const cierre = `\r\n--${boundary}--`;
+
+  const bufferBlob = await blob.arrayBuffer();
+  const partes = [
+    delimiter, "Content-Type: application/json; charset=UTF-8\r\n\r\n", JSON.stringify(metadata),
+    delimiter, "Content-Type: image/png\r\n\r\n"
+  ].join("");
+
+  const cuerpo = new Blob([partes, bufferBlob, cierre]);
+
+  const resp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${tokenAcceso}`, "Content-Type": `multipart/related; boundary=${boundary}` },
+    body: cuerpo
+  });
+  if (!resp.ok) throw new Error(`Fallo al subir ${nombreFinal}: HTTP ${resp.status}`);
+  return resp.json();
+}
+
+// Verifica en memoria (ya tenemos el listado de la carpeta) que el nombre no exista.
+function verificarArchivoExistente(archivos, nombre) {
+  return archivos.some(a => a.name === nombre);
+}
+
+// -------------------- 3. FORMULARIO Y SELECCIÓN DE ARCHIVOS --------------------
+
+function formularioValido() {
+  const curso = $("curso").value;
+  const grupo = $("grupo").value;
+  const turno = document.querySelector('input[name="turno"]:checked');
+  return curso && grupo && turno;
+}
+
+function agruparImagenes(archivos) {
+  const capturas = [];
+  for (let i = 0; i < archivos.length; i += 2) {
+    capturas.push([archivos[i], archivos[i + 1] || null]);
+  }
+  return capturas;
+}
+
+function validarArchivos(archivos) {
+  const invalidos = archivos.filter(f => {
+    const extOk = /\.png$/i.test(f.name);
+    const mimeOk = !f.type || f.type === "image/png"; // algunos navegadores no reportan MIME
+    return !(extOk && mimeOk);
+  });
+  return invalidos;
+}
+
+function agregarImagenes(nuevosArchivos) {
+  const invalidos = validarArchivos(nuevosArchivos);
+  const avisoFormato = $("avisoFormato");
+  if (invalidos.length > 0) {
+    avisoFormato.textContent = `Estos archivos no son .PNG válidos y no fueron agregados: ${invalidos.map(f => f.name).join(", ")}`;
+    avisoFormato.classList.remove("d-none");
+  } else {
+    avisoFormato.classList.add("d-none");
+  }
+  const validos = nuevosArchivos.filter(f => !invalidos.includes(f));
+  imagenesSeleccionadas = imagenesSeleccionadas.concat(validos);
+  mostrarVistaPrevia();
+  revisarBotonSubir();
+}
+
+$("inputImagenes").addEventListener("change", (e) => {
+  agregarImagenes(Array.from(e.target.files));
+  e.target.value = ""; // permite volver a seleccionar los mismos archivos si hace falta
+});
+
+const dropzone = $("dropzone");
+["dragenter", "dragover"].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("dragover"); }));
+["dragleave", "drop"].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("dragover"); }));
+dropzone.addEventListener("drop", (e) => {
+  const archivos = Array.from(e.dataTransfer.files || []);
+  if (archivos.length) agregarImagenes(archivos);
+});
+
+$("btnLimpiar").addEventListener("click", () => {
+  imagenesSeleccionadas = [];
+  mostrarVistaPrevia();
+  revisarBotonSubir();
+});
+
+// -------------------- 4. VISTA PREVIA + RESUMEN --------------------
+
+function mostrarVistaPrevia() {
+  const cont = $("listaCapturas");
+  cont.innerHTML = "";
+  const avisoImpar = $("avisoImpar");
+  const impar = imagenesSeleccionadas.length % 2 !== 0;
+  avisoImpar.classList.toggle("d-none", !impar || imagenesSeleccionadas.length === 0);
+
+  const capturas = agruparImagenes(imagenesSeleccionadas);
+
+  capturas.forEach((par, idx) => {
+    const col = document.createElement("div");
+    col.className = "col";
+    const completa = par[1] !== null;
+    col.innerHTML = `
+      <div class="captura-card">
+        <div class="captura-header">
+          <span>Captura ${idx + 1}</span>
+          <i class="bi ${completa ? "bi-clock-history estado-icono pendiente" : "bi-exclamation-triangle-fill estado-icono error"}" data-captura="${idx}"></i>
+        </div>
+        <div class="captura-thumbs">
+          <img src="${URL.createObjectURL(par[0])}" alt="Imagen 1">
+          ${completa ? `<img src="${URL.createObjectURL(par[1])}" alt="Imagen 2">` : `<div class="d-flex align-items-center justify-content-center bg-light text-muted small" style="width:50%;">falta img. 2</div>`}
+        </div>
+      </div>`;
+    cont.appendChild(col);
+  });
+
+  actualizarResumenPreliminar(capturas.length);
+}
+
+async function actualizarResumenPreliminar(totalCapturas) {
+  const resumenBox = $("resumenBox");
+  if (imagenesSeleccionadas.length === 0 || !formularioValido()) {
+    resumenBox.classList.add("d-none");
+    return;
+  }
+  const curso = $("curso").value;
+  const grupo = $("grupo").value;
+  const turno = document.querySelector('input[name="turno"]:checked').value;
+
+  $("rCurso").textContent = curso;
+  $("rTurno").textContent = turno;
+  $("rGrupo").textContent = grupo;
+  $("rImagenes").textContent = imagenesSeleccionadas.length;
+  $("rCapturas").textContent = totalCapturas;
+
+  // Solo consultamos Drive para calcular primera/última captura si ya estamos conectados.
+  if (tokenAcceso) {
+    try {
+      const idCarpeta = await generarRutaDestino(new Date());
+      const archivos = await listarArchivosEnCarpeta(idCarpeta);
+      const ultima = obtenerUltimaCaptura(archivos, curso, grupo, turno);
+      $("rPrimera").textContent = ultima + 1;
+      $("rUltima").textContent = ultima + totalCapturas;
+      $("ultimaCapturaInfo").textContent = `Última captura existente para ${curso} / ${grupo} / ${turno} hoy: ${ultima}`;
+    } catch (e) {
+      $("rPrimera").textContent = "—";
+      $("rUltima").textContent = "—";
+    }
+  }
+  resumenBox.classList.remove("d-none");
+}
+
+["curso", "grupo"].forEach(id => $(id).addEventListener("change", mostrarVistaPrevia));
+document.querySelectorAll('input[name="turno"]').forEach(r => r.addEventListener("change", mostrarVistaPrevia));
+
+function revisarBotonSubir() {
+  const btn = $("btnSubir");
+  const impar = imagenesSeleccionadas.length % 2 !== 0;
+  const invalidosPresentes = !$("avisoFormato").classList.contains("d-none");
+  btn.disabled = subiendo || !formularioValido() || imagenesSeleccionadas.length === 0 || impar || invalidosPresentes || !tokenAcceso;
+}
+["curso", "grupo"].forEach(id => $(id).addEventListener("change", revisarBotonSubir));
+document.querySelectorAll('input[name="turno"]').forEach(r => r.addEventListener("change", revisarBotonSubir));
+
+// -------------------- 5. CARGA (secuencial, sin Promise.all) --------------------
+
+$("btnSubir").addEventListener("click", async () => {
+  if (subiendo) return;
+  subiendo = true;
+  revisarBotonSubir();
+  $("btnSubir").innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Cargando...`;
+
+  const curso = $("curso").value;
+  const grupo = $("grupo").value;
+  const turno = document.querySelector('input[name="turno"]:checked').value;
+  const fecha = new Date();
+  const capturas = agruparImagenes(imagenesSeleccionadas);
+  const total = imagenesSeleccionadas.length;
+
+  const progresoBox = $("progresoBox");
+  const barra = $("barraProgreso");
+  const progresoTexto = $("progresoTexto");
+  progresoBox.classList.remove("d-none");
+
+  const resultados = []; // { captura, ok, error }
+
+  try {
+    const idCarpeta = await generarRutaDestino(fecha);
+    let archivosExistentes = await listarArchivosEnCarpeta(idCarpeta);
+    let numeroCaptura = obtenerUltimaCaptura(archivosExistentes, curso, grupo, turno);
+
+    let subidas = 0;
+    // Bucle FOR con await: procesamiento estrictamente en serie.
+    // Esto es lo que elimina el problema de nombres cruzados que tenías con Apps Script.
+    for (let i = 0; i < capturas.length; i++) {
+      const [img1, img2] = capturas[i];
+      numeroCaptura += 1;
+
+      try {
+        for (const [idx, img] of [[1, img1], [2, img2]]) {
+          if (!img) continue; // no debería pasar: el botón está deshabilitado si es impar
+          let nombreFinal = `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${idx}.png`;
+
+          // Guardia extra anti-colisión: si por cualquier motivo el nombre ya existe, se avanza el número.
+          while (verificarArchivoExistente(archivosExistentes, nombreFinal)) {
+            numeroCaptura += 1;
+            nombreFinal = `${curso}_${grupo}_${turno}_Captura_${numeroCaptura}_${idx}.png`;
+          }
+
+          await cargarImagen(img, nombreFinal, idCarpeta);
+          archivosExistentes.push({ name: nombreFinal });
+
+          subidas++;
+          const pct = Math.round((subidas / total) * 100);
+          barra.style.width = pct + "%";
+          barra.textContent = pct + "%";
+          progresoTexto.textContent = `Cargando ${subidas} de ${total}...`;
+        }
+        resultados.push({ captura: numeroCaptura, ok: true });
+        actualizarIconoCaptura(i, "ok");
+      } catch (errCaptura) {
+        resultados.push({ captura: numeroCaptura, ok: false, error: errCaptura.message });
+        actualizarIconoCaptura(i, "error");
+      }
+    }
+
+    progresoTexto.textContent = `Carga completada: ${subidas} imágenes / ${capturas.length} capturas.`;
+    mostrarResultado(curso, grupo, turno, subidas, resultados);
+    mostrarToast("Carga completada.", "success");
+
+    // Reinicio parcial: conserva curso/turno/grupo, limpia solo imágenes (regla 26).
+    imagenesSeleccionadas = [];
+    mostrarVistaPrevia();
+
+  } catch (errGeneral) {
+    mostrarToast(`Error durante la carga: ${errGeneral.message}`, "danger");
+  } finally {
+    subiendo = false;
+    $("btnSubir").innerHTML = `<i class="bi bi-upload me-1"></i> Cargar imágenes`;
+    revisarBotonSubir();
+  }
+});
+
+function actualizarIconoCaptura(idx, estado) {
+  const icono = document.querySelector(`i[data-captura="${idx}"]`);
+  if (!icono) return;
+  icono.className = `bi ${estado === "ok" ? "bi-check-circle-fill" : "bi-x-circle-fill"} estado-icono ${estado}`;
+}
+
+function mostrarResultado(curso, grupo, turno, subidas, resultados) {
+  const box = $("resultadoBox");
+  const titulo = $("resultadoTitulo");
+  const lista = $("resultadoLista");
+  const huboErrores = resultados.some(r => !r.ok);
+
+  titulo.innerHTML = huboErrores
+    ? `<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i> Carga completada con errores`
+    : `<i class="bi bi-check-circle-fill text-success me-1"></i> Carga completada correctamente`;
+
+  lista.innerHTML = `
+    <li class="list-group-item">Curso: <strong>${curso}</strong> — Grupo: <strong>${grupo}</strong> — Turno: <strong>${turno}</strong></li>
+    <li class="list-group-item">Imágenes cargadas: <strong>${subidas}</strong></li>
+  ` + resultados.map(r =>
+    `<li class="list-group-item d-flex justify-content-between">
+       <span>Captura ${r.captura}</span>
+       <span class="${r.ok ? "text-success" : "text-danger"}">${r.ok ? "OK" : "Error: " + r.error}</span>
+     </li>`
+  ).join("");
+
+  box.classList.remove("d-none");
+}
+
+// -------------------- 6. UTILIDAD: TOASTS --------------------
+
+function mostrarToast(mensaje, tipo) {
+  const cont = $("toastContainer");
+  const el = document.createElement("div");
+  el.className = `toast align-items-center text-bg-${tipo} border-0`;
+  el.setAttribute("role", "alert");
+  el.innerHTML = `<div class="d-flex">
+      <div class="toast-body">${mensaje}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>`;
+  cont.appendChild(el);
+  new bootstrap.Toast(el, { delay: 4000 }).show();
+  el.addEventListener("hidden.bs.toast", () => el.remove());
+}
+
+// -------------------- 7. Mostrar/ocultar panel de subida según conexión --------------------
+
+const observador = new MutationObserver(() => {
+  const conectado = $("estadoConexion").classList.contains("conectado");
+  $("panelSubida").style.display = conectado ? "block" : "none";
+  revisarBotonSubir();
+});
+observador.observe($("estadoConexion"), { attributes: true, attributeFilter: ["class"] });
+
+</script>
+</body>
+</html>
