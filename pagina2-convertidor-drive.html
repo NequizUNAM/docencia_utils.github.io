@@ -453,6 +453,11 @@
               </div>
             </div>
 
+            <button id="downloadIneBtn" class="btn btn-outline-marino w-100 d-none shadow-sm">
+              <i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive
+            </button>
+            <div id="ineStatus" class="mt-2 text-center small"></div>
+
 <!-- ===============================
      PANEL DE VALIDACIÓN DOCUMENTAL OCR
      =============================== -->
@@ -470,11 +475,6 @@
   <div id="ineOcrResultado"></div>
 
 </div>
-
-            <button id="downloadIneBtn" class="btn btn-outline-marino w-100 d-none shadow-sm">
-              <i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive
-            </button>
-            <div id="ineStatus" class="mt-2 text-center small"></div>
           </div>
         </div>
 
@@ -2094,319 +2094,52 @@ if (data.found) {
         <div class="row g-2">
 
           <div class="col-12 col-md-6">
-            <div class="ocr-face">
-              <div class="ocr-face-title">
-                <i class="bi bi-credit-card-2-front me-1"></i> FRENTE
-              </div>
-
-              <div class="ocr-field">
-                <span class="ocr-label">Características</span>
-                <span class="ocr-value">
-                  ${renderBadgeResultado_(
-                    `${datos.frente.puntos}/100`,
-                    datos.frente.puntos >= 55,
-                    datos.frente.puntos >= 40
-                  )}
-                </span>
-              </div>
-
-              <div class="ocr-field">
-                <span class="ocr-label">OCR</span>
-                <span class="ocr-value">
-                  ${renderBadgeResultado_(
-                    `${datos.frente.confidence}%`,
-                    datos.frente.confidence >= 75,
-                    datos.frente.confidence >= 55
-                  )}
-                </span>
-              </div>
-
-              <div class="ocr-field">
-                <span class="ocr-label">Nombre</span>
-                <span class="ocr-value">
-                  ${
-                    datos.nombre
-                      ? escapeHtml(datos.nombre)
-                      : '<span class="text-muted">No identificado</span>'
-                  }
-                </span>
-              </div>
-
-              <div class="ocr-field">
-                <span class="ocr-label">Registro</span>
-                <span class="ocr-value">
-                  ${
-                    datos.nombreRegistro.determinable
-                      ? renderBadgeResultado_(
-                          `${datos.nombreRegistro.porcentaje}% · ${datos.nombreRegistro.nivel}`,
-                          datos.nombreRegistro.porcentaje >= 90,
-                          datos.nombreRegistro.porcentaje >= 70
-                        )
-                      : '<span class="text-muted">Sin nombre de folio</span>'
-                  }
-                </span>
-              </div>
-
-              <div class="ocr-field">
-                <span class="ocr-label">Nacimiento</span>
-                <span class="ocr-value">
-                  ${
-                    datos.fechaNacimientoIne.encontrada
-                      ? escapeHtml(datos.fechaNacimientoIne.texto)
-                      : '<span class="text-muted">No identificado</span>'
-                  }
-                </span>
-              </div>
-
-              <div class="ocr-field">
-                <span class="ocr-label">Sexo</span>
-                <span class="ocr-value">
-                  ${
-                    datos.sexoIne.encontrada
-                      ? `<span class="badge bg-secondary">${escapeHtml(datos.sexoIne.sexo)}</span>`
-                      : '<span class="text-muted">No identificado</span>'
-                  }
-                </span>
-              </div>
-            </div>
+            <strong>Nombre detectado (frente):</strong><br>
+            ${
+              datos.nombre
+                ? escapeHtml(datos.nombre)
+                : '<span class="text-muted">No se pudo detectar, verifique manualmente</span>'
+            }
           </div>
 
           <div class="col-12 col-md-6">
-            <div class="ocr-face">
-              <div class="ocr-face-title">
-                <i class="bi bi-credit-card me-1"></i> REVERSO
-              </div>
+            <strong>CURP detectado:</strong><br>
+            ${
+              datos.curp
+                ? `<span class="badge bg-secondary">${escapeHtml(datos.curp)}</span>`
+                : '<span class="text-muted">No se pudo detectar</span>'
+            }
+          </div>
 
-              <div class="ocr-field">
-                <span class="ocr-label">Características</span>
-                <span class="ocr-value">
-                  ${renderBadgeResultado_(
-                    `${datos.reverso.puntos}/100`,
-                    datos.reverso.puntos >= 35,
-                    datos.reverso.puntos >= 20
-                  )}
-                </span>
-              </div>
+          <div class="col-12 col-md-6">
+            <strong>Vigencia:</strong><br>
+            ${
+              datos.vigencia.encontrada
+                ? datos.vigencia.vigente
+                  ? `<span class="badge bg-success">Vigente (hasta ${datos.vigencia.anioFin})</span>`
+                  : `<span class="badge bg-danger">Vencida (${datos.vigencia.anioFin})</span>`
+                : '<span class="text-muted">No se pudo determinar</span>'
+            }
+          </div>
 
-              <div class="ocr-field">
-                <span class="ocr-label">OCR</span>
-                <span class="ocr-value">
-                  ${renderBadgeResultado_(
-                    `${datos.reverso.confidence}%`,
-                    datos.reverso.confidence >= 75,
-                    datos.reverso.confidence >= 55
-                  )}
-                </span>
-              </div>
-
-              <div class="ocr-field">
-                <span class="ocr-label">CURP</span>
-                <span class="ocr-value">
-                  ${
-                    datos.curp
-                      ? `<span class="badge bg-secondary">${escapeHtml(datos.curp)}</span>`
-                      : '<span class="text-muted">No identificada</span>'
-                  }
-                </span>
-              </div>
-
-              <div class="ocr-field">
-                <span class="ocr-label">Dígito verificador</span>
-                <span class="ocr-value">
-                  ${
-                    datos.curp
-                      ? renderBadgeResultado_(
-                          curpCheck.digitoVerificador
-                            ? "Correcto"
-                            : "No coincide",
-                          curpCheck.digitoVerificador,
-                          !curpCheck.digitoVerificador
-                        )
-                      : '<span class="text-muted">No determinable</span>'
-                  }
-                </span>
-              </div>
-
-              <div class="ocr-field">
-                <span class="ocr-label">Vigencia</span>
-                <span class="ocr-value">
-                  ${
-                    datos.vigencia.encontrada
-                      ? datos.vigencia.vigente
-                        ? `<span class="badge bg-success">Hasta ${datos.vigencia.anioFin}</span>`
-                        : `<span class="badge bg-danger">Vencida ${datos.vigencia.anioFin}</span>`
-                      : '<span class="badge bg-warning text-dark">No determinada</span>'
-                  }
-                </span>
-              </div>
-            </div>
+          <div class="col-12 col-md-6">
+            <strong>Coincidencia Nombre / CURP:</strong><br>
+            ${
+              datos.nombreCurp.determinable
+                ? (
+                    datos.nombreCurp.coincide
+                      ? '<span class="badge bg-success">Coincide</span>'
+                      : '<span class="badge bg-warning text-dark">Revisar manualmente</span>'
+                  )
+                : '<span class="text-muted">No determinable</span>'
+            }
           </div>
 
         </div>
 
-        <div class="ocr-result-box">
-          <div class="ocr-result-title">
-            Validaciones cruzadas
-          </div>
-
-          <div class="row g-2">
-
-            <div class="col-12 col-md-3">
-              <div class="ocr-field">
-                <span class="ocr-label">CURP</span>
-                <span class="ocr-value">
-                  ${
-                    datos.curp
-                      ? renderBadgeResultado_(
-                          curpCheck.digitoVerificador
-                            ? "Checksum OK"
-                            : "Checksum no coincide",
-                          curpCheck.digitoVerificador,
-                          !curpCheck.digitoVerificador
-                        )
-                      : '<span class="text-muted">No determinable</span>'
-                  }
-                </span>
-              </div>
-            </div>
-
-            <div class="col-12 col-md-3">
-              <div class="ocr-field">
-                <span class="ocr-label">Nacimiento</span>
-                <span class="ocr-value">
-                  ${
-                    datos.fechaCurp.determinable
-                      ? renderBadgeResultado_(
-                          datos.fechaCurp.coincide
-                            ? "Coincide"
-                            : "No coincide",
-                          datos.fechaCurp.coincide,
-                          !datos.fechaCurp.coincide
-                        )
-                      : '<span class="text-muted">No determinable</span>'
-                  }
-                </span>
-              </div>
-            </div>
-
-            <div class="col-12 col-md-3">
-              <div class="ocr-field">
-                <span class="ocr-label">Sexo</span>
-                <span class="ocr-value">
-                  ${
-                    datos.sexoCurp.determinable
-                      ? renderBadgeResultado_(
-                          datos.sexoCurp.coincide
-                            ? "Coincide"
-                            : "No coincide",
-                          datos.sexoCurp.coincide,
-                          !datos.sexoCurp.coincide
-                        )
-                      : '<span class="text-muted">No determinable</span>'
-                  }
-                </span>
-              </div>
-            </div>
-
-            <div class="col-12 col-md-3">
-              <div class="ocr-field">
-                <span class="ocr-label">Nombre / CURP</span>
-                <span class="ocr-value">
-                  ${
-                    datos.nombreCurp.determinable
-                      ? renderBadgeResultado_(
-                          datos.nombreCurp.coincide
-                            ? datos.nombreCurp.actual
-                            : `${datos.nombreCurp.actual} ≠ ${datos.nombreCurp.esperado}`,
-                          datos.nombreCurp.coincide,
-                          !datos.nombreCurp.coincide
-                        )
-                      : '<span class="text-muted">No determinable</span>'
-                  }
-                </span>
-              </div>
-            </div>
-
-          </div>
-
-          <div class="row g-2 mt-1">
-
-            <div class="col-12 col-md-6">
-              <div class="ocr-field">
-                <span class="ocr-label">Nombre / registro</span>
-                <span class="ocr-value">
-                  ${
-                    datos.nombreRegistro.determinable
-                      ? renderBadgeResultado_(
-                          `${datos.nombreRegistro.porcentaje}%`,
-                          datos.nombreRegistro.porcentaje >= 90,
-                          datos.nombreRegistro.porcentaje >= 70
-                        )
-                      : '<span class="text-muted">No determinable</span>'
-                  }
-                </span>
-              </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-              <div class="ocr-field">
-                <span class="ocr-label">Vigencia</span>
-                <span class="ocr-value">
-                  ${
-                    datos.vigencia.encontrada
-                      ? renderBadgeResultado_(
-                          datos.vigencia.vigente
-                            ? `Vigente aparente · ${datos.vigencia.anioFin}`
-                            : `Vencida · ${datos.vigencia.anioFin}`,
-                          datos.vigencia.vigente,
-                          false
-                        )
-                      : '<span class="badge bg-warning text-dark">Revisar</span>'
-                  }
-                </span>
-              </div>
-            </div>
-
-          </div>
-
-          ${
-            datos.score >= 85
-              ? `<div class="alert alert-success py-2 px-3 mt-2 mb-0 small">
-                   <i class="bi bi-check-circle-fill me-1"></i>
-                   <strong>Consistencia alta.</strong>
-                   Las comprobaciones automáticas presentan buena correspondencia.
-                 </div>`
-              : datos.score >= 60
-                ? `<div class="alert alert-warning py-2 px-3 mt-2 mb-0 small">
-                     <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                     <strong>Revisión manual recomendada.</strong>
-                     Hay una o más comprobaciones que no pudieron determinarse o presentan diferencias.
-                   </div>`
-                : `<div class="alert alert-danger py-2 px-3 mt-2 mb-0 small">
-                     <i class="bi bi-x-circle-fill me-1"></i>
-                     <strong>Consistencia insuficiente.</strong>
-                     Revise las imágenes y los datos antes de continuar.
-                   </div>`
-          }
-
-          ${
-            datos.razones.length
-              ? `<ul class="ocr-reasons mb-0">
-                   ${datos.razones
-                     .slice(0, 7)
-                     .map(r => `<li>${escapeHtml(r)}</li>`)
-                     .join("")}
-                 </ul>`
-              : ""
-          }
-        </div>
-
-        <div class="ocr-note">
+        <div class="text-muted mt-2" style="font-size:.72rem;">
           <i class="bi bi-info-circle me-1"></i>
-          Las comprobaciones son automáticas y sirven para detectar
-          inconsistencias, errores de OCR y problemas de legibilidad.
-          No certifican la autenticidad de la credencial ni sustituyen
-          la revisión humana.
+          Lectura automática (OCR), puede contener errores. Verifique manualmente.
         </div>
       `;
 
