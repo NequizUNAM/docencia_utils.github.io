@@ -647,11 +647,15 @@
           if (sheetResult && sheetResult.status === "success") {
             sheetMessage = " y la hoja fue actualizada";
           } else {
-            sheetMessage = " (el archivo sí quedó en Drive; la hoja no se actualizó)";
+            const detalle = sheetResult && sheetResult.message
+              ? `: ${sheetResult.message}`
+              : "";
+            sheetMessage = ` (el archivo sí quedó en Drive; la hoja no se actualizó${detalle})`;
+            console.error("Respuesta de actualización de hoja:", sheetResult);
           }
         } catch (sheetError) {
           console.warn("No se pudo actualizar la hoja:", sheetError);
-          sheetMessage = " (el archivo sí quedó en Drive; la hoja no se actualizó)";
+          sheetMessage = ` (el archivo sí quedó en Drive; error al actualizar la hoja: ${sheetError.message || sheetError})`;
         }
 
         $btn.removeClass("btn-outline-marino")
