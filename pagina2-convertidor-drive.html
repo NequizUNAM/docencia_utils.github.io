@@ -357,7 +357,7 @@
     // VARIABLES GLOBALES Y ESTADOS
     // =======================================
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
-    const GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1aRJRe0623pBilxj7AqVJYsmDgi-LqwzY"; 
+    const GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1fTY4BJ_MHE6IBLHOy5okDO2lFWPMed8e";
 
     // Almacenamos el objeto Image puro para poder rotarlo si se necesita
     let imagesObj = {
@@ -385,7 +385,7 @@
     }
 
     $("#folioInput").on("input", function() {
-      $(this).removeClass("is-invalid"); // Quita la alerta visual si escribe algo
+      $(this).removeClass("is-invalid");
       $("#modalFolioInput").val($(this).val());
       $("#inputBuscarFolio").val($(this).val());
     });
@@ -574,51 +574,144 @@
       $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Descargado: ${fileName}!</span>`);
     }
 
-    function uploadToDrive(dataUrl, fileName, btnId, statusId) {
+    /**
+     * Sube una imagen ya procesada.
+     *
+     * IMPORTANTE:
+     * - La imagen se congela en una copia local (dataUrlSnapshot).
+     * - El nombre se construye aquí, en el navegador.
+     * - El servidor NO calcula folios, NO busca otras imágenes y NO actualiza la hoja.
+     * - Cada petición lleva un requestId único.
+     */
+    async function uploadToDrive(dataUrl, fileName, btnId, statusId, tipo) {
       const $btn = $(btnId);
       const $status = $(statusId);
 
-      if (!dataUrl) return $status.html('<span class="text-danger">Sin imagen disponible.</span>');
+      if (!dataUrl) {
+        $status.html('<span class="text-danger">Sin imagen disponible.</span>');
+        return false;
+      }
+
+      const folio = validarFolio();
+      if (!folio) return false;
+
+      // Congelar el contenido antes de iniciar fetch.
+      const dataUrlSnapshot = String(dataUrl);
+      const base64 = dataUrlSnapshot.includes(",")
+        ? dataUrlSnapshot.split(",")[1]
+        : dataUrlSnapshot;
+
+      const requestId = (
+        window.crypto && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      );
 
       const payload = {
-        base64: dataUrl.split(',')[1],
+        action: "uploadImage",
+        requestId: requestId,
+        folio: folio,
+        tipo: tipo,
+        base64: base64,
         mimeType: "image/jpeg",
         fileName: fileName
       };
 
-      $btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...');
-      $status.html('<span class="text-info">Enviando a Drive...</span>');
+      $btn.prop("disabled", true)
+          .html('<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...');
+      $status.html('<span class="text-info">Subiendo a Drive. No cierre la página...</span>');
 
-      fetch(GOOGLE_SCRIPT_URL, {
+      try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (data.status !== "success") {
+          throw new Error(data.message || "No fue posible subir el archivo.");
+        }
+
+        // La hoja se actualiza DESPUÉS de que Drive confirmó el archivo.
+        let sheetMessage = "";
+        try {
+          const sheetResult = await actualizarHojaDesdeFront(
+            folio,
+            tipo,
+            data.fileName,
+            data.fileUrl
+          );
+
+          if (sheetResult && sheetResult.status === "success") {
+            sheetMessage = " y la hoja fue actualizada";
+          } else {
+            sheetMessage = " (el archivo sí quedó en Drive; la hoja no se actualizó)";
+          }
+        } catch (sheetError) {
+          console.warn("No se pudo actualizar la hoja:", sheetError);
+          sheetMessage = " (el archivo sí quedó en Drive; la hoja no se actualizó)";
+        }
+
+        $btn.removeClass("btn-outline-marino")
+            .addClass("btn-success")
+            .html('<i class="bi bi-check-circle-fill me-2"></i>Archivo subido');
+
+        $status.html(
+          `<span class="text-success fw-bold">
+             <i class="bi bi-check-circle me-1"></i>
+             ¡Subido correctamente${sheetMessage}!
+             <a href="${data.fileUrl}" target="_blank" rel="noopener">Ver en Drive</a>
+           </span>`
+        );
+
+        return true;
+
+      } catch (err) {
+        $status.html(
+          `<span class="text-danger fw-bold">
+             <i class="bi bi-exclamation-triangle me-1"></i>
+             Error: ${escapeHtml(err.message)}
+           </span>`
+        );
+
+        $btn.prop("disabled", false);
+        updateButtonTexts();
+        return false;
+      }
+    }
+
+    /**
+     * Actualiza únicamente la fila del folio.
+     * La búsqueda de columnas se hace por NOMBRE DE ENCABEZADO,
+     * no por número fijo de columna.
+     */
+    async function actualizarHojaDesdeFront(folio, tipo, fileName, fileUrl) {
+      const payload = {
+        action: "updateBitacora",
+        folio: folio,
+        tipo: tipo,
+        fileName: fileName,
+        fileUrl: fileUrl
+      };
+
+      const res = await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(payload)
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === "success") {
-          $btn.removeClass("btn-outline-marino").addClass("btn-success")
-              .html('<i class="bi bi-check-circle-fill me-2"></i>Archivo subido');
-          $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Subido! <a href="${data.fileUrl}" target="_blank">Ver en Drive</a></span>`);
-        } else {
-          throw new Error(data.message || "Error en el servidor");
-        }
-      })
-      .catch(err => {
-        $status.html(`<span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Error: ${err.message}.</span>`);
-        let countdown = 5;
-        
-        const timer = setInterval(() => {
-          if (countdown > 0) {
-            $btn.html(`<i class="bi bi-clock me-2"></i>Espere (${countdown}s)...`);
-            countdown--;
-          } else {
-            clearInterval(timer);
-            $btn.prop("disabled", false);
-            updateButtonTexts();
-          }
-        }, 1000);
       });
+
+      return await res.json();
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
     // =======================================
@@ -632,7 +725,7 @@
       const fileName = `${folio}-ine.jpg`;
       $("#modoToggle").is(":checked") 
         ? downloadToLocal(currentIneDataUrl, fileName, "#ineStatus")
-        : uploadToDrive(currentIneDataUrl, fileName, "#downloadIneBtn", "#ineStatus");
+        : uploadToDrive(currentIneDataUrl, fileName, "#downloadIneBtn", "#ineStatus", "ine");
     });
 
     $("#downloadSelfieBtn").on("click", function(e) {
@@ -643,7 +736,7 @@
       const fileName = `${folio}-foto.jpg`;
       $("#modoToggle").is(":checked") 
         ? downloadToLocal(currentSelfieDataUrl, fileName, "#selfieStatus")
-        : uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus");
+        : uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus", "foto");
     });
 
     // =======================================
