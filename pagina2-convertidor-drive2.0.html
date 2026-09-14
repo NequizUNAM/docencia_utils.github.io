@@ -3,43 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Procesamiento de Documentos — INE y Selfie</title>
-
+  <title>Convertidor de Imágenes</title>
+  
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-
+  
   <style>
     :root { --azul-marino: #003366; }
-
-    body { background-color: #f5f7fa; color: #1a1a2e; }
-
-    .btn-marino {
-      background-color: var(--azul-marino);
-      border-color: var(--azul-marino);
-      color: #fff;
-    }
-    .btn-marino:hover { background-color: #00264d; border-color: #00264d; color: #fff; }
-
-    .btn-outline-marino {
-      border: 2px solid var(--azul-marino);
-      color: var(--azul-marino);
-      font-weight: 600;
-    }
-    .btn-outline-marino:hover { background-color: var(--azul-marino); color: #fff; }
-
+    body { background-color:#ffffff; color:#1a1a2e; display:flex; flex-direction:column; min-height:100vh; }
+    
     .card-custom {
       border-radius: 8px;
       border: none;
       border-left: 5px solid var(--azul-marino);
+      transition: transform 0.2s;
     }
-
-    .badge-procesador {
-      background: #ffffff;
-      border: 1px solid var(--azul-marino);
-      color: var(--azul-marino);
-      font-weight: 600;
-    }
+    .card-custom:hover { transform: translateY(-5px); }
 
     .image-preview {
       min-height: 160px;
@@ -55,15 +35,14 @@
     }
     .image-preview.has-image { border: 1px solid var(--azul-marino); }
     .preview-icon { font-size: 2.5rem; color: #adb5bd; }
-
-    .campo-solo-lectura[readonly] { background-color: #f2f4f8; }
-
-    #tablaFolios { font-size: .88rem; width: 100% !important; }
-    #tablaFolios thead th { white-space: nowrap; color: var(--azul-marino); }
-
-    .estado-texto.ok { color: #1c6b34; }
-    .estado-texto.error { color: #c0392b; }
-
+    
+    .btn-outline-marino {
+      border: 2px solid var(--azul-marino);
+      color: var(--azul-marino);
+      font-weight: 600;
+    }
+    .btn-outline-marino:hover { background-color: var(--azul-marino); color: white; }
+    
     .hr-azul {
       border: 0;
       height: 2px;
@@ -77,147 +56,150 @@
       border-radius: 6px;
       border-left: 3px solid var(--azul-marino);
     }
+
+    .form-switch .form-check-input {
+      width: 3em;
+      height: 1.5em;
+      cursor: pointer;
+    }
+    .form-switch .form-check-input:checked {
+      background-color: var(--azul-marino);
+      border-color: var(--azul-marino);
+    }
+
+    /* Texto informativo de Nombre/Correo bajo el campo Folio */
+    #folioInfoLabel {
+      font-size: .8rem;
+      line-height: 1.3;
+    }
+
+    /* ===============================
+       MODAL DATA / DATATABLE
+       =============================== */
+    #dataModal .modal-body { overflow: hidden; }
+    #tablaBitacora_wrapper { width: 100%; }
+    #tablaBitacora { width: 100% !important; font-size: 0.86rem; }
+    #tablaBitacora th,
+    #tablaBitacora td {
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    #tablaBitacora th:nth-child(9),
+    #tablaBitacora td:nth-child(9) {
+      width: 220px !important;
+      max-width: 220px !important;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #tablaBitacora td:nth-child(9) {
+      cursor: help;
+    }
+    #tablaBitacora .data-filter {
+      min-width: 90px;
+      font-size: 0.78rem;
+    }
+    #dataModal .dataTables_scrollHead table,
+    #dataModal .dataTables_scrollBody table {
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+    #dataModal .dataTables_scrollBody {
+      max-height: calc(100vh - 280px) !important;
+    }
+    @media (max-width: 767.98px) {
+      #dataModal .modal-body { padding: 0.75rem !important; }
+      #tablaBitacora { font-size: 0.78rem; }
+      #dataModal .dataTables_scrollBody {
+        max-height: calc(100vh - 330px) !important;
+      }
+    }
   </style>
 </head>
-
 <body>
-
   <div id="header-container"></div>
 
-  <main class="container-fluid py-4" style="max-width: 1400px;">
-
-    <!-- =====================================================
-         VISTA LISTA
-         ===================================================== -->
-    <section id="vistaLista">
-
-      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+  <main class="flex-grow-1 py-4">
+    <div class="container">
+      
+      <header class="mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
-          <h3 class="fw-bold mb-0" style="color: var(--azul-marino);">Folios registrados</h3>
-          <p class="text-muted mb-0 small">
-            Usa el buscador y los filtros de la tabla para encontrar un folio.
-          </p>
+          <h2 class="fw-bold" style="color: var(--azul-marino);">Convertidor de Imágenes</h2>
+          <p class="text-muted mb-0">Gestión de archivos INE y Fotos de Perfil.</p>
         </div>
-
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span class="badge badge-procesador rounded-pill px-3 py-2">
-            Procesando como: <span id="nombreProcesadorLabel">—</span>
-          </span>
 
-          <a href="https://drive.google.com/drive/folders/1YeHuNl19EXua2sU4m2Ow62ep-mBewIF4?usp=drive_link"
-             target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-success">
-            <i class="bi bi-folder-symlink me-1"></i>Abrir Carpeta Drive
+          <!-- BOTÓN PARA ABRIR LA CARPETA EN GOOGLE DRIVE -->
+          <a id="btnAbrirDrive" href="#" target="_blank" class="btn btn-outline-success">
+            <i class="bi bi-folder-symlink me-2"></i>Abrir Carpeta Drive
           </a>
 
-          <button class="btn btn-sm btn-outline-marino" id="btnAbrirMachote" data-bs-toggle="modal" data-bs-target="#machoteModal">
-            <i class="bi bi-envelope-paper me-1"></i>Machote Correos
+          <button class="btn btn-outline-marino" id="btnAbrirData" data-bs-toggle="modal" data-bs-target="#dataModal">
+            <i class="bi bi-table me-2"></i>Data
           </button>
 
-          <button class="btn btn-sm btn-outline-secondary" id="btnCambiarNombre">
-            <i class="bi bi-pencil me-1"></i>Cambiar nombre
+          <button class="btn btn-outline-marino" id="btnAbrirMachote" data-bs-toggle="modal" data-bs-target="#machoteModal">
+            <i class="bi bi-envelope-paper me-2"></i>Machote Correos
           </button>
+          
+          <button class="btn btn-outline-marino" id="btnRecargarPagina">
+            <i class="bi bi-arrow-clockwise me-2"></i>Recargar
+          </button>
+        </div>
+      </header>
 
-          <button class="btn btn-sm btn-outline-marino" id="btnRecargarTabla">
-            <i class="bi bi-arrow-clockwise me-1"></i>Recargar
-          </button>
+      <!-- Sección Folio y Toggle -->
+      <div class="row mb-4 align-items-end g-3">
+        <div class="col-12 col-md-6 col-xl-4">
+          <label for="folioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio</label>
+          <div class="input-group">
+            <input type="text" id="folioInput" class="form-control" placeholder="Coloque aquí el Folio">
+          </div>
+          <!-- Informativo: se llena solo al salir del campo, si el folio ya existe -->
+          <div id="folioInfoLabel" class="text-muted mt-1 d-none">
+            <div id="folioInfoNombre"></div>
+            <div id="folioInfoCorreo"></div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-4">
+          <label for="procesadoPorInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Procesado Por:</label>
+          <div class="input-group">
+            <input type="text" id="procesadoPorInput" class="form-control" placeholder="Opcional" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card p-2 shadow-sm border-0 bg-light d-flex flex-row align-items-center justify-content-between px-3">
+            <span class="small fw-bold text-muted d-flex align-items-center me-2">
+              <i class="bi bi-cloud-upload me-1 text-primary"></i> Subir a Drive
+            </span>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" role="switch" id="modoToggle">
+            </div>
+            <span class="small fw-bold text-muted d-flex align-items-center ms-2">
+              <i class="bi bi-download me-1 text-success"></i> Descargar a Equipo
+            </span>
+          </div>
         </div>
       </div>
 
-      <div id="alertaTabla" class="alert alert-danger d-none"></div>
-
-      <div class="card shadow-sm border-0">
-        <div class="card-body">
-          <div class="table-responsive">
-            <table id="tablaFolios" class="table table-striped table-bordered align-middle">
-              <thead></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- =====================================================
-         VISTA CAPTURA
-         ===================================================== -->
-    <section id="vistaCaptura" class="d-none">
-
-      <button class="btn btn-outline-secondary mb-3" id="btnVolverLista">
-        <i class="bi bi-arrow-left me-1"></i>Volver a la lista
-      </button>
-
-      <div class="card card-custom shadow-sm p-4 mb-4">
-        <h5 class="fw-bold mb-3" style="color: var(--azul-marino);">
-          <i class="bi bi-person-vcard me-2"></i>Información del folio
-        </h5>
-
-        <div class="row g-3">
-          <div class="col-6 col-md-3">
-            <label class="form-label small fw-bold">Folio</label>
-            <input type="text" id="campoFolio" class="form-control campo-solo-lectura" readonly>
-          </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label small fw-bold">Estatus</label>
-            <input type="text" id="campoEstatus" class="form-control campo-solo-lectura" readonly>
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label small fw-bold">Nombre</label>
-            <input type="text" id="campoNombre" class="form-control campo-solo-lectura" readonly>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <label class="form-label small fw-bold">Correo</label>
-            <input type="text" id="campoCorreo" class="form-control campo-solo-lectura" readonly>
-          </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label small fw-bold">Procesado por</label>
-            <input type="text" id="campoProcesadoPor" class="form-control campo-solo-lectura" readonly>
-          </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label small fw-bold">Validado por</label>
-            <input type="text" id="campoValidadoPor" class="form-control campo-solo-lectura" readonly>
-          </div>
-
-          <div class="col-6 col-md-3">
-            <label class="form-label small fw-bold">Fecha alta</label>
-            <input type="text" id="campoFechaAlta" class="form-control campo-solo-lectura" readonly>
-          </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label small fw-bold">Fecha correo enviado</label>
-            <input type="text" id="campoFechaCorreoEnviado" class="form-control campo-solo-lectura" readonly>
-          </div>
-        </div>
-
-        <hr>
-
-        <label for="campoObservaciones" class="form-label small fw-bold">Observaciones</label>
-        <textarea id="campoObservaciones" class="form-control mb-2" rows="3"
-          placeholder="Escribe una observación; se agregará a las anteriores sin borrarlas."></textarea>
-
-        <div class="d-flex align-items-center gap-2">
-          <button class="btn btn-outline-marino" id="btnGuardarObservaciones">
-            <i class="bi bi-save me-2"></i>Guardar observaciones
-          </button>
-          <span id="estadoObservaciones" class="small"></span>
-        </div>
-      </div>
-
+      <!-- Tarjetas de Procesamiento -->
       <div class="row g-4">
-
         <!-- INE -->
         <div class="col-12 col-xl-7">
           <div class="card card-custom p-4 h-100 shadow-sm">
             <h5 class="fw-bold mb-3"><i class="bi bi-card-heading me-2"></i>Combinar INE (1300x400)</h5>
-
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label class="form-label small fw-bold">FRENTE</label>
                 <input type="file" id="ineFrontalInput" class="form-control" accept="image/*" onclick="this.value=null">
+                <div id="tools-ineFrontal" class="d-none mt-2 text-end"></div>
               </div>
               <div class="col-md-6 mb-3">
                 <label class="form-label small fw-bold">REVERSO</label>
                 <input type="file" id="ineLateralInput" class="form-control" accept="image/*" onclick="this.value=null">
+                <div id="tools-ineLateral" class="d-none mt-2 text-end"></div>
               </div>
             </div>
 
@@ -228,10 +210,10 @@
               </div>
             </div>
 
-            <button id="subirIneBtn" class="btn btn-outline-marino w-100 shadow-sm" disabled>
+            <button id="downloadIneBtn" class="btn btn-outline-marino w-100 d-none shadow-sm">
               <i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive
             </button>
-            <div id="ineStatus" class="mt-2 text-center small estado-texto"></div>
+            <div id="ineStatus" class="mt-2 text-center small"></div>
           </div>
         </div>
 
@@ -239,10 +221,10 @@
         <div class="col-12 col-xl-5">
           <div class="card card-custom p-4 h-100 shadow-sm">
             <h5 class="fw-bold mb-3"><i class="bi bi-person-bounding-box me-2"></i>Selfie (265x320)</h5>
-
             <div class="mb-3">
               <label class="form-label small fw-bold">SUBIR IMAGEN</label>
               <input type="file" id="selfieInput" class="form-control" accept="image/*" onclick="this.value=null">
+              <div id="tools-selfie" class="d-none mt-2 text-end"></div>
             </div>
 
             <div class="image-preview mb-3" id="selfiePreview" style="min-height: 200px;">
@@ -252,83 +234,62 @@
               </div>
             </div>
 
-            <button id="subirSelfieBtn" class="btn btn-outline-marino w-100 shadow-sm" disabled>
+            <button id="downloadSelfieBtn" class="btn btn-outline-marino w-100 d-none shadow-sm">
               <i class="bi bi-cloud-upload me-2"></i>Subir Selfie a Drive
             </button>
-            <div id="selfieStatus" class="mt-2 text-center small estado-texto"></div>
+            <div id="selfieStatus" class="mt-2 text-center small"></div>
           </div>
         </div>
-
       </div>
-    </section>
-
+    </div>
   </main>
 
-  <div id="footer-container"></div>
-
-  <!-- =====================================================
-       MODAL: PEDIR / CAMBIAR NOMBRE DEL PROCESADOR
-       ===================================================== -->
-  <div class="modal" id="modalNombre" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
+  <!-- MODAL DATA — BITÁCORA A:J -->
+  <div class="modal fade" id="dataModal" tabindex="-1" aria-labelledby="dataModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="true">
+    <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header" style="border-bottom: 2px solid var(--azul-marino);">
-          <h5 class="modal-title fw-bold" style="color: var(--azul-marino);">
-            <i class="bi bi-person-check me-2"></i>¿Quién está procesando?
-          </h5>
-          <button type="button" class="btn-close" id="btnCerrarModalNombre" style="display:none;"></button>
+          <div>
+            <h4 class="modal-title fw-bold" id="dataModalLabel" style="color: var(--azul-marino);">Data</h4>
+            <p class="text-muted mb-0 small">Consulta de la Bitácora · columnas A a J</p>
+          </div>
         </div>
-        <form id="formNombreProcesador">
-          <div class="modal-body">
-            <label for="inputNombreProcesador" class="form-label small fw-bold">Procesado por:</label>
-            <input type="text" id="inputNombreProcesador" class="form-control" placeholder="Escribe tu nombre" required autofocus>
-            <div class="form-text">Este nombre se guarda en este navegador y se usará en cada captura.</div>
-          </div>
-          <div class="modal-footer">
-            <button type="submit" class="btn btn-marino">
-              <i class="bi bi-check-circle me-2"></i>Guardar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
 
-  <!-- =====================================================
-       MODAL: VER INFORMACIÓN (solo lectura, rápida)
-       ===================================================== -->
-  <div class="modal" id="modalDetalle" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header" style="border-bottom: 2px solid var(--azul-marino);">
-          <h5 class="modal-title fw-bold" style="color: var(--azul-marino);">
-            <i class="bi bi-eye me-2"></i>Información del folio
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-body p-3 p-md-4 bg-light">
+          <div class="card card-custom shadow-sm border-0">
+            <div class="card-body">
+              <div id="dataLoading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 mb-0 text-muted fw-semibold">Cargando información...</p>
+              </div>
+
+              <div id="dataError" class="alert alert-danger d-none fw-semibold"></div>
+
+              <div id="dataTableContainer" class="d-none">
+                <div class="table-responsive">
+                  <table id="tablaBitacora" class="table table-striped table-bordered table-hover align-middle w-100">
+                    <thead class="table-light">
+                      <tr id="tablaBitacoraHead"></tr>
+                      <tr id="tablaBitacoraFilters"></tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="modal-body">
-          <dl class="row mb-0 small">
-            <dt class="col-5">Folio</dt><dd class="col-7" id="detFolio"></dd>
-            <dt class="col-5">Nombre</dt><dd class="col-7" id="detNombre"></dd>
-            <dt class="col-5">Correo</dt><dd class="col-7" id="detCorreo"></dd>
-            <dt class="col-5">Estatus</dt><dd class="col-7" id="detEstatus"></dd>
-            <dt class="col-5">Procesado por</dt><dd class="col-7" id="detProcesadoPor"></dd>
-            <dt class="col-5">Validado por</dt><dd class="col-7" id="detValidadoPor"></dd>
-            <dt class="col-5">Observaciones</dt><dd class="col-7" id="detObservaciones"></dd>
-            <dt class="col-5">Fecha alta</dt><dd class="col-7" id="detFechaAlta"></dd>
-            <dt class="col-5">Fecha correo enviado</dt><dd class="col-7" id="detFechaCorreoEnviado"></dd>
-          </dl>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+
+        <div class="modal-footer bg-white">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-2"></i>Cerrar
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- =====================================================
-       MODAL MACHOTE CORREOS
-       ===================================================== -->
+  <!-- MODAL MACHOTE CORREOS -->
   <div class="modal fade" id="machoteModal" tabindex="-1" aria-labelledby="machoteModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
       <div class="modal-content">
@@ -424,7 +385,7 @@
                 <p><strong>Asunto:</strong> Recordatorio: Último día para completar tu inscripción</p>
                 <p>Estimado(a) participante con folio: <strong class="folio-placeholder">[FOLIO]</strong>,</p>
                 <p>Te informamos que ya se envió a tu correo electrónico la liga correspondiente para continuar con tu proceso de inscripción.</p>
-                <p>Es muy importante que realices este procedimiento a la brevedad, ya que <strong>hoy es el último día para completar tu inscripción</strong>.</p>
+                <p>Es muy importante que realices este procedimiento a la brevedad, ya que <strong>hoy, 08 de septiembre de 2025, es el último día para completar tu inscripción</strong>.</p>
                 <p>Te recomendamos revisar tu bandeja de entrada, así como la carpeta de correo no deseado o spam.</p>
                 <p class="mb-0">Agradecemos tu atención y compromiso.</p>
               </div>
@@ -438,269 +399,157 @@
     </div>
   </div>
 
+  <div id="footer-container"></div>
+
   <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="js/app.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-  <script src="js/app.js"></script>
 
   <script>
-  (() => {
+    // =======================================
+    // VARIABLES GLOBALES Y ESTADOS
+    // =======================================
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
+    const GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1fTY4BJ_MHE6IBLHOy5okDO2lFWPMed8e";
+    const CLAVE_LS_PROCESADO_POR = "convertidor_procesado_por";
 
-    /* ===========================================================
-       CONFIGURACIÓN
-       =========================================================== */
+    // Almacenamos el objeto Image puro para poder rotarlo si se necesita
+    let imagesObj = {
+      ineFrontal: null,
+      ineLateral: null,
+      selfie: null
+    };
 
-    // ⚠️ Reemplaza esto con la URL /exec que te da Apps Script al
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhyTh8viND9ZFM2MZ2zalUZ5EwVQYvHnngAHbkdcQGKSMiNznX0_RaURc9PpoeXcrdKQ/exec";
-
-    const CLAVE_LOCALSTORAGE_NOMBRE = "sdcp_procesado_por";
-    const TIMEOUT_MS = 25000;
-    const MAX_REINTENTOS_RED = 2;
-
-    /* ===========================================================
-       ESTADO
-       =========================================================== */
-
-    let procesadoPorActual = localStorage.getItem(CLAVE_LOCALSTORAGE_NOMBRE) || "";
-    let registros = [];       // caché de la lista cargada del servidor
-    let tablaDT = null;
-    let folioActual = null;   // folio abierto en la vista de captura
-    let imagenesObj = { ineFrontal: null, ineLateral: null, selfie: null };
     let currentIneDataUrl = null;
     let currentSelfieDataUrl = null;
+    let bitacoraDataTable = null;
+    let folioInfoToken = 0; // evita que una respuesta vieja pise a una nueva
 
-    const $ = window.jQuery;
+    $("#btnAbrirDrive").attr("href", GOOGLE_DRIVE_FOLDER_URL);
 
-    /* ===========================================================
-       RED: TIMEOUT + REINTENTOS
-       =========================================================== */
+    // =======================================
+    // PROCESADO POR: PERSISTE EN LOCALSTORAGE
+    // =======================================
+    $("#procesadoPorInput").val(localStorage.getItem(CLAVE_LS_PROCESADO_POR) || "");
 
-    const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+    $("#procesadoPorInput").on("input", function () {
+      localStorage.setItem(CLAVE_LS_PROCESADO_POR, $(this).val());
+    });
 
-    async function fetchConTimeout(url, opciones = {}, timeoutMs = TIMEOUT_MS) {
-      const controlador = new AbortController();
-      const id = setTimeout(() => controlador.abort(), timeoutMs);
-      try {
-        return await fetch(url, { ...opciones, signal: controlador.signal });
-      } finally {
-        clearTimeout(id);
+    // "Recargar" borra el nombre guardado antes de recargar la página,
+    // así la siguiente persona que use el equipo tiene que volver a
+    // escribirlo.
+    $("#btnRecargarPagina").on("click", function () {
+      localStorage.removeItem(CLAVE_LS_PROCESADO_POR);
+      location.reload();
+    });
+
+    // =======================================
+    // VALIDACIÓN DE FOLIO OBLIGATORIO
+    // =======================================
+    function validarFolio() {
+      const folio = $("#folioInput").val().trim();
+      if (!folio) {
+        $("#folioInput").addClass("is-invalid").focus();
+        alert("Por favor, coloque el nombre de Folio antes de continuar.");
+        return null;
       }
+      return folio;
     }
 
-    async function fetchJSON(url, opciones = {}, intentos = MAX_REINTENTOS_RED) {
-      let ultimoError;
-      for (let intento = 0; intento <= intentos; intento++) {
-        try {
-          const resp = await fetchConTimeout(url, opciones);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const data = await resp.json();
-          if (!data.ok) throw new Error(data.error || "Respuesta con error del servidor");
-          return data;
-        } catch (err) {
-          ultimoError = err.name === "AbortError"
-            ? new Error("Tiempo de espera agotado: el servidor no respondió")
-            : err;
-          if (intento < intentos) await esperar(600 * (intento + 1));
+    $("#folioInput").on("input", function() {
+      $(this).removeClass("is-invalid");
+      $("#modalFolioInput").val($(this).val());
+      // el folio cambió: la info mostrada ya no es confiable, se oculta
+      // hasta que se vuelva a consultar en el siguiente "blur"
+      $("#folioInfoLabel").addClass("d-none");
+    });
+
+    // =======================================
+    // INFORMATIVO: NOMBRE Y CORREO AL SALIR DEL CAMPO FOLIO
+    // Solo informativo. Si no se encuentra, no se muestra nada.
+    // =======================================
+    $("#folioInput").on("blur", async function () {
+      const folio = $(this).val().trim();
+      const $info = $("#folioInfoLabel");
+      const $nombre = $("#folioInfoNombre");
+      const $correo = $("#folioInfoCorreo");
+
+      if (!folio) {
+        $info.addClass("d-none");
+        $nombre.text("");
+        $correo.text("");
+        return;
+      }
+
+      const miToken = ++folioInfoToken;
+
+      try {
+        const url = `${GOOGLE_SCRIPT_URL}?action=getFolioInfo&folio=${encodeURIComponent(folio)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        // si el usuario ya cambió el folio mientras esperábamos, se ignora
+        if (miToken !== folioInfoToken) return;
+
+        if (data.found) {
+          $nombre.text(data.nombre ? `Nombre: ${data.nombre}` : "");
+          $correo.text(data.correo ? `Correo: ${data.correo}` : "");
+          $info.removeClass("d-none");
+        } else {
+          $info.addClass("d-none");
+          $nombre.text("");
+          $correo.text("");
         }
-      }
-      throw ultimoError;
-    }
-
-    /* ===========================================================
-       NOMBRE DEL PROCESADOR (localStorage)
-       =========================================================== */
-
-    function actualizarBadgeNombre() {
-      $("#nombreProcesadorLabel").text(procesadoPorActual || "—");
-    }
-
-    function mostrarModalNombre(forzado) {
-      $("#btnCerrarModalNombre").css("display", forzado ? "none" : "");
-      $("#inputNombreProcesador").val(forzado ? "" : procesadoPorActual);
-      new bootstrap.Modal($("#modalNombre")[0], { backdrop: forzado ? "static" : true, keyboard: !forzado }).show();
-    }
-
-    $("#formNombreProcesador").on("submit", function (e) {
-      e.preventDefault();
-      const valor = $("#inputNombreProcesador").val().trim();
-      if (!valor) return;
-
-      procesadoPorActual = valor;
-      localStorage.setItem(CLAVE_LOCALSTORAGE_NOMBRE, valor);
-      actualizarBadgeNombre();
-
-      bootstrap.Modal.getInstance($("#modalNombre")[0])?.hide();
-    });
-
-    $("#btnCambiarNombre").on("click", () => mostrarModalNombre(false));
-
-    // Recargar borra el nombre guardado: la siguiente persona que
-    // use el equipo tiene que volver a capturarlo.
-    $("#btnRecargarTabla").on("click", () => {
-      localStorage.removeItem(CLAVE_LOCALSTORAGE_NOMBRE);
-      procesadoPorActual = "";
-      actualizarBadgeNombre();
-
-      $("#vistaCaptura").addClass("d-none");
-      $("#vistaLista").removeClass("d-none");
-
-      cargarRegistros();
-      mostrarModalNombre(true);
-    });
-
-    /* ===========================================================
-       CARGA DE LA TABLA (sin filtros de servidor; todo el sheet)
-       =========================================================== */
-
-    async function cargarRegistros() {
-      $("#alertaTabla").addClass("d-none");
-
-      try {
-        const url = `${GOOGLE_SCRIPT_URL}?accion=listar`;
-        const data = await fetchJSON(url);
-        registros = data.registros || [];
-        renderTabla(registros);
       } catch (err) {
-        $("#alertaTabla")
-          .removeClass("d-none")
-          .html(`No se pudo cargar la lista: ${err.message} — 
-                 <button class="btn btn-sm btn-outline-danger ms-2" id="btnReintentarCarga">Reintentar</button>`);
-        $("#btnReintentarCarga").on("click", cargarRegistros);
+        // solo es informativo: si falla la consulta, simplemente no se muestra nada
+        $info.addClass("d-none");
       }
-    }
+    });
 
-    function renderTabla(datos) {
-      if (tablaDT) {
-        tablaDT.destroy();
-        $("#tablaFolios tbody").empty();
-      }
+    // =======================================
+    // UI Y COMPORTAMIENTO DE BOTONES
+    // =======================================
+    function updateButtonTexts() {
+      const modoDescargar = $("#modoToggle").is(":checked");
+      const config = [
+        { btn: "#downloadIneBtn", driveTxt: "Subir INE a Drive", localTxt: "Descargar INE al equipo" },
+        { btn: "#downloadSelfieBtn", driveTxt: "Subir Selfie a Drive", localTxt: "Descargar Selfie al equipo" }
+      ];
 
-      // Nombre y Correo se ocultan aquí a propósito: solo se ven
-      // al entrar al detalle con "Capturar".
-      tablaDT = $("#tablaFolios").DataTable({
-        data: datos,
-        language: { url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json" },
-        scrollX: true,
-        pageLength: 25,
-        order: [[7, "desc"]],
-        columns: [
-          { data: "folio", title: "Folio" },
-          { data: "ine", title: "folio-INE.jpg" },
-          { data: "foto", title: "folio-FOTO.jpg" },
-          { data: "correoEnviado", title: "Correo Enviado" },
-          { data: "procesadoPor", title: "Procesado por" },
-          { data: "validadoPor", title: "Validado por" },
-          { data: "observaciones", title: "Observaciones" },
-          { data: "estatus", title: "Estatus" },
-          { data: "fechaAlta", title: "Fecha Alta" },
-          { data: "fechaCorreoEnviado", title: "Fecha Correo Enviado" },
-          {
-            data: null,
-            title: "Opciones",
-            orderable: false,
-            render: (data, type, row) => `
-              <div class="d-flex gap-1">
-                <button type="button" class="btn btn-sm btn-outline-secondary btn-ver" data-folio="${row.folio}" title="Ver información">
-                  <i class="bi bi-eye"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-marino btn-capturar" data-folio="${row.folio}">
-                  <i class="bi bi-camera me-1"></i>Capturar
-                </button>
-              </div>
-            `
-          }
-        ]
+      config.forEach(item => {
+        const $btn = $(item.btn);
+        if (!$btn.hasClass("btn-success")) {
+          const isDownload = modoDescargar;
+          const icon = isDownload ? "bi-download" : "bi-cloud-upload";
+          const text = isDownload ? item.localTxt : item.driveTxt;
+          $btn.html(`<i class="bi ${icon} me-2"></i>${text}`);
+        }
       });
     }
 
-    $("#tablaFolios tbody").on("click", ".btn-ver", function () {
-      abrirModalDetalle($(this).data("folio"));
-    });
-
-    $("#tablaFolios tbody").on("click", ".btn-capturar", function () {
-      abrirVistaCaptura(String($(this).data("folio")));
-    });
-
-    function buscarRegistro(folio) {
-      return registros.find((r) => String(r.folio) === String(folio));
-    }
-
-    function abrirModalDetalle(folio) {
-      const r = buscarRegistro(folio);
-      if (!r) return;
-
-      $("#detFolio").text(r.folio);
-      $("#detNombre").text(r.nombre);
-      $("#detCorreo").text(r.correo);
-      $("#detEstatus").text(r.estatus);
-      $("#detProcesadoPor").text(r.procesadoPor || "—");
-      $("#detValidadoPor").text(r.validadoPor || "—");
-      $("#detObservaciones").text(r.observaciones || "—");
-      $("#detFechaAlta").text(r.fechaAlta || "—");
-      $("#detFechaCorreoEnviado").text(r.fechaCorreoEnviado || "—");
-
-      new bootstrap.Modal($("#modalDetalle")[0]).show();
-    }
-
-    /* ===========================================================
-       VISTA DE CAPTURA (aquí sí se muestran Nombre y Correo)
-       =========================================================== */
-
-    function abrirVistaCaptura(folio) {
-      const r = buscarRegistro(folio);
-      if (!r) return;
-
-      folioActual = folio;
-
-      $("#campoFolio").val(r.folio);
-      $("#campoNombre").val(r.nombre);
-      $("#campoCorreo").val(r.correo);
-      $("#campoEstatus").val(r.estatus);
-      $("#campoProcesadoPor").val(r.procesadoPor || "—");
-      $("#campoValidadoPor").val(r.validadoPor || "—");
-      $("#campoFechaAlta").val(r.fechaAlta || "—");
-      $("#campoFechaCorreoEnviado").val(r.fechaCorreoEnviado || "—");
-      $("#campoObservaciones").val("");
-
-      // reset de imágenes
-      imagenesObj = { ineFrontal: null, ineLateral: null, selfie: null };
-      currentIneDataUrl = null;
-      currentSelfieDataUrl = null;
-      $("#ineFrontalInput, #ineLateralInput, #selfieInput").val("");
-      $("#ineCombinedPreview").css("background-image", "").removeClass("has-image");
-      $("#selfiePreview").css("background-image", "").removeClass("has-image");
-      $("#inePlaceholder, #selfiePlaceholder").show();
-      $("#subirIneBtn, #subirSelfieBtn").prop("disabled", true)
-        .removeClass("btn-success").addClass("btn-outline-marino");
-      $("#subirIneBtn").html('<i class="bi bi-cloud-upload me-2"></i>Subir INE a Drive');
-      $("#subirSelfieBtn").html('<i class="bi bi-cloud-upload me-2"></i>Subir Selfie a Drive');
-      $("#ineStatus, #selfieStatus, #estadoObservaciones").empty();
-
-      $("#vistaLista").addClass("d-none");
-      $("#vistaCaptura").removeClass("d-none");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-
-    $("#btnVolverLista").on("click", () => {
-      $("#vistaCaptura").addClass("d-none");
-      $("#vistaLista").removeClass("d-none");
-      cargarRegistros(); // refresca por si algo cambió
-    });
-
-    /* ===========================================================
-       CARGA / COMBINACIÓN DE IMÁGENES (canvas)
-       =========================================================== */
+    $("#modoToggle").on("change", updateButtonTexts);
 
     function setPreview(containerId, placeholderId, dataUrl) {
-      $(`#${containerId}`).css("background-image", `url('${dataUrl}')`).addClass("has-image");
+      $(`#${containerId}`).css('background-image', `url('${dataUrl}')`).addClass('has-image');
       $(`#${placeholderId}`).hide();
     }
 
+    function resetBtnState($btn) {
+      $btn.removeClass("d-none btn-success")
+          .addClass("btn-outline-marino")
+          .prop("disabled", false);
+    }
+
+    // =======================================
+    // LOGICA DE CARGA Y ROTACIÓN EN VIVO
+    // =======================================
     function handleImageLoad(file, callback) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         const img = new Image();
         img.onload = () => callback(img);
         img.src = e.target.result;
@@ -708,202 +557,445 @@
       reader.readAsDataURL(file);
     }
 
-    $("#ineFrontalInput").on("change", (e) => {
+    function rotateTarget(target, angle) {
+      let img = imagesObj[target];
+      if (!img) return;
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      canvas.width = img.height;
+      canvas.height = img.width;
+
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(angle * Math.PI / 180);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+      let newImg = new Image();
+      newImg.onload = function() {
+        imagesObj[target] = newImg;
+        if (target === 'selfie') {
+          updateSelfie();
+        } else {
+          combineIneImages();
+        }
+      };
+      newImg.src = canvas.toDataURL('image/jpeg', 1.0);
+    }
+
+    // =======================================
+    // EVENTOS DE LOS INPUTS
+    // =======================================
+    $("#ineFrontalInput").on("change", e => {
       if (e.target.files[0]) {
-        handleImageLoad(e.target.files[0], (img) => { imagenesObj.ineFrontal = img; combineIneImages(); });
+        handleImageLoad(e.target.files[0], img => { 
+          imagesObj.ineFrontal = img; 
+          $("#tools-ineFrontal").removeClass("d-none");
+          combineIneImages(); 
+        });
       }
     });
 
-    $("#ineLateralInput").on("change", (e) => {
+    $("#ineLateralInput").on("change", e => {
       if (e.target.files[0]) {
-        handleImageLoad(e.target.files[0], (img) => { imagenesObj.ineLateral = img; combineIneImages(); });
+        handleImageLoad(e.target.files[0], img => { 
+          imagesObj.ineLateral = img; 
+          $("#tools-ineLateral").removeClass("d-none");
+          combineIneImages(); 
+        });
       }
     });
 
-    $("#selfieInput").on("change", (e) => {
+    $("#selfieInput").on("change", e => {
       if (e.target.files[0]) {
-        handleImageLoad(e.target.files[0], (img) => { imagenesObj.selfie = img; updateSelfie(); });
+        handleImageLoad(e.target.files[0], img => { 
+          imagesObj.selfie = img; 
+          $("#tools-selfie").removeClass("d-none");
+          updateSelfie();
+        });
       }
     });
 
+    // =======================================
+    // PROCESAMIENTO DE IMÁGENES AL CANVAS
+    // =======================================
     function combineIneImages() {
-      const canvas = document.createElement("canvas");
+      const canvas = document.createElement('canvas');
       canvas.width = 1300;
       canvas.height = 400;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext('2d');
 
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, 1300, 400);
-      ctx.fillStyle = "#dee2e6";
+
+      ctx.fillStyle = '#dee2e6';
       ctx.font = "bold 24px Arial";
       ctx.textAlign = "center";
-
+      
       let hasAny = false;
-
-      if (imagenesObj.ineFrontal) {
-        ctx.drawImage(imagenesObj.ineFrontal, 0, 0, 650, 400);
+      
+      if (imagesObj.ineFrontal) {
+        ctx.drawImage(imagesObj.ineFrontal, 0, 0, 650, 400);
         hasAny = true;
       } else {
         ctx.fillText("FRENTE PENDIENTE", 325, 200);
       }
 
-      if (imagenesObj.ineLateral) {
-        ctx.drawImage(imagenesObj.ineLateral, 650, 0, 650, 400);
+      if (imagesObj.ineLateral) {
+        ctx.drawImage(imagesObj.ineLateral, 650, 0, 650, 400);
         hasAny = true;
       } else {
         ctx.fillText("REVERSO PENDIENTE", 975, 200);
       }
 
       if (hasAny) {
-        currentIneDataUrl = canvas.toDataURL("image/jpeg", 0.90);
-        setPreview("ineCombinedPreview", "inePlaceholder", currentIneDataUrl);
+        currentIneDataUrl = canvas.toDataURL('image/jpeg', 0.90);
+        setPreview('ineCombinedPreview', 'inePlaceholder', currentIneDataUrl);
       }
-
-      if (imagenesObj.ineFrontal && imagenesObj.ineLateral) {
-        $("#subirIneBtn").prop("disabled", false);
+      
+      if (imagesObj.ineFrontal && imagesObj.ineLateral) {
+        resetBtnState($("#downloadIneBtn"));
+        updateButtonTexts();
         $("#ineStatus").empty();
       }
     }
 
     function updateSelfie() {
-      if (!imagenesObj.selfie) return;
-
-      const canvas = document.createElement("canvas");
+      if (!imagesObj.selfie) return;
+      const canvas = document.createElement('canvas');
       canvas.width = 265;
       canvas.height = 320;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(imagenesObj.selfie, 0, 0, 265, 320);
+      const ctx = canvas.getContext('2d');
+      
+      ctx.drawImage(imagesObj.selfie, 0, 0, 265, 320);
 
-      currentSelfieDataUrl = canvas.toDataURL("image/jpeg", 0.90);
-      setPreview("selfiePreview", "selfiePlaceholder", currentSelfieDataUrl);
+      currentSelfieDataUrl = canvas.toDataURL('image/jpeg', 0.90);
+      setPreview('selfiePreview', 'selfiePlaceholder', currentSelfieDataUrl);
 
-      $("#subirSelfieBtn").prop("disabled", false);
+      resetBtnState($("#downloadSelfieBtn"));
+      updateButtonTexts();
       $("#selfieStatus").empty();
     }
 
-    /* ===========================================================
-       SUBIDA A DRIVE + GUARDADO EN LA HOJA
-       =========================================================== */
+    // =======================================
+    // DESCARGA Y SUBIDA
+    // =======================================
+    function downloadToLocal(dataUrl, fileName, statusId) {
+      const $status = $(statusId);
+      if (!dataUrl) return $status.html('<span class="text-danger">Sin imagen disponible.</span>');
 
-    async function subirImagen(tipo, dataUrl, $btn, $status) {
-      if (!dataUrl || !folioActual) return;
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-      $btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...');
-      $status.removeClass("ok error").text("Enviando a Drive...");
+      $status.html(`<span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>¡Descargado: ${fileName}!</span>`);
+    }
+
+    /**
+     * Sube una imagen ya procesada.
+     *
+     * IMPORTANTE:
+     * - La imagen se congela en una copia local (dataUrlSnapshot).
+     * - El nombre se construye aquí, en el navegador.
+     * - El servidor NO calcula folios, NO busca otras imágenes y NO actualiza la hoja.
+     * - Cada petición lleva un requestId único.
+     */
+    async function uploadToDrive(dataUrl, fileName, btnId, statusId, tipo) {
+      const $btn = $(btnId);
+      const $status = $(statusId);
+
+      if (!dataUrl) {
+        $status.html('<span class="text-danger">Sin imagen disponible.</span>');
+        return false;
+      }
+
+      const folio = validarFolio();
+      if (!folio) return false;
+
+      // Congelar el contenido antes de iniciar fetch.
+      const dataUrlSnapshot = String(dataUrl);
+      const base64 = dataUrlSnapshot.includes(",")
+        ? dataUrlSnapshot.split(",")[1]
+        : dataUrlSnapshot;
+
+      const requestId = (
+        window.crypto && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      );
+
+      const payload = {
+        action: "uploadImage",
+        requestId: requestId,
+        folio: folio,
+        tipo: tipo,
+        base64: base64,
+        mimeType: "image/jpeg",
+        fileName: fileName,
+        procesadoPor: $("#procesadoPorInput").val().trim()
+      };
+
+      $btn.prop("disabled", true)
+          .html('<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...');
+      $status.html('<span class="text-info">Subiendo a Drive. No cierre la página...</span>');
 
       try {
-        const data = await fetchJSON(GOOGLE_SCRIPT_URL, {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({
-            accion: "subirImagen",
-            folio: folioActual,
-            tipo,
-            base64: dataUrl.split(",")[1],
-            procesadoPor: procesadoPorActual
-          })
+          body: JSON.stringify(payload)
         });
 
-        $btn.removeClass("btn-outline-marino").addClass("btn-success")
-          .prop("disabled", false)
-          .html(`<i class="bi bi-check-circle-fill me-2"></i>${tipo === "ine" ? "INE" : "Selfie"} subida`);
+        const data = await res.json();
 
-        $status.addClass("ok").text(`Guardado correctamente. `).append(
-          $(`<a href="${data.url}" target="_blank" class="ms-1">Ver en Drive</a>`)
+        if (data.status !== "success") {
+          throw new Error(data.message || "No fue posible subir el archivo.");
+        }
+
+        // La hoja se actualiza DESPUÉS de que Drive confirmó el archivo.
+        let sheetMessage = "";
+        try {
+          const sheetResult = await actualizarHojaDesdeFront(
+            folio,
+            tipo,
+            data.fileName,
+            data.fileUrl
+          );
+
+          if (sheetResult && sheetResult.status === "success") {
+            sheetMessage = " y la hoja fue actualizada";
+          } else {
+            const detalle = sheetResult && sheetResult.message
+              ? `: ${sheetResult.message}`
+              : "";
+            sheetMessage = ` (el archivo sí quedó en Drive; la hoja no se actualizó${detalle})`;
+            console.error("Respuesta de actualización de hoja:", sheetResult);
+          }
+        } catch (sheetError) {
+          console.warn("No se pudo actualizar la hoja:", sheetError);
+          sheetMessage = ` (el archivo sí quedó en Drive; error al actualizar la hoja: ${sheetError.message || sheetError})`;
+        }
+
+        $btn.removeClass("btn-outline-marino")
+            .addClass("btn-success")
+            .html('<i class="bi bi-check-circle-fill me-2"></i>Archivo subido');
+
+        $status.html(
+          `<span class="text-success fw-bold">
+             <i class="bi bi-check-circle me-1"></i>
+             ¡Subido correctamente${sheetMessage}!
+             <a href="${data.fileUrl}" target="_blank" rel="noopener">Ver en Drive</a>
+           </span>`
         );
 
-        const r = buscarRegistro(folioActual);
-        if (r) {
-          if (tipo === "ine") r.ine = "Sí"; else r.foto = "Sí";
-          r.procesadoPor = concatenarLocal(r.procesadoPor, procesadoPorActual);
-          $("#campoProcesadoPor").val(r.procesadoPor);
-        }
+        return true;
 
       } catch (err) {
-        $btn.prop("disabled", false).html(`<i class="bi bi-cloud-upload me-2"></i>Reintentar subir ${tipo === "ine" ? "INE" : "Selfie"}`);
-        $status.addClass("error").text(`Error: ${err.message}`);
+        $status.html(
+          `<span class="text-danger fw-bold">
+             <i class="bi bi-exclamation-triangle me-1"></i>
+             Error: ${escapeHtml(err.message)}
+           </span>`
+        );
+
+        $btn.prop("disabled", false);
+        updateButtonTexts();
+        return false;
       }
     }
 
-    function concatenarLocal(actual, nuevo) {
-      if (!actual || actual === "—") return nuevo;
-      const partes = actual.split("/").map((p) => p.trim().toLowerCase());
-      if (partes.includes(nuevo.toLowerCase())) return actual;
-      return `${actual}/${nuevo}`;
+    /**
+     * Actualiza únicamente la fila del folio.
+     * La búsqueda de columnas se hace por NOMBRE DE ENCABEZADO,
+     * no por número fijo de columna.
+     */
+    async function actualizarHojaDesdeFront(folio, tipo, fileName, fileUrl) {
+      const payload = {
+        action: "updateBitacora",
+        folio: folio,
+        tipo: tipo,
+        fileName: fileName,
+        fileUrl: fileUrl,
+        procesadoPor: $("#procesadoPorInput").val().trim()
+      };
+
+      const res = await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+
+      return await res.json();
     }
 
-    $("#subirIneBtn").on("click", () => subirImagen("ine", currentIneDataUrl, $("#subirIneBtn"), $("#ineStatus")));
-    $("#subirSelfieBtn").on("click", () => subirImagen("foto", currentSelfieDataUrl, $("#subirSelfieBtn"), $("#selfieStatus")));
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
 
-    $("#btnGuardarObservaciones").on("click", async () => {
-      const texto = $("#campoObservaciones").val().trim();
-      if (!texto) return;
+    // =======================================
+    // CLICK HANDLERS
+    // =======================================
+    $("#downloadIneBtn").on("click", function(e) {
+      e.preventDefault();
+      const folio = validarFolio();
+      if (!folio) return;
 
-      const $btn = $("#btnGuardarObservaciones");
-      const $estado = $("#estadoObservaciones");
-
-      $btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Guardando...');
-      $estado.removeClass("estado-texto ok error").text("");
-
-      try {
-        await fetchJSON(GOOGLE_SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({
-            accion: "guardarObservaciones",
-            folio: folioActual,
-            observaciones: texto,
-            procesadoPor: procesadoPorActual
-          })
-        });
-
-        $estado.addClass("estado-texto ok").text("Observación guardada.");
-        $("#campoObservaciones").val("");
-
-        const r = buscarRegistro(folioActual);
-        if (r) {
-          r.observaciones = r.observaciones ? `${r.observaciones} | ${texto}` : texto;
-          r.procesadoPor = concatenarLocal(r.procesadoPor, procesadoPorActual);
-          $("#campoProcesadoPor").val(r.procesadoPor);
-        }
-      } catch (err) {
-        $estado.addClass("estado-texto error").text(`Error: ${err.message}`);
-      } finally {
-        $btn.prop("disabled", false).html('<i class="bi bi-save me-2"></i>Guardar observaciones');
-      }
+      const fileName = `${folio}-ine.jpg`;
+      $("#modoToggle").is(":checked") 
+        ? downloadToLocal(currentIneDataUrl, fileName, "#ineStatus")
+        : uploadToDrive(currentIneDataUrl, fileName, "#downloadIneBtn", "#ineStatus", "ine");
     });
 
-    /* ===========================================================
-       MODAL MACHOTE — se autocompleta con el folio abierto
-       =========================================================== */
+    $("#downloadSelfieBtn").on("click", function(e) {
+      e.preventDefault();
+      const folio = validarFolio();
+      if (!folio) return;
 
+      const fileName = `${folio}-foto.jpg`;
+      $("#modoToggle").is(":checked") 
+        ? downloadToLocal(currentSelfieDataUrl, fileName, "#selfieStatus")
+        : uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus", "foto");
+    });
+
+    // =======================================
+    // MODAL DATA — BITÁCORA A:J
+    // =======================================
+    async function cargarDataBitacora() {
+      const loading = $("#dataLoading");
+      const errorBox = $("#dataError");
+      const container = $("#dataTableContainer");
+
+      loading.removeClass("d-none");
+      errorBox.addClass("d-none").empty();
+      container.addClass("d-none");
+
+      if (bitacoraDataTable) {
+        bitacoraDataTable.destroy();
+        bitacoraDataTable = null;
+      }
+
+      $("#tablaBitacoraHead, #tablaBitacoraFilters").empty();
+      $("#tablaBitacora tbody").empty();
+
+      try {
+        // OJO: la acción correcta registrada en Code.gs es "listBitacoraAJ"
+        // (antes el HTML pedía "getBitacoraAJ", que no existía, por eso
+        // nunca cargaba nada).
+        const url = `${GOOGLE_SCRIPT_URL}?action=listBitacoraAJ&_=${Date.now()}`;
+        const res = await fetch(url, { cache: "no-store" });
+        const data = await res.json();
+
+        if (data.status !== "success") {
+          throw new Error(data.message || "No fue posible obtener la información.");
+        }
+
+        const headers = Array.isArray(data.headers) ? data.headers.slice(0, 10) : [];
+        const rows = Array.isArray(data.rows) ? data.rows : [];
+
+        if (!headers.length) {
+          throw new Error("La hoja no contiene encabezados en A:J.");
+        }
+
+        // Encabezados A:J.
+        headers.forEach((header) => {
+          $("#tablaBitacoraHead").append($(`<th>${escapeHtml(header || "")}</th>`));
+          $("#tablaBitacoraFilters").append(
+            $(`<th><input type="text" class="form-control form-control-sm data-filter" placeholder="Filtrar" /></th>`)
+          );
+        });
+
+        const tbody = $("#tablaBitacora tbody");
+        rows.forEach((row) => {
+          const tr = $("<tr></tr>");
+          headers.forEach((_, index) => {
+            const value = row[index] ?? "";
+            const td = $("<td></td>").text(value);
+            if (index === 8 && value) td.attr("title", value);
+            tr.append(td);
+          });
+          tbody.append(tr);
+        });
+
+        loading.addClass("d-none");
+        container.removeClass("d-none");
+
+        bitacoraDataTable = $("#tablaBitacora").DataTable({
+          orderCellsTop: true,
+          fixedHeader: false,
+          scrollX: true,
+          scrollY: "calc(100vh - 280px)",
+          scrollCollapse: true,
+          autoWidth: false,
+          pageLength: 25,
+          lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
+          columnDefs: [
+            { targets: 8, width: "220px" }
+          ],
+          language: {
+            decimal: ",",
+            thousands: ".",
+            processing: "Procesando...",
+            search: "Buscar:",
+            lengthMenu: "Mostrar _MENU_",
+            info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+            infoEmpty: "Mostrando 0 a 0 de 0 registros",
+            infoFiltered: "(filtrado de _MAX_ registros)",
+            loadingRecords: "Cargando...",
+            zeroRecords: "No se encontraron registros",
+            emptyTable: "No hay datos disponibles",
+            paginate: {
+              first: "Primero",
+              previous: "Anterior",
+              next: "Siguiente",
+              last: "Último"
+            }
+          }
+        });
+
+        // Filtro independiente por columna.
+        $("#tablaBitacoraFilters input").on("keyup change", function() {
+          const index = $(this).closest("th").index();
+          bitacoraDataTable.column(index).search(this.value).draw();
+        });
+
+      } catch (err) {
+        loading.addClass("d-none");
+        errorBox
+          .removeClass("d-none")
+          .html(`<i class="bi bi-exclamation-triangle-fill me-2"></i>${escapeHtml(err.message || err)}`);
+      }
+    }
+
+    $("#dataModal").on("shown.bs.modal", function() {
+      cargarDataBitacora();
+    });
+
+    // =======================================
+    // MODAL MACHOTE
+    // =======================================
     function aplicarFolioMachote() {
       const folioValue = $("#modalFolioInput").val().trim() || "[FOLIO]";
-      $(".folio-placeholder").fadeOut(150, function () {
+      $(".folio-placeholder").fadeOut(150, function() {
         $(this).text(folioValue).fadeIn(150);
       });
     }
 
     $("#machoteModal").on("show.bs.modal", function () {
-      $("#modalFolioInput").val(folioActual || "");
+      $("#modalFolioInput").val($("#folioInput").val().trim());
       aplicarFolioMachote();
     });
 
     $("#btnAplicarModal").on("click", aplicarFolioMachote);
-    $("#modalFolioInput").on("keypress", (e) => { if (e.which === 13) aplicarFolioMachote(); });
+    $("#modalFolioInput").on("keypress", e => { if (e.which === 13) aplicarFolioMachote(); });
 
-    /* ===========================================================
-       INICIO
-       =========================================================== */
-
-    actualizarBadgeNombre();
-    if (!procesadoPorActual) {
-      mostrarModalNombre(true);
-    }
-    cargarRegistros();
-
-  })();
   </script>
-
 </body>
 </html>
