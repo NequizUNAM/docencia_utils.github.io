@@ -111,16 +111,10 @@
         </div>
 
         <div class="col-12 col-md-6 col-xl-4">
-          <label for="procesadoPorInput" class="form-label small fw-bold" style="color: var(--azul-marino);">
-            Procesado Por:
-          </label>
-          <input
-            type="text"
-            id="procesadoPorInput"
-            class="form-control"
-            placeholder="Opcional"
-            autocomplete="off"
-          >
+          <label for="procesadoPorInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Procesado Por:</label>
+          <div class="input-group">
+            <input type="text" id="procesadoPorInput" class="form-control" placeholder="Opcional" autocomplete="off">
+          </div>
         </div>
 
         <div class="col-12 col-md-6 col-xl-4">
@@ -655,8 +649,7 @@
             folio,
             tipo,
             data.fileName,
-            data.fileUrl,
-            $("#procesadoPorInput").val().trim()
+            data.fileUrl
           );
 
           if (sheetResult && sheetResult.status === "success") {
@@ -706,14 +699,14 @@
      * La búsqueda de columnas se hace por NOMBRE DE ENCABEZADO,
      * no por número fijo de columna.
      */
-    async function actualizarHojaDesdeFront(folio, tipo, fileName, fileUrl, procesadoPor) {
+    async function actualizarHojaDesdeFront(folio, tipo, fileName, fileUrl) {
       const payload = {
         action: "updateBitacora",
         folio: folio,
         tipo: tipo,
         fileName: fileName,
         fileUrl: fileUrl,
-        procesadoPor: procesadoPor || ""
+        procesadoPor: $("#procesadoPorInput").val().trim()
       };
 
       const res = await fetch(GOOGLE_SCRIPT_URL, {
