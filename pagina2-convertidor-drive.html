@@ -67,6 +67,12 @@
       border-color: var(--azul-marino);
     }
 
+    /* Texto informativo de Nombre/Correo bajo el campo Folio */
+    #folioInfoLabel {
+      font-size: .8rem;
+      line-height: 1.3;
+    }
+
     /* ===============================
        MODAL DATA / DATATABLE
        =============================== */
@@ -122,17 +128,11 @@
           <p class="text-muted mb-0">Gestión de archivos INE y Fotos de Perfil.</p>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span id="resultadoBusquedaLabel" class="d-none badge p-2 fw-semibold"></span>
 
           <!-- BOTÓN PARA ABRIR LA CARPETA EN GOOGLE DRIVE -->
           <a id="btnAbrirDrive" href="#" target="_blank" class="btn btn-outline-success">
             <i class="bi bi-folder-symlink me-2"></i>Abrir Carpeta Drive
           </a>
-
-          <!-- NUEVO BOTÓN BUSCAR -->
-          <button class="btn btn-outline-marino" id="btnAbrirBuscar" data-bs-toggle="modal" data-bs-target="#buscarModal">
-            <i class="bi bi-search me-2"></i>Buscar
-          </button>
 
           <button class="btn btn-outline-marino" id="btnAbrirData" data-bs-toggle="modal" data-bs-target="#dataModal">
             <i class="bi bi-table me-2"></i>Data
@@ -142,7 +142,7 @@
             <i class="bi bi-envelope-paper me-2"></i>Machote Correos
           </button>
           
-          <button class="btn btn-outline-marino" onclick="location.reload()">
+          <button class="btn btn-outline-marino" id="btnRecargarPagina">
             <i class="bi bi-arrow-clockwise me-2"></i>Recargar
           </button>
         </div>
@@ -154,6 +154,11 @@
           <label for="folioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio</label>
           <div class="input-group">
             <input type="text" id="folioInput" class="form-control" placeholder="Coloque aquí el Folio">
+          </div>
+          <!-- Informativo: se llena solo al salir del campo, si el folio ya existe -->
+          <div id="folioInfoLabel" class="text-muted mt-1 d-none">
+            <div id="folioInfoNombre"></div>
+            <div id="folioInfoCorreo"></div>
           </div>
         </div>
 
@@ -238,56 +243,6 @@
       </div>
     </div>
   </main>
-
-  <!-- MODAL BUSCAR -->
-  <div class="modal fade" id="buscarModal" tabindex="-1" aria-labelledby="buscarModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header" style="border-bottom: 2px solid var(--azul-marino);">
-          <div>
-            <h4 class="modal-title fw-bold" id="buscarModalLabel" style="color: var(--azul-marino);">Buscar en Base de Datos</h4>
-            <p class="text-muted mb-0 small">Consulta de folios en Google Sheets.</p>
-          </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body p-4 bg-light">
-          <div class="row mb-4 align-items-end bg-white p-3 rounded shadow-sm border">
-            <div class="col-12 col-md-8 mb-3 mb-md-0">
-              <label for="inputBuscarFolio" class="form-label small fw-bold" style="color: var(--azul-marino);">Folio a buscar</label>
-              <div class="input-group">
-                <input type="text" id="inputBuscarFolio" class="form-control" placeholder="Ej. 105952">
-                <button class="btn btn-outline-marino" type="button" id="btnEjecutarBusqueda">
-                  <i class="bi bi-search"></i> Buscar
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div id="loadingBusqueda" class="text-center d-none my-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2 text-muted fw-bold">Consultando base de datos, por favor espere...</p>
-          </div>
-
-          <div id="errorBusqueda" class="alert alert-danger d-none fw-bold shadow-sm"></div>
-
-          <div id="resultadoBusquedaContainer" class="d-none card card-custom shadow-sm">
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0" style="font-size: 0.9rem;">
-                  <tbody id="tablaResultadosBusqueda">
-                    <!-- Resultados Inyectados Aquí -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- MODAL DATA — BITÁCORA A:J -->
   <div class="modal fade" id="dataModal" tabindex="-1" aria-labelledby="dataModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="true">
@@ -459,6 +414,7 @@
     // =======================================
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
     const GOOGLE_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1fTY4BJ_MHE6IBLHOy5okDO2lFWPMed8e";
+    const CLAVE_LS_PROCESADO_POR = "convertidor_procesado_por";
 
     // Almacenamos el objeto Image puro para poder rotarlo si se necesita
     let imagesObj = {
@@ -470,8 +426,26 @@
     let currentIneDataUrl = null;
     let currentSelfieDataUrl = null;
     let bitacoraDataTable = null;
+    let folioInfoToken = 0; // evita que una respuesta vieja pise a una nueva
 
     $("#btnAbrirDrive").attr("href", GOOGLE_DRIVE_FOLDER_URL);
+
+    // =======================================
+    // PROCESADO POR: PERSISTE EN LOCALSTORAGE
+    // =======================================
+    $("#procesadoPorInput").val(localStorage.getItem(CLAVE_LS_PROCESADO_POR) || "");
+
+    $("#procesadoPorInput").on("input", function () {
+      localStorage.setItem(CLAVE_LS_PROCESADO_POR, $(this).val());
+    });
+
+    // "Recargar" borra el nombre guardado antes de recargar la página,
+    // así la siguiente persona que use el equipo tiene que volver a
+    // escribirlo.
+    $("#btnRecargarPagina").on("click", function () {
+      localStorage.removeItem(CLAVE_LS_PROCESADO_POR);
+      location.reload();
+    });
 
     // =======================================
     // VALIDACIÓN DE FOLIO OBLIGATORIO
@@ -489,7 +463,51 @@
     $("#folioInput").on("input", function() {
       $(this).removeClass("is-invalid");
       $("#modalFolioInput").val($(this).val());
-      $("#inputBuscarFolio").val($(this).val());
+      // el folio cambió: la info mostrada ya no es confiable, se oculta
+      // hasta que se vuelva a consultar en el siguiente "blur"
+      $("#folioInfoLabel").addClass("d-none");
+    });
+
+    // =======================================
+    // INFORMATIVO: NOMBRE Y CORREO AL SALIR DEL CAMPO FOLIO
+    // Solo informativo. Si no se encuentra, no se muestra nada.
+    // =======================================
+    $("#folioInput").on("blur", async function () {
+      const folio = $(this).val().trim();
+      const $info = $("#folioInfoLabel");
+      const $nombre = $("#folioInfoNombre");
+      const $correo = $("#folioInfoCorreo");
+
+      if (!folio) {
+        $info.addClass("d-none");
+        $nombre.text("");
+        $correo.text("");
+        return;
+      }
+
+      const miToken = ++folioInfoToken;
+
+      try {
+        const url = `${GOOGLE_SCRIPT_URL}?action=getFolioInfo&folio=${encodeURIComponent(folio)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        // si el usuario ya cambió el folio mientras esperábamos, se ignora
+        if (miToken !== folioInfoToken) return;
+
+        if (data.found) {
+          $nombre.text(data.nombre ? `Nombre: ${data.nombre}` : "");
+          $correo.text(data.correo ? `Correo: ${data.correo}` : "");
+          $info.removeClass("d-none");
+        } else {
+          $info.addClass("d-none");
+          $nombre.text("");
+          $correo.text("");
+        }
+      } catch (err) {
+        // solo es informativo: si falla la consulta, simplemente no se muestra nada
+        $info.addClass("d-none");
+      }
     });
 
     // =======================================
@@ -868,7 +886,10 @@
       $("#tablaBitacora tbody").empty();
 
       try {
-        const url = `${GOOGLE_SCRIPT_URL}?action=getBitacoraAJ&_=${Date.now()}`;
+        // OJO: la acción correcta registrada en Code.gs es "listBitacoraAJ"
+        // (antes el HTML pedía "getBitacoraAJ", que no existía, por eso
+        // nunca cargaba nada).
+        const url = `${GOOGLE_SCRIPT_URL}?action=listBitacoraAJ&_=${Date.now()}`;
         const res = await fetch(url, { cache: "no-store" });
         const data = await res.json();
 
@@ -974,57 +995,6 @@
 
     $("#btnAplicarModal").on("click", aplicarFolioMachote);
     $("#modalFolioInput").on("keypress", e => { if (e.which === 13) aplicarFolioMachote(); });
-
-    // =======================================
-    // MODAL BUSCAR EN SHEET EXTERNA
-    // =======================================
-    $("#buscarModal").on("show.bs.modal", function () {
-      $("#inputBuscarFolio").val($("#folioInput").val().trim());
-      $("#resultadoBusquedaContainer, #errorBusqueda").addClass("d-none");
-      $("#tablaResultadosBusqueda").empty();
-    });
-
-    $("#btnEjecutarBusqueda").on("click", function() {
-      const folioABuscar = $("#inputBuscarFolio").val().trim();
-      if (!folioABuscar) return alert("Por favor, ingrese un folio para buscar.");
-
-      $("#resultadoBusquedaContainer, #errorBusqueda").addClass("d-none");
-      $("#loadingBusqueda").removeClass("d-none");
-      $("#tablaResultadosBusqueda").empty();
-
-      const url = `${GOOGLE_SCRIPT_URL}?action=searchExternalSheet&folio=${encodeURIComponent(folioABuscar)}`;
-      
-      fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          $("#loadingBusqueda").addClass("d-none");
-          
-          if (data.found) {
-            let htmlRows = "";
-            for (const [header, valor] of Object.entries(data.data)) {
-              // Filtrar posibles campos vacíos si no quieres mostrarlos o mostrarlos en blanco
-              let textValue = (valor !== undefined && valor !== null && valor !== "") ? valor : '<em>-</em>';
-              htmlRows += `
-                <tr>
-                  <th class="w-25 text-end text-muted align-middle py-2" style="background-color: #f8f9fa; border-right: 2px solid var(--azul-marino);">${header}</th>
-                  <td class="align-middle fw-semibold text-break py-2 ps-3">${textValue}</td>
-                </tr>`;
-            }
-            $("#tablaResultadosBusqueda").html(htmlRows);
-            $("#resultadoBusquedaContainer").removeClass("d-none");
-          } else {
-            $("#errorBusqueda").removeClass("d-none").html(`<i class="bi bi-exclamation-octagon-fill me-2"></i>${data.message}`);
-          }
-        })
-        .catch(err => {
-          $("#loadingBusqueda").addClass("d-none");
-          $("#errorBusqueda").removeClass("d-none").html(`<i class="bi bi-x-circle-fill me-2"></i>Error de conexión al consultar el servidor.`);
-        });
-    });
-
-    $("#inputBuscarFolio").on("keypress", function(e) {
-      if (e.which === 13) $("#btnEjecutarBusqueda").click();
-    });
 
   </script>
 </body>
