@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Convertidor de Imágenes</title>
-  
+
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-  
+
   <style>
     :root { --azul-marino: #003366; }
     body { background-color:#ffffff; color:#1a1a2e; display:flex; flex-direction:column; min-height:100vh; }
-    
+
     .card-custom {
       border-radius: 8px;
       border: none;
@@ -35,14 +35,14 @@
     }
     .image-preview.has-image { border: 1px solid var(--azul-marino); }
     .preview-icon { font-size: 2.5rem; color: #adb5bd; }
-    
+
     .btn-outline-marino {
       border: 2px solid var(--azul-marino);
       color: var(--azul-marino);
       font-weight: 600;
     }
     .btn-outline-marino:hover { background-color: var(--azul-marino); color: white; }
-    
+
     .hr-azul {
       border: 0;
       height: 2px;
@@ -67,10 +67,21 @@
       border-color: var(--azul-marino);
     }
 
-    /* Texto informativo de Nombre/Correo bajo el campo Folio */
+    /* Texto informativo de Folio / Nombre / Correo / estatus de archivos */
     #folioInfoLabel {
       font-size: .8rem;
-      line-height: 1.3;
+      line-height: 1.4;
+    }
+    #folioInfoLabel .badge {
+      font-size: .72rem;
+    }
+
+    /* Panel de validación OCR de INE */
+    #ineOcrPanel {
+      font-size: .85rem;
+    }
+    #ineOcrPanel .badge {
+      font-size: .75rem;
     }
 
     /* ===============================
@@ -121,7 +132,7 @@
 
   <main class="flex-grow-1 py-4">
     <div class="container">
-      
+
       <header class="mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
           <h2 class="fw-bold" style="color: var(--azul-marino);">Convertidor de Imágenes</h2>
@@ -141,35 +152,44 @@
           <button class="btn btn-outline-marino" id="btnAbrirMachote" data-bs-toggle="modal" data-bs-target="#machoteModal">
             <i class="bi bi-envelope-paper me-2"></i>Machote Correos
           </button>
-          
+
           <button class="btn btn-outline-marino" id="btnRecargarPagina">
             <i class="bi bi-arrow-clockwise me-2"></i>Recargar
           </button>
         </div>
       </header>
 
-      <!-- Sección Folio y Toggle -->
-      <div class="row mb-4 align-items-end g-3">
-        <div class="col-12 col-md-6 col-xl-4">
+      <!-- Sección Folio / Procesado Por / Toggle -->
+      <!-- CORREGIDO: 3 columnas de col-md-4 (4+4+4 = 12), en vez de col-md-6
+           col-xl-4, que sumaba 18 en md y se desconfiguraba en pantallas
+           medianas. -->
+      <div class="row mb-4 g-3 align-items-end">
+        <div class="col-12 col-md-4">
           <label for="folioInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Coloque el nombre de Folio</label>
           <div class="input-group">
             <input type="text" id="folioInput" class="form-control" placeholder="Coloque aquí el Folio">
           </div>
-          <!-- Informativo: se llena solo al salir del campo, si el folio ya existe -->
-          <div id="folioInfoLabel" class="text-muted mt-1 d-none">
+          <!-- Informativo: se llena solo al salir del campo, si el folio ya existe.
+               Ahora muestra también Folio y el estatus de las columnas D (INE) y E (Foto). -->
+          <div id="folioInfoLabel" class="text-muted mt-2 d-none">
+            <div id="folioInfoFolio" class="fw-semibold"></div>
             <div id="folioInfoNombre"></div>
             <div id="folioInfoCorreo"></div>
+            <div class="mt-1">
+              <span id="badgeIne" class="badge bg-secondary me-1">INE: -</span>
+              <span id="badgeFoto" class="badge bg-secondary">Foto: -</span>
+            </div>
           </div>
         </div>
 
-        <div class="col-12 col-md-6 col-xl-4">
+        <div class="col-12 col-md-4">
           <label for="procesadoPorInput" class="form-label small fw-bold" style="color: var(--azul-marino);">Procesado Por:</label>
           <div class="input-group">
             <input type="text" id="procesadoPorInput" class="form-control" placeholder="Opcional" autocomplete="off">
           </div>
         </div>
 
-        <div class="col-12 col-md-6 col-xl-4">
+        <div class="col-12 col-md-4">
           <div class="card p-2 shadow-sm border-0 bg-light d-flex flex-row align-items-center justify-content-between px-3">
             <span class="small fw-bold text-muted d-flex align-items-center me-2">
               <i class="bi bi-cloud-upload me-1 text-primary"></i> Subir a Drive
@@ -208,6 +228,14 @@
                 <i class="bi bi-id-card preview-icon"></i>
                 <p class="small text-muted mb-0">Vista previa combinada</p>
               </div>
+            </div>
+
+            <!-- Panel de validación automática por OCR (CURP, Nombre, Vigencia) -->
+            <div id="ineOcrPanel" class="d-none mb-3 p-3 bg-light rounded border">
+              <h6 class="fw-bold mb-2" style="color: var(--azul-marino);">
+                <i class="bi bi-search me-2"></i>Validación automática de INE (OCR)
+              </h6>
+              <div id="ineOcrResultado"></div>
             </div>
 
             <button id="downloadIneBtn" class="btn btn-outline-marino w-100 d-none shadow-sm">
@@ -408,6 +436,9 @@
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
 
+  <!-- OCR: Tesseract.js, usado para leer INE (frente y reverso) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
   <script>
     // =======================================
     // VARIABLES GLOBALES Y ESTADOS
@@ -427,6 +458,7 @@
     let currentSelfieDataUrl = null;
     let bitacoraDataTable = null;
     let folioInfoToken = 0; // evita que una respuesta vieja pise a una nueva
+    let ocrToken = 0;       // evita que una lectura OCR vieja pise a una nueva
 
     $("#btnAbrirDrive").attr("href", GOOGLE_DRIVE_FOLDER_URL);
 
@@ -469,19 +501,17 @@
     });
 
     // =======================================
-    // INFORMATIVO: NOMBRE Y CORREO AL SALIR DEL CAMPO FOLIO
-    // Solo informativo. Si no se encuentra, no se muestra nada.
+    // INFORMATIVO: FOLIO, NOMBRE, CORREO Y ESTATUS DE INE/FOTO
+    // AL SALIR DEL CAMPO FOLIO. Solo informativo. Si no se encuentra,
+    // no se muestra nada.
     // =======================================
     $("#folioInput").on("blur", async function () {
       const folio = $(this).val().trim();
       const $info = $("#folioInfoLabel");
-      const $nombre = $("#folioInfoNombre");
-      const $correo = $("#folioInfoCorreo");
 
       if (!folio) {
         $info.addClass("d-none");
-        $nombre.text("");
-        $correo.text("");
+        $("#folioInfoFolio, #folioInfoNombre, #folioInfoCorreo").text("");
         return;
       }
 
@@ -496,13 +526,27 @@
         if (miToken !== folioInfoToken) return;
 
         if (data.found) {
-          $nombre.text(data.nombre ? `Nombre: ${data.nombre}` : "");
-          $correo.text(data.correo ? `Correo: ${data.correo}` : "");
+          $("#folioInfoFolio").text(`Folio: ${data.folio || folio}`);
+          $("#folioInfoNombre").text(data.nombre ? `Nombre: ${data.nombre}` : "");
+          $("#folioInfoCorreo").text(data.correo ? `Correo: ${data.correo}` : "");
+
+          const ineOk = String(data.ineStatus || "").trim().toLowerCase() === "si";
+          const fotoOk = String(data.fotoStatus || "").trim().toLowerCase() === "si";
+
+          $("#badgeIne")
+            .text(`INE: ${ineOk ? "Sí" : "No"}`)
+            .removeClass("bg-secondary bg-success bg-danger")
+            .addClass(ineOk ? "bg-success" : "bg-danger");
+
+          $("#badgeFoto")
+            .text(`Foto: ${fotoOk ? "Sí" : "No"}`)
+            .removeClass("bg-secondary bg-success bg-danger")
+            .addClass(fotoOk ? "bg-success" : "bg-danger");
+
           $info.removeClass("d-none");
         } else {
           $info.addClass("d-none");
-          $nombre.text("");
-          $correo.text("");
+          $("#folioInfoFolio, #folioInfoNombre, #folioInfoCorreo").text("");
         }
       } catch (err) {
         // solo es informativo: si falla la consulta, simplemente no se muestra nada
@@ -588,28 +632,28 @@
     // =======================================
     $("#ineFrontalInput").on("change", e => {
       if (e.target.files[0]) {
-        handleImageLoad(e.target.files[0], img => { 
-          imagesObj.ineFrontal = img; 
+        handleImageLoad(e.target.files[0], img => {
+          imagesObj.ineFrontal = img;
           $("#tools-ineFrontal").removeClass("d-none");
-          combineIneImages(); 
+          combineIneImages();
         });
       }
     });
 
     $("#ineLateralInput").on("change", e => {
       if (e.target.files[0]) {
-        handleImageLoad(e.target.files[0], img => { 
-          imagesObj.ineLateral = img; 
+        handleImageLoad(e.target.files[0], img => {
+          imagesObj.ineLateral = img;
           $("#tools-ineLateral").removeClass("d-none");
-          combineIneImages(); 
+          combineIneImages();
         });
       }
     });
 
     $("#selfieInput").on("change", e => {
       if (e.target.files[0]) {
-        handleImageLoad(e.target.files[0], img => { 
-          imagesObj.selfie = img; 
+        handleImageLoad(e.target.files[0], img => {
+          imagesObj.selfie = img;
           $("#tools-selfie").removeClass("d-none");
           updateSelfie();
         });
@@ -631,9 +675,9 @@
       ctx.fillStyle = '#dee2e6';
       ctx.font = "bold 24px Arial";
       ctx.textAlign = "center";
-      
+
       let hasAny = false;
-      
+
       if (imagesObj.ineFrontal) {
         ctx.drawImage(imagesObj.ineFrontal, 0, 0, 650, 400);
         hasAny = true;
@@ -652,11 +696,15 @@
         currentIneDataUrl = canvas.toDataURL('image/jpeg', 0.90);
         setPreview('ineCombinedPreview', 'inePlaceholder', currentIneDataUrl);
       }
-      
+
       if (imagesObj.ineFrontal && imagesObj.ineLateral) {
         resetBtnState($("#downloadIneBtn"));
         updateButtonTexts();
         $("#ineStatus").empty();
+
+        // Ambas caras de la INE ya están cargadas: se dispara la
+        // validación automática por OCR (CURP, Nombre, Vigencia).
+        ejecutarValidacionOcrIne();
       }
     }
 
@@ -666,7 +714,7 @@
       canvas.width = 265;
       canvas.height = 320;
       const ctx = canvas.getContext('2d');
-      
+
       ctx.drawImage(imagesObj.selfie, 0, 0, 265, 320);
 
       currentSelfieDataUrl = canvas.toDataURL('image/jpeg', 0.90);
@@ -675,6 +723,194 @@
       resetBtnState($("#downloadSelfieBtn"));
       updateButtonTexts();
       $("#selfieStatus").empty();
+    }
+
+    // =======================================
+    // VALIDACIÓN AUTOMÁTICA DE INE POR OCR
+    // (CURP, Nombre, Vigencia y comparación frente/reverso)
+    //
+    // IMPORTANTE: esto es una lectura automática por OCR, no una
+    // validación oficial. Puede fallar por calidad de imagen, brillo,
+    // ángulo, etc. Siempre debe revisarse manualmente antes de decidir.
+    // =======================================
+    async function ejecutarValidacionOcrIne() {
+      if (!imagesObj.ineFrontal || !imagesObj.ineLateral) return;
+      if (typeof Tesseract === "undefined") {
+        $("#ineOcrPanel").removeClass("d-none");
+        $("#ineOcrResultado").html(
+          '<div class="text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>' +
+          'No se pudo cargar el motor de OCR (Tesseract.js). Verifique su conexión a internet.</div>'
+        );
+        return;
+      }
+
+      const miToken = ++ocrToken;
+      const $panel = $("#ineOcrPanel");
+      const $resultado = $("#ineOcrResultado");
+
+      $panel.removeClass("d-none");
+      $resultado.html(
+        '<div class="text-info small">' +
+        '<span class="spinner-border spinner-border-sm me-2"></span>' +
+        'Leyendo INE con OCR, esto puede tardar unos segundos...</div>'
+      );
+
+      try {
+        const frontalDataUrl = imagesObj.ineFrontal.src;
+        const lateralDataUrl = imagesObj.ineLateral.src;
+
+        const [resFrontal, resLateral] = await Promise.all([
+          Tesseract.recognize(frontalDataUrl, 'spa'),
+          Tesseract.recognize(lateralDataUrl, 'spa')
+        ]);
+
+        if (miToken !== ocrToken) return; // se cargó otra imagen mientras tanto
+
+        const textoFrontal = (resFrontal && resFrontal.data && resFrontal.data.text) || "";
+        const textoLateral = (resLateral && resLateral.data && resLateral.data.text) || "";
+        const textoCompleto = textoFrontal + "\n" + textoLateral;
+
+        const nombreDetectado = extraerNombreIne_(textoFrontal);
+        const curpDetectado = extraerCurp_(textoCompleto);
+        const vigenciaInfo = extraerVigencia_(textoCompleto);
+        const coincidencia = compararNombreConCurp_(nombreDetectado, curpDetectado);
+
+        renderizarResultadoOcr_(nombreDetectado, curpDetectado, vigenciaInfo, coincidencia);
+
+      } catch (err) {
+        if (miToken !== ocrToken) return;
+        $resultado.html(
+          `<div class="text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>` +
+          `No fue posible leer la INE automáticamente (${escapeHtml(err.message || err)}). ` +
+          `Verifique los datos manualmente.</div>`
+        );
+      }
+    }
+
+    /**
+     * Busca un CURP (18 caracteres) en el texto combinado de ambas caras.
+     * Formato: 4 letras + 6 dígitos (fecha) + H/M + 5 letras + 1 alfanumérico + 1 dígito.
+     */
+    function extraerCurp_(texto) {
+      const soloMayusSinEspacios = texto.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const regex = /[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d/;
+      const match = soloMayusSinEspacios.match(regex);
+      return match ? match[0] : null;
+    }
+
+    /**
+     * Busca el bloque de Nombre en el texto del FRENTE de la INE.
+     * En el formato vigente, después de la etiqueta "NOMBRE" siguen
+     * 2 o 3 líneas con Apellido Paterno, Apellido Materno y Nombre(s).
+     */
+    function extraerNombreIne_(textoFrontal) {
+      const lineas = textoFrontal.split('\n').map(l => l.trim()).filter(Boolean);
+      const idx = lineas.findIndex(l => /NOMBRE/i.test(l));
+      if (idx === -1) return null;
+
+      const posibles = lineas.slice(idx + 1, idx + 4).filter(l =>
+        /^[A-ZÁÉÍÓÚÑ\s]{2,}$/i.test(l) &&
+        !/DOMICILIO|FECHA|SEXO|CURP|CLAVE|VIGENCIA|INSTITUTO|MEXICO/i.test(l)
+      );
+
+      if (!posibles.length) return null;
+      return posibles.join(' ').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * Busca la vigencia cerca de la palabra "VIGENCIA" y toma el año
+     * más alto encontrado en ese contexto como año de vencimiento.
+     * Compara contra la fecha actual para determinar si está vigente.
+     */
+    function extraerVigencia_(texto) {
+      const textoUpper = texto.toUpperCase();
+      const idx = textoUpper.indexOf('VIGENCIA');
+      const contexto = idx !== -1 ? texto.substring(idx, idx + 60) : texto;
+
+      const anios = contexto.match(/\b(19|20)\d{2}\b/g);
+      if (!anios || !anios.length) return { encontrada: false };
+
+      const anioFin = Math.max(...anios.map(Number));
+      const hoy = new Date();
+      const vigente = anioFin >= hoy.getFullYear();
+
+      return { encontrada: true, anioFin: anioFin, vigente: vigente };
+    }
+
+    /**
+     * Comparación APROXIMADA entre el nombre leído en el frente y el
+     * CURP leído en el reverso (o donde se haya encontrado). Se basa en
+     * que los primeros 4 caracteres del CURP se derivan de las iniciales
+     * del nombre completo. Como el OCR no siempre separa perfectamente
+     * apellidos de nombre(s), se valida de forma flexible: que la
+     * primera y la cuarta letra del CURP aparezcan como inicial de
+     * alguna de las palabras del nombre detectado.
+     *
+     * Esto NO sustituye una validación oficial; solo da una señal de
+     * alerta para revisar manualmente si algo no cuadra.
+     */
+    function compararNombreConCurp_(nombre, curp) {
+      if (!nombre || !curp || curp.length < 4) {
+        return { determinable: false };
+      }
+
+      const palabras = nombre.toUpperCase().split(/\s+/).filter(Boolean);
+      const iniciales = palabras.map(p => p[0]).join('');
+      const prefijoCurp = curp.substring(0, 4);
+
+      const coincideApellido = iniciales.includes(prefijoCurp[0]);
+      const coincideNombrePropio = iniciales.includes(prefijoCurp[3]);
+
+      return {
+        determinable: true,
+        coincide: coincideApellido && coincideNombrePropio,
+        prefijoCurp: prefijoCurp
+      };
+    }
+
+    function renderizarResultadoOcr_(nombre, curp, vigenciaInfo, coincidencia) {
+      const $resultado = $("#ineOcrResultado");
+      let html = '<div class="row g-2">';
+
+      html += `<div class="col-12 col-md-6">
+        <strong>Nombre detectado (frente):</strong><br>
+        ${nombre ? escapeHtml(nombre) : '<span class="text-muted">No se pudo detectar, verifique manualmente</span>'}
+      </div>`;
+
+      html += `<div class="col-12 col-md-6">
+        <strong>CURP detectado:</strong><br>
+        ${curp ? `<span class="badge bg-secondary">${escapeHtml(curp)}</span>` : '<span class="text-muted">No se pudo detectar</span>'}
+      </div>`;
+
+      html += `<div class="col-12 col-md-6">
+        <strong>Vigencia:</strong><br>`;
+      if (vigenciaInfo.encontrada) {
+        html += vigenciaInfo.vigente
+          ? `<span class="badge bg-success">Vigente (hasta ${vigenciaInfo.anioFin})</span>`
+          : `<span class="badge bg-danger">Vencida (${vigenciaInfo.anioFin})</span>`;
+      } else {
+        html += '<span class="text-muted">No se pudo determinar</span>';
+      }
+      html += `</div>`;
+
+      html += `<div class="col-12 col-md-6">
+        <strong>Coincidencia Nombre / CURP:</strong><br>`;
+      if (coincidencia.determinable) {
+        html += coincidencia.coincide
+          ? '<span class="badge bg-success">Coincide</span>'
+          : '<span class="badge bg-warning text-dark">Revisar manualmente</span>';
+      } else {
+        html += '<span class="text-muted">No determinable</span>';
+      }
+      html += `</div>`;
+
+      html += `</div>
+        <div class="text-muted mt-2" style="font-size:.72rem;">
+          <i class="bi bi-info-circle me-1"></i>Lectura automática (OCR), puede contener errores.
+          Verifique siempre los datos manualmente antes de validar el folio.
+        </div>`;
+
+      $resultado.html(html);
     }
 
     // =======================================
@@ -791,6 +1027,11 @@
            </span>`
         );
 
+        // Refrescar el informativo de Folio (por si ya estaba visible)
+        // para reflejar el nuevo estatus de INE / Foto sin tener que
+        // volver a hacer click en el campo.
+        $("#folioInput").trigger("blur");
+
         return true;
 
       } catch (err) {
@@ -849,7 +1090,7 @@
       if (!folio) return;
 
       const fileName = `${folio}-ine.jpg`;
-      $("#modoToggle").is(":checked") 
+      $("#modoToggle").is(":checked")
         ? downloadToLocal(currentIneDataUrl, fileName, "#ineStatus")
         : uploadToDrive(currentIneDataUrl, fileName, "#downloadIneBtn", "#ineStatus", "ine");
     });
@@ -860,7 +1101,7 @@
       if (!folio) return;
 
       const fileName = `${folio}-foto.jpg`;
-      $("#modoToggle").is(":checked") 
+      $("#modoToggle").is(":checked")
         ? downloadToLocal(currentSelfieDataUrl, fileName, "#selfieStatus")
         : uploadToDrive(currentSelfieDataUrl, fileName, "#downloadSelfieBtn", "#selfieStatus", "foto");
     });
@@ -886,9 +1127,7 @@
       $("#tablaBitacora tbody").empty();
 
       try {
-        // OJO: la acción correcta registrada en Code.gs es "listBitacoraAJ"
-        // (antes el HTML pedía "getBitacoraAJ", que no existía, por eso
-        // nunca cargaba nada).
+        // La acción registrada en Code.gs es "listBitacoraAJ".
         const url = `${GOOGLE_SCRIPT_URL}?action=listBitacoraAJ&_=${Date.now()}`;
         const res = await fetch(url, { cache: "no-store" });
         const data = await res.json();
