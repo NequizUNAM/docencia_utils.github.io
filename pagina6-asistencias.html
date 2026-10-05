@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Registro de Asistencia y Bitácora</title>
+  <title>Registro de Asistencia</title>
   <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -58,7 +58,7 @@
   <main class="flex-grow-1 py-4">
     <div class="hero text-center rounded-3 mb-4 shadow-custom">
       <h1 class="display-5 fw-bold">Registro de Asistencia</h1>
-      <p class="lead mb-0">Selecciona grupo y sesión, marca asistencia y agrega bitácora por participante</p>
+      <p class="lead mb-0">Selecciona curso, fecha, turno y (opcional) grupo, y marca la asistencia del día en tiempo real</p>
     </div>
 
     <div class="container">
@@ -67,34 +67,59 @@
       <div class="card filtros-card p-4 mb-4 bg-white shadow-custom">
         <!-- FILA 1: PARÁMETROS DE BÚSQUEDA -->
         <div class="row g-3 align-items-end mb-3">
-          <div class="col-md-5">
-            <label for="selectGrupo" class="form-label fw-semibold text-dark">
-              <i class="bi bi-people-fill text-primary"></i> Grupo (group1)
+          <div class="col-md-3">
+            <label for="selectCurso" class="form-label fw-semibold text-dark">
+              <i class="bi bi-book-fill text-primary"></i> Curso <span class="text-danger">*</span>
             </label>
-            <select id="selectGrupo" class="form-select form-select-lg fs-6">
-              <option value="">Selecciona un grupo…</option>
-            </select>
-          </div>
-
-          <div class="col-md-4">
-            <label for="selectSesion" class="form-label fw-semibold text-dark">
-              <i class="bi bi-calendar-event text-primary"></i> Sesión
-            </label>
-            <select id="selectSesion" class="form-select form-select-lg fs-6">
-              <option value="Sesión1">Sesión 1</option>
-              <option value="Sesión2">Sesión 2</option>
-              <option value="Sesión3">Sesión 3</option>
-              <option value="Sesión4">Sesión 4</option>
-              <option value="Sesión5">Sesión 5</option>
-              <option value="Sesión6">Sesión 6</option>
-              <option value="Sesión7">Sesión 7</option>
-              <option value="Sesión8">Sesión 8</option>
-              <option value="Sesión9">Sesión 9</option>
-              <option value="Sesión10">Sesión 10</option>
+            <select id="selectCurso" class="form-select form-select-lg fs-6">
+              <option value="">Seleccione un curso</option>
+              <option value="ADOB">ADOB</option>
+              <option value="ADOI">ADOI</option>
+              <option value="CBT">CBT</option>
+              <option value="HTICIPB">HTICIPB</option>
+              <option value="HTICIPI">HTICIPI</option>
+              <option value="MBCIWB">MBCIWB</option>
+              <option value="MBCIWI">MBCIWI</option>
+              <option value="MEB">MEB</option>
+              <option value="MEI">MEI</option>
+              <option value="MWB">MWB</option>
+              <option value="MWI">MWI</option>
+              <option value="PMIWEB">PMIWEB</option>
+              <option value="PMIWEI">PMIWEI</option>
+              <option value="SMECI">SMECI</option>
+              <option value="TCNB">TCNB</option>
+              <option value="TCNI">TCNI</option>
             </select>
           </div>
 
           <div class="col-md-3">
+            <label for="inputFecha" class="form-label fw-semibold text-dark">
+              <i class="bi bi-calendar-event text-primary"></i> Fecha Curso <span class="text-danger">*</span>
+            </label>
+            <input type="date" id="inputFecha" class="form-control form-control-lg fs-6">
+          </div>
+
+          <div class="col-md-2">
+            <label for="selectTurno" class="form-label fw-semibold text-dark">
+              <i class="bi bi-clock text-primary"></i> Turno <span class="text-danger">*</span>
+            </label>
+            <select id="selectTurno" class="form-select form-select-lg fs-6">
+              <option value="">Seleccione un turno</option>
+              <option value="MATUTINO">MATUTINO</option>
+              <option value="VESPERTINO">VESPERTINO</option>
+            </select>
+          </div>
+
+          <div class="col-md-2">
+            <label for="selectGrupo" class="form-label fw-semibold text-dark">
+              <i class="bi bi-people-fill text-primary"></i> Grupo <span class="text-muted fw-normal small">(opcional)</span>
+            </label>
+            <select id="selectGrupo" class="form-select form-select-lg fs-6">
+              <option value="">Todos los grupos</option>
+            </select>
+          </div>
+
+          <div class="col-md-2">
             <button id="btnCargar" class="btn btn-primary-navy btn-lg w-100 fs-6 fw-semibold shadow-sm">
               <i class="bi bi-search me-1"></i> Buscar
             </button>
@@ -121,19 +146,20 @@
       </div>
 
       <!-- TABLA PARTICIPANTES -->
+      <div id="resumenAsistencia" class="small fw-semibold text-muted mb-2 text-end"></div>
       <div class="table-responsive shadow-custom rounded bg-white p-2">
         <table class="table table-bordered table-hover align-middle bg-white mb-0" id="tablaParticipantes">
           <thead style="background-color:#001f5b; color:#fff;">
             <tr>
               <th>Folio</th>
               <th>Participante</th>
-              <th class="text-center">Asistencia <span id="badgeSesionActual" class="badge badge-sesion"></span></th>
-              <th class="text-center">Bitácora</th>
+              <th class="text-center">Grupo</th>
+              <th class="text-center">Asistencia <span id="badgeFechaActual" class="badge badge-sesion"></span></th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td colspan="4" class="text-center text-muted py-4">Selecciona un grupo y una sesión, luego presiona "Buscar".</td>
+              <td colspan="4" class="text-center text-muted py-4">Selecciona curso, fecha y turno (grupo es opcional), luego presiona "Buscar".</td>
             </tr>
           </tbody>
         </table>
@@ -141,44 +167,6 @@
 
     </div>
   </main>
-
-  <!-- MODAL BITÁCORA -->
-  <div class="modal fade" id="modalBitacora" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content shadow">
-        <div class="modal-header" style="background-color:#001f5b; color:#fff;">
-          <h5 class="modal-title"><i class="bi bi-journal-text"></i> Bitácora de participante</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="logFolio">
-          <input type="hidden" id="logGrupo">
-          <p class="mb-3"><strong>Participante:</strong> <span id="logNombre">-</span></p>
-
-          <div class="mb-3">
-            <label for="logImagen" class="form-label fw-semibold">Imagen (opcional)</label>
-            <input class="form-control" type="file" id="logImagen" accept="image/*">
-            <div class="mt-2">
-              <img id="logImagenPreview" class="thumb-preview d-none" alt="Vista previa">
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label for="logComentario" class="form-label fw-semibold">Comentario / Observación</label>
-            <textarea class="form-control" id="logComentario" rows="3" placeholder="Escribe una observación…"></textarea>
-          </div>
-
-          <div id="logEstado" class="small"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" id="btnGuardarLog" class="btn btn-primary-navy">
-            <i class="bi bi-cloud-upload"></i> Guardar registro
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- MODAL REGISTRO DE INCIDENCIA GENERAL -->
   <div class="modal fade" id="modalIncidencia" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
@@ -312,7 +300,7 @@
 
   <script>
   /* =========================================================================
-   * SCRIPT DE LA PÁGINA — Registro de Asistencia, Incidencias y Bitácora
+   * SCRIPT DE LA PÁGINA — Registro de Asistencia por día e Incidencias
    * ========================================================================= */
 
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbygqhpJct88ZhbtH6tnfkPys3vgggJiVLyjufqJ-Pz9bSLcvM1ohYS4sVgAFe8Al3ed/exec";
@@ -347,8 +335,33 @@
     return llamarWebAppGet("getHistorico", { folio });
   }
 
-  function actualizarAsistencia(folio, columnaSesion, valor) {
-    return llamarWebAppPost("updateAsistencia", { folio, columnaSesion, valor });
+  function fetchParticipantes({ curso, fecha, turno, grupo }) {
+    return llamarWebAppGet("listParticipantes", { curso, fecha, turno, grupo: grupo || "" });
+  }
+
+  // Asistencia por DÍA: se guarda en la columna "Asistencia" de la hoja.
+  const COLUMNA_ASISTENCIA = "Asistencia";
+
+  function actualizarAsistencia(folio, valor, rowIndex) {
+    return llamarWebAppPost("updateAsistencia", { folio, columnaSesion: COLUMNA_ASISTENCIA, valor, rowIndex });
+  }
+
+  function escapeHtml(t) {
+    return String(t === null || t === undefined ? "" : t)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function esAsistenciaSi(v) {
+    const val = (v || "").toString().trim().toLowerCase();
+    return val === "sí" || val === "si";
+  }
+
+  function actualizarResumen() {
+    const total = $("#tablaParticipantes tbody tr[data-folio]").length;
+    if (!total) { $("#resumenAsistencia").text(""); return; }
+    const presentes = $("#tablaParticipantes tbody .chk-asistencia:checked").length;
+    $("#resumenAsistencia").text(`Presentes: ${presentes} de ${total}`);
   }
 
   function fileToBase64(file) {
@@ -357,26 +370,6 @@
       reader.onload = () => resolve(reader.result.split(",")[1]);
       reader.onerror = reject;
       reader.readAsDataURL(file);
-    });
-  }
-
-  async function guardarLog({ folio, nombre, grupo, sesion, comentario, file }) {
-    let base64Data = null, fileName = null, mimeType = null;
-    if (file) {
-      base64Data = await fileToBase64(file);
-      fileName = `bitacora_${Date.now()}_${file.name}`;
-      mimeType = file.type;
-    }
-    return llamarWebAppPost("addRegistroIncidencia", {
-      tipo: "Bitácora",
-      folio,
-      nombre,
-      grupo,
-      sesion,
-      detalle: comentario,
-      base64Data,
-      fileName,
-      mimeType
     });
   }
 
@@ -406,37 +399,34 @@
     });
   }
 
-  function renderParticipantes(participantes, columnaSesion) {
+  function renderParticipantes(participantes, fechaTexto) {
     const $tbody = $("#tablaParticipantes tbody");
-    $("#badgeSesionActual").text(columnaSesion.replace("Sesión", "Sesión "));
+    $("#badgeFechaActual").text(fechaTexto || "");
 
     if (!participantes.length) {
-      $tbody.html(`<tr><td colspan="4" class="text-center text-muted py-4">Sin participantes para este grupo.</td></tr>`);
+      $tbody.html(`<tr><td colspan="4" class="text-center text-muted py-4">Sin participantes para los filtros seleccionados.</td></tr>`);
+      actualizarResumen();
       return;
     }
 
     const filas = participantes.map(p => {
-      const val = (p[columnaSesion] || "").toString().trim().toLowerCase();
-      const marcado = (val === "sí" || val === "si");
+      const marcado = esAsistenciaSi(p[COLUMNA_ASISTENCIA]);
+      // En la hoja, "lastname" trae el nombre completo y "firstname" el RFC.
+      const nombre = (p.lastname || "").toString().trim();
+      const rfc = (p.firstname || "").toString().trim();
       return `
-        <tr data-folio="${p.Folio}" class="${marcado ? "marcado-si" : "marcado-no"}">
-          <td>${p.Folio}</td>
-          <td>${p.firstname || ""} ${p.lastname || ""}</td>
+        <tr data-folio="${escapeHtml(p.Folio)}" data-row="${escapeHtml(p._rowIndex)}" class="${marcado ? "marcado-si" : "marcado-no"}">
+          <td class="fw-semibold">${escapeHtml(p.Folio)}</td>
+          <td>${escapeHtml(nombre)}${rfc ? `<div class="small text-muted">${escapeHtml(rfc)}</div>` : ""}</td>
+          <td class="text-center">${escapeHtml(p.Grupo)}</td>
           <td class="text-center">
             <input type="checkbox" class="form-check-input chk-asistencia custom-checkbox" ${marcado ? "checked" : ""}>
-          </td>
-          <td class="text-center">
-            <button class="btn btn-sm btn-outline-primary btn-bitacora shadow-sm"
-                    data-folio="${p.Folio}"
-                    data-nombre="${(p.firstname || "") + " " + (p.lastname || "")}"
-                    data-grupo="${p.group1 || ""}">
-              <i class="bi bi-journal-plus"></i>
-            </button>
           </td>
         </tr>`;
     }).join("");
 
     $tbody.html(filas);
+    actualizarResumen();
   }
 
   function mostrarEstado(selector, mensaje, tipo = "muted") {
@@ -516,6 +506,12 @@
   }
 
   $(async function () {
+    // Fecha de hoy por defecto (hora local del navegador).
+    const hoy = new Date();
+    $("#inputFecha").val(
+      hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + String(hoy.getDate()).padStart(2, "0")
+    );
+
     try {
       const { grupos, error } = await fetchGrupos();
       if (error) throw new Error(error);
@@ -526,40 +522,57 @@
     }
 
     $("#btnCargar").on("click", async function () {
-      const grupo = $("#selectGrupo").val();
-      const sesion = $("#selectSesion").val();
-      
-      $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div> Buscando participantes...</td></tr>`);
-      
-      if (!grupo) {
-        mostrarEstado("#estadoGuardado", "Selecciona un grupo primero.", "error");
-        $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-muted py-4">Selecciona un grupo y una sesión, luego presiona "Buscar".</td></tr>`);
+      const curso = $("#selectCurso").val();
+      const fecha = $("#inputFecha").val();
+      const turno = $("#selectTurno").val();
+      const grupo = $("#selectGrupo").val(); // opcional: vacío = todos
+
+      const msgInicial = `<tr><td colspan="4" class="text-center text-muted py-4">Selecciona curso, fecha y turno (grupo es opcional), luego presiona "Buscar".</td></tr>`;
+
+      if (!curso || !fecha || !turno) {
+        const faltan = [!curso && "curso", !fecha && "fecha", !turno && "turno"].filter(Boolean).join(", ");
+        mostrarEstado("#estadoGuardado", `Falta seleccionar: ${faltan}.`, "error");
+        $("#tablaParticipantes tbody").html(msgInicial);
+        $("#resumenAsistencia").text("");
         return;
       }
-      
+
+      const $btn = $(this).prop("disabled", true);
+      $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div> Buscando participantes...</td></tr>`);
       mostrarEstado("#estadoGuardado", "Cargando participantes y sincronizando datos...", "ok");
+
       try {
-        const { participantes, error } = await fetchParticipantesPorGrupo(grupo);
+        const { participantes, error } = await fetchParticipantes({ curso, fecha, turno, grupo });
         if (error) throw new Error(error);
-        renderParticipantes(participantes, sesion);
-        mostrarEstado("#estadoGuardado", `¡${participantes.length} participante(s) cargado(s) exitosamente!`, "ok");
+        renderParticipantes(participantes, fecha);
+        mostrarEstado(
+          "#estadoGuardado",
+          participantes.length
+            ? `¡${participantes.length} participante(s) cargado(s)${grupo ? ` del grupo ${grupo}` : " (todos los grupos)"}!`
+            : "No se encontraron participantes con esos filtros.",
+          participantes.length ? "ok" : "error"
+        );
       } catch (err) {
         console.error(err);
         mostrarEstado("#estadoGuardado", "Error al cargar participantes.", "error");
         $("#tablaParticipantes tbody").html(`<tr><td colspan="4" class="text-center text-danger py-4">Error al cargar datos.</td></tr>`);
+        $("#resumenAsistencia").text("");
+      } finally {
+        $btn.prop("disabled", false);
       }
     });
 
+    // Asistencia en TIEMPO REAL: cada clic se guarda al instante.
     $("#tablaParticipantes").on("change", ".chk-asistencia", async function () {
       const $chk = $(this);
       const $fila = $chk.closest("tr");
       const folio = $fila.data("folio");
-      const columnaSesion = $("#selectSesion").val();
+      const rowIndex = $fila.data("row");
       const valor = $chk.is(":checked") ? "Sí" : "No";
 
       $chk.prop("disabled", true);
       try {
-        const resp = await actualizarAsistencia(folio, columnaSesion, valor);
+        const resp = await actualizarAsistencia(folio, valor, rowIndex);
         if (resp.status !== "success") throw new Error(resp.message);
         $fila.toggleClass("marcado-si", valor === "Sí").toggleClass("marcado-no", valor === "No");
       } catch (err) {
@@ -568,56 +581,7 @@
         alert("No se pudo guardar la asistencia. Intenta de nuevo.");
       } finally {
         $chk.prop("disabled", false);
-      }
-    });
-
-    // Abrir modal Bitácora
-    $("#tablaParticipantes").on("click", ".btn-bitacora", function () {
-      const $btn = $(this);
-      $("#logFolio").val($btn.data("folio"));
-      $("#logGrupo").val($btn.data("grupo"));
-      $("#logNombre").text($btn.data("nombre"));
-      $("#logImagen").val("");
-      $("#logImagenPreview").addClass("d-none").attr("src", "");
-      $("#logComentario").val("");
-      mostrarEstado("#logEstado", "");
-      new bootstrap.Modal("#modalBitacora").show();
-    });
-
-    $("#logImagen").on("change", function () {
-      const file = this.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = e => $("#logImagenPreview").removeClass("d-none").attr("src", e.target.result);
-      reader.readAsDataURL(file);
-    });
-
-    // Guardar Bitácora
-    $("#btnGuardarLog").on("click", async function () {
-      const folio = $("#logFolio").val();
-      const nombre = $("#logNombre").text();
-      const grupo = $("#logGrupo").val();
-      const sesion = $("#selectSesion").val();
-      const comentario = $("#logComentario").val().trim();
-      const file = $("#logImagen")[0].files[0];
-
-      if (!comentario && !file) {
-        mostrarEstado("#logEstado", "Agrega al menos un comentario o una imagen.", "error");
-        return;
-      }
-
-      const $btn = $(this).prop("disabled", true);
-      mostrarEstado("#logEstado", file ? "Subiendo imagen y guardando…" : "Guardando…");
-      try {
-        const resp = await guardarLog({ folio, nombre, grupo, sesion, comentario, file });
-        if (resp.status !== "success") throw new Error(resp.message);
-        mostrarEstado("#logEstado", "Registro guardado correctamente.", "ok");
-        setTimeout(() => bootstrap.Modal.getInstance($("#modalBitacora")[0]).hide(), 800);
-      } catch (err) {
-        console.error(err);
-        mostrarEstado("#logEstado", "Error al guardar el registro.", "error");
-      } finally {
-        $btn.prop("disabled", false);
+        actualizarResumen();
       }
     });
 
@@ -671,11 +635,18 @@
         const resp = await guardarIncidencia({ folio, texto, file });
         if (resp.status !== "success") throw new Error(resp.message);
 
-        mostrarEstado("#incidenciaEstado", "Incidencia guardada correctamente.", "ok");
+        // Se guarda SIEMPRE, aunque el folio no exista en la hoja de asistencias.
+        mostrarEstado(
+          "#incidenciaEstado",
+          resp.encontrado === false
+            ? "Incidencia guardada (el folio no se encontró en la lista de participantes, se guardó sin nombre/grupo)."
+            : "Incidencia guardada correctamente.",
+          "ok"
+        );
         
         setTimeout(() => {
           bootstrap.Modal.getInstance($("#modalIncidencia")[0]).hide();
-        }, 800);
+        }, resp.encontrado === false ? 1800 : 800);
 
       } catch (err) {
         console.error(err);
