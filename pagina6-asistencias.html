@@ -58,7 +58,7 @@
   <main class="flex-grow-1 py-4">
     <div class="hero text-center rounded-3 mb-4 shadow-custom">
       <h1 class="display-5 fw-bold">Registro de Asistencia</h1>
-      <p class="lead mb-0">Selecciona curso, fecha, turno y (opcional) grupo, y marca la asistencia del día en tiempo real</p>
+      <p class="lead mb-0">Selecciona curso, fecha, turno, sesión y (opcional) grupo, y marca la asistencia en tiempo real</p>
     </div>
 
     <div class="container">
@@ -67,7 +67,7 @@
       <div class="card filtros-card p-4 mb-4 bg-white shadow-custom">
         <!-- FILA 1: PARÁMETROS DE BÚSQUEDA -->
         <div class="row g-3 align-items-end mb-3">
-          <div class="col-md-3">
+          <div class="col-md-2">
             <label for="selectCurso" class="form-label fw-semibold text-dark">
               <i class="bi bi-book-fill text-primary"></i> Curso <span class="text-danger">*</span>
             </label>
@@ -92,11 +92,13 @@
             </select>
           </div>
 
-          <div class="col-md-3">
-            <label for="inputFecha" class="form-label fw-semibold text-dark">
+          <div class="col-md-2">
+            <label for="selectFecha" class="form-label fw-semibold text-dark">
               <i class="bi bi-calendar-event text-primary"></i> Fecha Curso <span class="text-danger">*</span>
             </label>
-            <input type="date" id="inputFecha" class="form-control form-control-lg fs-6">
+            <select id="selectFecha" class="form-select form-select-lg fs-6">
+              <option value="">Seleccione una fecha</option>
+            </select>
           </div>
 
           <div class="col-md-2">
@@ -116,6 +118,24 @@
             </label>
             <select id="selectGrupo" class="form-select form-select-lg fs-6">
               <option value="">Todos los grupos</option>
+            </select>
+          </div>
+
+          <div class="col-md-2">
+            <label for="selectSesion" class="form-label fw-semibold text-dark">
+              <i class="bi bi-list-ol text-primary"></i> Sesión <span class="text-danger">*</span>
+            </label>
+            <select id="selectSesion" class="form-select form-select-lg fs-6">
+              <option value="Sesión1">Sesión 1</option>
+              <option value="Sesión2">Sesión 2</option>
+              <option value="Sesión3">Sesión 3</option>
+              <option value="Sesión4">Sesión 4</option>
+              <option value="Sesión5">Sesión 5</option>
+              <option value="Sesión6">Sesión 6</option>
+              <option value="Sesión7">Sesión 7</option>
+              <option value="Sesión8">Sesión 8</option>
+              <option value="Sesión9">Sesión 9</option>
+              <option value="Sesión10">Sesión 10</option>
             </select>
           </div>
 
@@ -154,12 +174,12 @@
               <th>Folio</th>
               <th>Participante</th>
               <th class="text-center">Grupo</th>
-              <th class="text-center">Asistencia <span id="badgeFechaActual" class="badge badge-sesion"></span></th>
+              <th class="text-center">Asistencia <span id="badgeSesionActual" class="badge badge-sesion"></span></th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td colspan="4" class="text-center text-muted py-4">Selecciona curso, fecha y turno (grupo es opcional), luego presiona "Buscar".</td>
+              <td colspan="4" class="text-center text-muted py-4">Selecciona curso, fecha, turno y sesión (grupo es opcional), luego presiona "Buscar".</td>
             </tr>
           </tbody>
         </table>
@@ -339,11 +359,48 @@
     return llamarWebAppGet("listParticipantes", { curso, fecha, turno, grupo: grupo || "" });
   }
 
-  // Asistencia por DÍA: se guarda en la columna "Asistencia" de la hoja.
-  const COLUMNA_ASISTENCIA = "Asistencia";
+  function fetchFechas(curso = "", turno = "") {
+    return llamarWebAppGet("listFechas", { curso, turno });
+  }
 
-  function actualizarAsistencia(folio, valor, rowIndex) {
-    return llamarWebAppPost("updateAsistencia", { folio, columnaSesion: COLUMNA_ASISTENCIA, valor, rowIndex });
+  // Sesión cuyos datos están cargados actualmente en la tabla (Sesión1..Sesión10).
+  let sesionCargada = null;
+
+  function actualizarAsistencia(folio, columnaSesion, valor, rowIndex) {
+    return llamarWebAppPost("updateAsistencia", { folio, columnaSesion, valor, rowIndex });
+  }
+
+  // "2026-08-22" -> "22/08/2026"
+  function formatoFecha(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso || "");
+  }
+
+  // Llena el desplegable de Fecha con las fechas ÚNICAS (filtradas por curso y turno si ya se eligieron).
+  async function cargarFechas() {
+    const $sel = $("#selectFecha");
+    const previo = $sel.val();
+    $sel.prop("disabled", true);
+    try {
+      const { fechas, error } = await fetchFechas($("#selectCurso").val() || "", $("#selectTurno").val() || "");
+      if (error) throw new Error(error);
+      $sel.find("option:not(:first)").remove();
+      (fechas || []).forEach(f => $sel.append(`<option value="${escapeHtml(f)}">${escapeHtml(formatoFecha(f))}</option>`));
+      $sel.find("option:first").text((fechas || []).length ? "Seleccione una fecha" : "Sin fechas disponibles");
+
+      if (previo && (fechas || []).indexOf(previo) !== -1) {
+        $sel.val(previo);
+      } else {
+        const hoy = new Date();
+        const hoyIso = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + String(hoy.getDate()).padStart(2, "0");
+        if ((fechas || []).indexOf(hoyIso) !== -1) $sel.val(hoyIso);
+      }
+    } catch (err) {
+      console.error(err);
+      mostrarEstado("#estadoGuardado", "No se pudieron cargar las fechas. Revisa la consola.", "error");
+    } finally {
+      $sel.prop("disabled", false);
+    }
   }
 
   function escapeHtml(t) {
@@ -399,9 +456,9 @@
     });
   }
 
-  function renderParticipantes(participantes, fechaTexto) {
+  function renderParticipantes(participantes, columnaSesion) {
     const $tbody = $("#tablaParticipantes tbody");
-    $("#badgeFechaActual").text(fechaTexto || "");
+    $("#badgeSesionActual").text(columnaSesion.replace("Sesión", "Sesión "));
 
     if (!participantes.length) {
       $tbody.html(`<tr><td colspan="4" class="text-center text-muted py-4">Sin participantes para los filtros seleccionados.</td></tr>`);
@@ -410,7 +467,7 @@
     }
 
     const filas = participantes.map(p => {
-      const marcado = esAsistenciaSi(p[COLUMNA_ASISTENCIA]);
+      const marcado = esAsistenciaSi(p[columnaSesion]);
       // En la hoja, "lastname" trae el nombre completo y "firstname" el RFC.
       const nombre = (p.lastname || "").toString().trim();
       const rfc = (p.firstname || "").toString().trim();
@@ -506,11 +563,9 @@
   }
 
   $(async function () {
-    // Fecha de hoy por defecto (hora local del navegador).
-    const hoy = new Date();
-    $("#inputFecha").val(
-      hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + String(hoy.getDate()).padStart(2, "0")
-    );
+    // Fechas únicas (todas) al abrir; luego se refiltran al cambiar curso o turno.
+    cargarFechas();
+    $("#selectCurso, #selectTurno").on("change", cargarFechas);
 
     try {
       const { grupos, error } = await fetchGrupos();
@@ -523,14 +578,15 @@
 
     $("#btnCargar").on("click", async function () {
       const curso = $("#selectCurso").val();
-      const fecha = $("#inputFecha").val();
+      const fecha = $("#selectFecha").val();
+      const sesion = $("#selectSesion").val();
       const turno = $("#selectTurno").val();
       const grupo = $("#selectGrupo").val(); // opcional: vacío = todos
 
-      const msgInicial = `<tr><td colspan="4" class="text-center text-muted py-4">Selecciona curso, fecha y turno (grupo es opcional), luego presiona "Buscar".</td></tr>`;
+      const msgInicial = `<tr><td colspan="4" class="text-center text-muted py-4">Selecciona curso, fecha, turno y sesión (grupo es opcional), luego presiona "Buscar".</td></tr>`;
 
-      if (!curso || !fecha || !turno) {
-        const faltan = [!curso && "curso", !fecha && "fecha", !turno && "turno"].filter(Boolean).join(", ");
+      if (!curso || !fecha || !turno || !sesion) {
+        const faltan = [!curso && "curso", !fecha && "fecha", !turno && "turno", !sesion && "sesión"].filter(Boolean).join(", ");
         mostrarEstado("#estadoGuardado", `Falta seleccionar: ${faltan}.`, "error");
         $("#tablaParticipantes tbody").html(msgInicial);
         $("#resumenAsistencia").text("");
@@ -544,7 +600,8 @@
       try {
         const { participantes, error } = await fetchParticipantes({ curso, fecha, turno, grupo });
         if (error) throw new Error(error);
-        renderParticipantes(participantes, fecha);
+        sesionCargada = sesion;
+        renderParticipantes(participantes, sesion);
         mostrarEstado(
           "#estadoGuardado",
           participantes.length
@@ -562,17 +619,23 @@
       }
     });
 
+    // Si cambian la sesión con la tabla ya cargada, se recarga para mostrar/guardar en la sesión correcta.
+    $("#selectSesion").on("change", function () {
+      if (sesionCargada) $("#btnCargar").trigger("click");
+    });
+
     // Asistencia en TIEMPO REAL: cada clic se guarda al instante.
     $("#tablaParticipantes").on("change", ".chk-asistencia", async function () {
       const $chk = $(this);
       const $fila = $chk.closest("tr");
       const folio = $fila.data("folio");
       const rowIndex = $fila.data("row");
+      const columnaSesion = sesionCargada || $("#selectSesion").val();
       const valor = $chk.is(":checked") ? "Sí" : "No";
 
       $chk.prop("disabled", true);
       try {
-        const resp = await actualizarAsistencia(folio, valor, rowIndex);
+        const resp = await actualizarAsistencia(folio, columnaSesion, valor, rowIndex);
         if (resp.status !== "success") throw new Error(resp.message);
         $fila.toggleClass("marcado-si", valor === "Sí").toggleClass("marcado-no", valor === "No");
       } catch (err) {
