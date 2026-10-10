@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contador de Cuentas</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <style>
+    :root { --azul-marino: #003366; --azul-claro: #3d7ab8; --rojo-rep: #c0392b; }
+    body { background-color:#ffffff; color:#1a1a2e; display:flex; flex-direction:column; min-height:100vh; }
+    .card-custom {
+      border-radius: 8px;
+      border: none;
+      border-left: 5px solid var(--azul-marino);
+    }
+    .num-cuenta { font-family: monospace; font-size: 1rem; letter-spacing: .5px; }
+    .kpi { border-radius: 8px; border: 1px solid #dee2e6; padding: 16px; height: 100%; }
+    .kpi .valor { font-size: 2rem; font-weight: 700; color: var(--azul-marino); line-height: 1.1; }
+    .kpi .etiqueta { font-size: .8rem; color: #6c757d; }
+    .barra-fondo { background: #e9eef4; border-radius: 4px; height: 14px; min-width: 90px; }
+    .barra { height: 100%; border-radius: 4px; background: var(--azul-claro); }
+    .barra.rep { background: var(--rojo-rep); }
+    .dona {
+      width: 150px; height: 150px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; margin: 0 auto;
+    }
+    .dona > div {
+      width: 96px; height: 96px; border-radius: 50%; background: #fff;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .punto { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+    .scroll-tabla { max-height: 420px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <div id="header-container"></div>
+
+  <!-- col-md-9 offset para dejar espacio al sidebar en desktop -->
+  <main class="flex-grow-1 col-md-9 ms-md-auto col-lg-10 py-5 px-4">
+    <div class="container">
+
+      <!-- Entrada -->
+      <div class="card card-custom p-4 mb-4 shadow-sm">
+        <h3 class="fw-bold mb-1" style="color: var(--azul-marino);">Contador de Cuentas</h3>
+        <p class="text-muted small mb-4">
+          Pega un texto y se extraen solo los números enteros de <strong>5 a 11 dígitos</strong>, sin espacios ni separadores.
+          Se ignoran decimales, números más largos y fragmentos separados por espacios.
+        </p>
+
+        <label for="textoEntrada" class="form-label fw-bold small text-muted">TEXTO A ANALIZAR</label>
+        <textarea id="textoEntrada" class="form-control form-control-lg border-2" rows="4"
+          placeholder="Ej. Cuenta 123456789, pago 55555 y de nuevo 123456789; ref 12 34 56 no cuenta"></textarea>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-4 pt-3 border-top">
+          <div class="d-flex align-items-center gap-2">
+            <label for="orden" class="small fw-bold text-muted mb-0">Orden</label>
+            <select id="orden" class="form-select form-select-sm w-auto">
+              <option value="aparicion">Según aparición</option>
+              <option value="asc">Menor a mayor</option>
+              <option value="desc">Mayor a menor</option>
+            </select>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary px-4" id="btnLimpiar">
+              <i class="bi bi-arrow-counterclockwise me-2"></i>Limpiar
+            </button>
+            <button type="button" class="btn btn-primary px-5 fw-bold" id="btnProcesar" style="background-color: var(--azul-marino);">
+              <i class="bi bi-search me-2"></i>Extraer números
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultados -->
+      <div id="resultados" class="d-none">
+
+        <!-- Indicadores -->
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-lg-3"><div class="kpi"><div class="valor" id="kTotal">0</div><div class="etiqueta">Números encontrados</div></div></div>
+          <div class="col-6 col-lg-3"><div class="kpi"><div class="valor" id="kUnicos">0</div><div class="etiqueta">Números únicos</div></div></div>
+          <div class="col-6 col-lg-3"><div class="kpi"><div class="valor" id="kRepetidos">0</div><div class="etiqueta">Números repetidos</div></div></div>
+          <div class="col-6 col-lg-3"><div class="kpi"><div class="valor" id="kMax">0</div><div class="etiqueta" id="kMaxEtq">Mayor frecuencia</div></div></div>
+        </div>
+
+        <div class="row g-4 mb-4">
+          <!-- Tabla ordenada -->
+          <div class="col-lg-6">
+            <div class="bg-white p-4 rounded shadow-sm h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0" style="color: var(--azul-marino);">Números extraídos</h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btnCopiar">
+                  <i class="bi bi-clipboard me-1"></i>Copiar
+                </button>
+              </div>
+              <div class="table-responsive scroll-tabla">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light" style="position: sticky; top: 0;">
+                    <tr>
+                      <th style="width:90px;">Orden</th>
+                      <th>Número</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tablaOrden"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla de conteo -->
+          <div class="col-lg-6">
+            <div class="bg-white p-4 rounded shadow-sm h-100">
+              <h5 class="fw-bold mb-3" style="color: var(--azul-marino);">Conteo por número</h5>
+              <div class="table-responsive scroll-tabla">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light" style="position: sticky; top: 0;">
+                    <tr>
+                      <th>Número</th>
+                      <th class="text-center">Veces</th>
+                      <th style="width:35%;">Gráfica</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tablaConteo"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfica de únicos vs repetidos -->
+        <div class="bg-white p-4 rounded shadow-sm">
+          <h5 class="fw-bold mb-4" style="color: var(--azul-marino);">Únicos frente a repetidos</h5>
+          <div class="row align-items-center g-4">
+            <div class="col-md-4">
+              <div class="dona" id="dona">
+                <div>
+                  <span class="fs-3 fw-bold" id="donaPct" style="color: var(--azul-marino);">0%</span>
+                  <span class="small text-muted">repetidos</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-8">
+              <p class="mb-2"><span class="punto" style="background: var(--azul-claro);"></span>Aparecen una sola vez: <strong id="lgUnicos">0</strong></p>
+              <p class="mb-2"><span class="punto" style="background: var(--rojo-rep);"></span>Aparecen más de una vez: <strong id="lgRepetidos">0</strong></p>
+              <p class="small text-muted mb-0">Los porcentajes se calculan sobre los números únicos encontrados.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado vacío -->
+      <div id="vacio" class="d-none">
+        <div class="alert alert-warning mb-0">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          No se encontraron números enteros de 5 a 11 dígitos en el texto.
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="footer-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    (function () {
+      const MIN = 5, MAX = 11;
+
+      // Entero de 5 a 11 dígitos consecutivos:
+      //  - sin dígitos pegados antes ni después (descarta números de 12+ dígitos)
+      //  - sin ser parte de un decimal (12345.67 ó 12345,67 ó 1.23456)
+      //  - sin signo menos delante (se consideran solo enteros positivos)
+      const REGEX = new RegExp(
+        `(?<![\\d.,\\-])(?<!\\d[.,])\\d{${MIN},${MAX}}(?!\\d)(?![.,]\\d)`,
+        'g'
+      );
+
+      const $ = (id) => document.getElementById(id);
+      let encontrados = [];
+
+      function escapar(t) {
+        return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+
+      function extraer(texto) {
+        return texto.match(REGEX) || [];
+      }
+
+      function ordenar(lista, modo) {
+        const copia = lista.slice();
+        if (modo === 'asc') copia.sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0));
+        if (modo === 'desc') copia.sort((a, b) => (BigInt(a) < BigInt(b) ? 1 : BigInt(a) > BigInt(b) ? -1 : 0));
+        return copia;
+      }
+
+      function contar(lista) {
+        const mapa = new Map();
+        lista.forEach(n => mapa.set(n, (mapa.get(n) || 0) + 1));
+        return Array.from(mapa, ([numero, veces]) => ({ numero, veces }))
+          .sort((a, b) => b.veces - a.veces);   // más repetidos primero (el orden estable respeta la aparición)
+      }
+
+      function render() {
+        const modo = $('orden').value;
+        const lista = ordenar(encontrados, modo);
+        const conteo = contar(encontrados);
+
+        const unicos = conteo.length;
+        const repetidos = conteo.filter(c => c.veces > 1).length;
+        const unicosUnaVez = unicos - repetidos;
+        const maxVeces = conteo.length ? conteo[0].veces : 0;
+
+        // Indicadores
+        $('kTotal').textContent = encontrados.length;
+        $('kUnicos').textContent = unicos;
+        $('kRepetidos').textContent = repetidos;
+        $('kMax').textContent = maxVeces + (maxVeces ? ' veces' : '');
+        $('kMaxEtq').textContent = conteo.length ? 'Más frecuente: ' + conteo[0].numero : 'Mayor frecuencia';
+
+        // Tabla ordenada
+        $('tablaOrden').innerHTML = lista.map((n, i) =>
+          `<tr><td class="text-muted">${i + 1}</td><td class="num-cuenta">${escapar(n)}</td></tr>`
+        ).join('');
+
+        // Tabla de conteo + barras
+        $('tablaConteo').innerHTML = conteo.map(c => {
+          const ancho = Math.round((c.veces / maxVeces) * 100);
+          const clase = c.veces > 1 ? 'barra rep' : 'barra';
+          return `<tr>
+            <td class="num-cuenta">${escapar(c.numero)}</td>
+            <td class="text-center"><span class="badge ${c.veces > 1 ? 'bg-danger' : 'bg-secondary'}">${c.veces}</span></td>
+            <td><div class="barra-fondo"><div class="${clase}" style="width:${ancho}%"></div></div></td>
+          </tr>`;
+        }).join('');
+
+        // Dona únicos vs repetidos
+        const pct = unicos ? Math.round((repetidos / unicos) * 100) : 0;
+        $('dona').style.background =
+          `conic-gradient(var(--rojo-rep) 0 ${pct}%, var(--azul-claro) ${pct}% 100%)`;
+        $('donaPct').textContent = pct + '%';
+        $('lgUnicos').textContent = unicosUnaVez;
+        $('lgRepetidos').textContent = repetidos;
+      }
+
+      function procesar() {
+        const texto = $('textoEntrada').value;
+        encontrados = extraer(texto);
+
+        const hay = encontrados.length > 0;
+        $('resultados').classList.toggle('d-none', !hay);
+        $('vacio').classList.toggle('d-none', hay || !texto.trim());
+        if (hay) render();
+      }
+
+      function limpiar() {
+        $('textoEntrada').value = '';
+        encontrados = [];
+        $('resultados').classList.add('d-none');
+        $('vacio').classList.add('d-none');
+        $('textoEntrada').focus();
+      }
+
+      async function copiar() {
+        if (!encontrados.length) return;
+        const texto = ordenar(encontrados, $('orden').value).join('\n');
+        try {
+          await navigator.clipboard.writeText(texto);
+          const btn = $('btnCopiar');
+          const original = btn.innerHTML;
+          btn.innerHTML = '<i class="bi bi-check2 me-1"></i>Copiado';
+          setTimeout(() => { btn.innerHTML = original; }, 1200);
+        } catch (err) {
+          console.error('Error al copiar:', err);
+        }
+      }
+
+      $('btnProcesar').addEventListener('click', procesar);
+      $('btnLimpiar').addEventListener('click', limpiar);
+      $('btnCopiar').addEventListener('click', copiar);
+      $('orden').addEventListener('change', () => { if (encontrados.length) render(); });
+    })();
+  </script>
+</body>
+</html>
