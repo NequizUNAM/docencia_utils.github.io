@@ -42,7 +42,7 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '7',
+  VERSION: '8',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
@@ -63,7 +63,7 @@ const CONFIG = {
    * JavaScript autorizados" pon https://TU-USUARIO.github.io
    */
   GOOGLE_CLIENT_ID: '283041748014-l5okmhe1f1ff8o0b19klfu90035napjj.apps.googleusercontent.com',
-  
+
   /** Carpeta que se crea en tu Drive. */
   DRIVE_ROOT_FOLDER: 'Control Facturas',
 
@@ -85,19 +85,10 @@ const CONFIG = {
    */
   RET_IVA_DEFAULT: 10.67,
 
-  /**
-   * Fecha tentativa de pago = fin del periodo de la solicitud + estos días.
-   * Ajústalo según lo que normalmente tarda la UNAM en pagarte.
-   */
-  DIAS_PAGO_ESTIMADO: 30,
-
   /** Idioma del OCR para PDF escaneados o fotos (tesseract.js). */
   OCR_LANG: 'spa',
 
-  /**
-   * Datos fijos para facturar (tomados de tu CFDI timbrado). Se muestran en
-   * cada factura en "Datos para facturar en el SAT" con botón de copiar.
-   */
+  /** Datos por defecto de emisor y receptor (tomados de tu CFDI timbrado). */
   EMISOR: {
     rfc: 'NEMP920226AU6',
     nombre: 'PEDRO ERNESTO NEQUIZ MEDINA',
@@ -110,18 +101,6 @@ const CONFIG = {
     cp: '04510',
     regimen: '603 · Personas Morales con Fines no Lucrativos',
     usoCfdi: 'G03 · Gastos en general'
-  },
-  CONCEPTO: {
-    claveProdServ: '86101601',
-    cantidad: '1.00',
-    claveUnidad: 'ACT',
-    unidad: 'Actividad',
-    objetoImp: '02 · Sí objeto de impuesto',
-    moneda: 'MXN · Peso Mexicano',
-    formaPago: '99 · Por definir',
-    metodoPago: 'PPD · Pago en parcialidades o diferido',
-    exportacion: '01 · No aplica',
-    efecto: 'I · Ingreso'
   }
 };
 const C = CONFIG;
@@ -697,8 +676,8 @@ const R = (name, data = {}) => {
      version, seq,
      facturas: [ {
        id, seq (consecutivo), referencia (ej. 00510-01), rfcEmisor, descripcion, sede,
-       contrato (522-08-2026-00510), parcialidad, parcialidades, periodoInicio,
-       periodoFin, fechaContrato, fechaTentativa (pago estimado), coordinacion,
+       contrato (522-08-2026-00510), parcialidad, parcialidades, timbrado
+       (true = importes tomados del CFDI), montoCobrado (= total al cobrar),
        cliente, rfcCliente, folio, uuid, fechaEmision, metodoPago (PUE|PPD),
        total, ivaRate, retIsrRate, retIvaRate, desgloseManual,
        subtotal, iva, retIsr, retIva, montoCobrado, fechaCobro,
@@ -804,19 +783,6 @@ function desglose(f) {
 /** Parte del monto cobrado que no es IVA (proporcional). */
 const cobradoSinIva = f => (f.total ? r2((f.montoCobrado || 0) * desglose(f).subtotal / f.total) : 0);
 
-/** Suma días a una fecha "AAAA-MM-DD" */
-const addDays = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return localISO(x).slice(0, 10); };
-/** Días entre hoy y una fecha (negativo = ya pasó) */
-const diasHasta = d => Math.round((new Date(d + 'T12:00:00') - new Date(today() + 'T12:00:00')) / 86400000);
-/** Fecha tentativa de pago: la capturada, o fin del periodo + CONFIG.DIAS_PAGO_ESTIMADO */
-const fechaTentativa = f => f.fechaTentativa || (f.periodoFin ? addDays(f.periodoFin, C.DIAS_PAGO_ESTIMADO) : '');
-/** "2026-04-01","2026-04-30" → "PERIODO DEL 01 de Abril del 2026 AL 30 de Abril del 2026" (como en el CFDI) */
-const textoPeriodo = (ini, fin) => {
-  const t = d => { const [y, m, dd] = d.split('-'); return `${dd} de ${MESES[+m - 1]} del ${y}`; };
-  return ini && fin ? `PERIODO DEL ${t(ini)} AL ${t(fin)}` : '';
-};
-/** Descripción completa del concepto para el CFDI: actividad + periodo */
-const descripcionCfdi = f => [f.descripcion, textoPeriodo(f.periodoInicio, f.periodoFin)].filter(Boolean).join(' ');
 /** Referencia corta a partir del contrato y la parcialidad: 522-08-2026-00510 + 1 → "00510-01" */
 const refCorta = (contrato, parc) => contrato ? contrato.split('-').pop() + (parc ? '-' + pad(parc, 2) : '') : '';
 
@@ -842,7 +808,7 @@ function nuevaFactura() {
     id: uid(), seq: Math.max(0, ...db.facturas.map(f => f.seq)) + 1, createdAt: null, updatedAt: null,
     referencia: '', rfcEmisor: C.EMISOR?.rfc || C.RFC_EMISOR || '', descripcion: '', sede: '',
     cliente: C.RECEPTOR?.nombre || '', rfcCliente: C.RECEPTOR?.rfc || '', folio: '', uuid: '', fechaEmision: '',
-    contrato: '', parcialidad: 0, parcialidades: 0, periodoInicio: '', periodoFin: '', fechaContrato: '', fechaTentativa: '', coordinacion: '',
+    contrato: '', parcialidad: 0, parcialidades: 0, timbrado: false,
     metodoPago: 'PPD', total: 0, ivaRate: C.IVA_DEFAULT, retIsrRate: C.RET_ISR_DEFAULT, retIvaRate: C.RET_IVA_DEFAULT,
     desgloseManual: true, subtotal: 0, iva: 0, retIsr: 0, retIva: 0,   // true = se captura la cantidad y se calcula el total
     montoCobrado: 0, fechaCobro: '', pagadaSinComplemento: false, cancelada: false, notas: '',
@@ -859,8 +825,19 @@ function migrar(d) {
   d.facturas.forEach(f => {
     f.rfcEmisor ??= C.RFC_EMISOR || '';
     f.docs.facturaPdfOriginal ??= null;
-    for (const k of ['contrato', 'periodoInicio', 'periodoFin', 'fechaContrato', 'fechaTentativa', 'coordinacion']) f[k] ??= '';
-    f.parcialidad ??= 0; f.parcialidades ??= 0;
+    f.contrato ??= ''; f.parcialidad ??= 0; f.parcialidades ??= 0;
+    // v<8 calculaba desde el total: se pasa a "desde la cantidad".
+    // Si no tenía retenciones ni XML (versiones de prueba), lo capturado era la CANTIDAD:
+    // se toma como cantidad y se aplican los porcentajes por defecto.
+    if (!f.desgloseManual) {
+      if (!f.retIsrRate && !f.retIvaRate && !f.docs.facturaXml && f.total) {
+        Object.assign(f, { ivaRate: C.IVA_DEFAULT, retIsrRate: C.RET_ISR_DEFAULT, retIvaRate: C.RET_IVA_DEFAULT },
+          calcDesdeCantidad(f.total, C.IVA_DEFAULT, C.RET_ISR_DEFAULT, C.RET_IVA_DEFAULT));
+      } else Object.assign(f, desglose(f));
+      f.desgloseManual = true;
+    }
+    f.timbrado ??= false;
+    if (estadoFactura(f) === 'cobrado') f.montoCobrado = f.total;
     if (f.saldo && f.saldo.monto > 0) {
       const p = f.saldo.periodoOrigen || (f.createdAt ? localISO(new Date(f.createdAt)).slice(0, 7) : thisMonth());
       const r = d.mensuales[p] ||= nuevoMes(p);
@@ -1134,28 +1111,14 @@ function openDrawer() {
 /** Datos de la plantilla "factura-card" */
 function cardVM(f) {
   const e = estadoFactura(f), d = desglose(f);
-  // Chips de información: parcialidad, periodo y fecha tentativa de pago
-  const chips = [];
-  if (f.parcialidad) chips.push({ icon: 'layers', text: `Parcialidad ${f.parcialidad}${f.parcialidades ? '/' + f.parcialidades : ''}`, title: f.contrato });
-  if (f.periodoInicio) chips.push({ icon: 'cal', text: fmtPeriodo(f.periodoInicio.slice(0, 7)), title: `Periodo ${fmtDate(f.periodoInicio)} al ${fmtDate(f.periodoFin)}` });
-  const ft = fechaTentativa(f);
-  if (ft && e !== 'cobrado' && e !== 'cancelada') {
-    const dd = diasHasta(ft);
-    chips.push(dd < 0
-      ? { icon: 'clock', cls: 'late', text: `Pago atrasado ${-dd} día${dd === -1 ? '' : 's'}`, title: 'Fecha tentativa ' + fmtDate(ft) }
-      : { icon: 'clock', cls: dd <= 7 ? 'soon' : '', text: `Pago aprox. ${fmtDate(ft)}`, title: dd === 0 ? 'Hoy' : `En ${dd} días` });
-  }
-  const pago = chips.find(c => c.icon === 'clock');
   return {
     // datos extra para el renglón de la tabla
     parcialidadTxt: f.parcialidad ? `${f.parcialidad} de ${f.parcialidades || '?'}` : '—',
-    periodoTxt: f.periodoInicio ? `${fmtDate(f.periodoInicio)} – ${fmtDate(f.periodoFin)}` : '—',
-    pago: pago ? { cls: pago.cls || '', text: pago.cls === 'late' ? pago.text.replace('Pago atrasado', 'Atrasado') : fmtDate(ft) } : null,
-    cobrado: e === 'cobrado' ? f.montoCobrado : 0, sede: f.sede || '—', alta: fmtDate(f.createdAt),
+    cobrado: e === 'cobrado' ? (f.montoCobrado || f.total) : 0, sede: f.sede || '—', alta: fmtDate(f.createdAt),
     id: f.id, seq: f.seq, ref: f.referencia || 'Sin referencia', metodo: f.metodoPago, desc: f.descripcion || '—',
     estado: e, estadoLabel: ESTADOS[e].label, estadoCls: ESTADOS[e].cls, facturado: !!f.docs.facturaPdf?.watermarked,
     meta: [f.sede, f.folio && 'Folio ' + f.folio, 'Alta ' + fmtDate(f.createdAt)].filter(Boolean).join(' · '),
-    chips, total: f.total, subtotal: d.subtotal,
+    total: f.total, subtotal: d.subtotal,
     tercerLabel: e === 'cobrado' ? 'Cobrado' : 'IVA', tercer: e === 'cobrado' ? f.montoCobrado : d.iva,
     steps: etapasHechas(f), sig: siguientePaso(f)
   };
@@ -1278,6 +1241,10 @@ async function sincronizarMarca(f) {
 
 /**
  * Formulario de factura (nueva o existente).
+ * - Sólo se captura la CANTIDAD (sin IVA); IVA, retenciones y TOTAL A PAGAR
+ *   se calculan con los porcentajes (precargados, en una sección colapsada).
+ * - Lo cobrado no se pregunta: es igual al total a pagar al subir el complemento.
+ * - Contrato, folio, UUID y cliente están colapsados y se llenan con los PDF/XML.
  * Los archivos elegidos quedan "pendientes" y se suben al pulsar Guardar.
  * @param {object|null} orig factura a editar (null = nueva)
  * @param {Object<string,File>} preload archivos a cargar al abrir (ej. complemento desde el "+")
@@ -1286,9 +1253,10 @@ function openFactura(orig, preload = {}) {
   const isNew = !orig;
   const f = isNew ? nuevaFactura() : structuredClone(orig);   // se edita una copia
   const pending = {};                                          // key → File | 'REMOVE'
+  let fechaPago = f.fechaCobro || '';                          // la da el complemento
   const m = openModal({
     title: isNew ? 'Nueva factura' : `Factura #${f.seq} · ${f.referencia || 'sin referencia'}`, size: 'wide',
-    body: R('factura-form', { f, isNew, sedes: [...new Set(db.facturas.map(x => x.sede).filter(Boolean))] }),
+    body: R('factura-form', { f, sedes: [...new Set(db.facturas.map(x => x.sede).filter(Boolean))] }),
     footer: R('factura-footer', { isNew })
   });
   const form = $('#ff', m.el);
@@ -1296,30 +1264,14 @@ function openFactura(orig, preload = {}) {
 
   /** Copia los valores del formulario a f */
   function readForm() {
-    ['referencia', 'sede', 'descripcion', 'cliente', 'folio', 'fechaEmision', 'metodoPago', 'notas', 'fechaCobro',
-      'contrato', 'periodoInicio', 'periodoFin', 'fechaContrato', 'fechaTentativa', 'coordinacion'].forEach(k => f[k] = F(k).value.trim());
-    f.parcialidad = Math.round(num(F('parcialidad').value)); f.parcialidades = Math.round(num(F('parcialidades').value));
+    ['referencia', 'sede', 'descripcion', 'cliente', 'folio', 'fechaEmision', 'metodoPago', 'notas', 'contrato'].forEach(k => f[k] = F(k).value.trim());
     ['rfcCliente', 'rfcEmisor', 'uuid'].forEach(k => f[k] = F(k).value.trim().toUpperCase());
-    ['seq', 'total', 'ivaRate', 'retIsrRate', 'retIvaRate', 'subtotal', 'iva', 'retIsr', 'retIva', 'montoCobrado'].forEach(k => f[k] = num(F(k).value));
-    f.seq = Math.round(f.seq);
-    ['desgloseManual', 'pagadaSinComplemento', 'cancelada'].forEach(k => f[k] = F(k).checked);
-  }
-  /** Datos que se capturan en el portal del SAT al emitir la factura */
-  function datosCfdi() {
-    const E = C.EMISOR || {}, Rc = C.RECEPTOR || {}, K = C.CONCEPTO || {}, d = desglose(f);
-    return [
-      ['RFC receptor', f.rfcCliente || Rc.rfc], ['Nombre receptor', f.cliente || Rc.nombre], ['C.P. receptor', Rc.cp],
-      ['Régimen receptor', Rc.regimen], ['Uso CFDI', Rc.usoCfdi],
-      ['Clave producto/servicio', K.claveProdServ], ['Cantidad', K.cantidad], ['Clave unidad', K.claveUnidad + ' · ' + K.unidad],
-      ['Valor unitario', d.subtotal ? d.subtotal.toFixed(2) : ''], ['Descripción', descripcionCfdi(f)], ['Objeto de impuesto', K.objetoImp],
-      ['IVA trasladado', `${num(F('ivaRate').value)}% · ${money(d.iva)}`],
-      ['Retención IVA', `${num(F('retIvaRate').value)}% · ${money(d.retIva)}`],
-      ['Retención ISR', `${num(F('retIsrRate').value)}% · ${money(d.retIsr)}`],
-      ['Total', money(f.total)],
-      ['Forma de pago', K.formaPago], ['Método de pago', f.metodoPago === 'PUE' ? 'PUE · Pago en una sola exhibición' : K.metodoPago],
-      ['Moneda', K.moneda], ['Exportación', K.exportacion],
-      ['Emisor', `${E.rfc || f.rfcEmisor} · ${E.nombre || ''} · C.P. ${E.cp || ''}`], ['Régimen emisor', E.regimen]
-    ].filter(([, v]) => v).map(([label, valor]) => ({ label, valor: String(valor) }));
+    ['seq', 'parcialidad', 'parcialidades'].forEach(k => f[k] = Math.round(num(F(k).value)));
+    ['subtotal', 'ivaRate', 'retIsrRate', 'retIvaRate'].forEach(k => f[k] = num(F(k).value));
+    ['pagadaSinComplemento', 'cancelada'].forEach(k => f[k] = F(k).checked);
+    // Importes: los del CFDI timbrado si se cargaron; si no, cantidad × porcentajes
+    if (!f.timbrado) Object.assign(f, calcDesdeCantidad(f.subtotal, f.ivaRate, f.retIsrRate, f.retIvaRate));
+    f.desgloseManual = true;
   }
   /** Documentos como quedarán al guardar (para calcular el estado en vivo) */
   const docsEfectivos = () => Object.fromEntries(DOCS_F.map(({ key }) => [key, pending[key] === 'REMOVE' ? null : (pending[key] || f.docs[key])]));
@@ -1339,50 +1291,41 @@ function openFactura(orig, preload = {}) {
     });
     refresh();
   }
-  /** Actualiza etapas, nombre de archivo, desglose y estado mientras se escribe */
+  /** Actualiza etapas, nombre de archivo, resúmenes, desglose y estado mientras se escribe */
   function refresh() {
     readForm();
     const tmp = { ...f, docs: docsEfectivos() };
     const h = etapasHechas(tmp);
     $('#tl', m.el).innerHTML = R('factura-timeline', { etapas: ['Solicitud', 'Factura + XML', 'Cobrado'].map((t, i) => ({ t, n: i + 1, done: h[i] })) });
     $('#nombreArchivo', m.el).textContent = baseName(f) + '.pdf / .xml';
-    $('#cfdiDatos', m.el).innerHTML = R('cfdi-datos', { filas: datosCfdi() });
-    $('#timbradoResumen', m.el).textContent = [f.folio, f.uuid && 'UUID …' + f.uuid.slice(-6), f.rfcCliente].filter(Boolean).join(' · ') || 'Se llena con el XML o PDF de la factura';
-    // Fecha tentativa: si no se capturó, se sugiere fin de periodo + días configurados
-    const sug = f.periodoFin ? addDays(f.periodoFin, C.DIAS_PAGO_ESTIMADO) : '';
-    F('fechaTentativa').placeholder = sug;
-    $('#tentativaHint', m.el).textContent = f.fechaTentativa ? '' : sug
-      ? `Pago aproximado: ${fmtDate(sug)} (fin del periodo + ${C.DIAS_PAGO_ESTIMADO} días). Puedes escribir otra fecha.`
-      : 'Al capturar el periodo se calcula una fecha aproximada de pago.';
-    $('#manual', m.el).hidden = !f.desgloseManual;
-    if (!f.desgloseManual) {
-      const c = calcDesglose(f.total, f.ivaRate, f.retIsrRate, f.retIvaRate);
-      ['subtotal', 'iva', 'retIsr', 'retIva'].forEach(k => F(k).value = c[k].toFixed(2));
-    }
-    const d = desglose(f), suma = r2(d.subtotal + d.iva - d.retIsr - d.retIva);
-    const pct = (v, base) => base ? Math.round(v / base * 1e4) / 100 : 0;   // % mostrado como en el recibo UNAM
+    // Resúmenes de las secciones colapsadas
+    $('#resContrato', m.el).textContent = [f.contrato, f.parcialidad && `parcialidad ${f.parcialidad}${f.parcialidades ? '/' + f.parcialidades : ''}`].filter(Boolean).join(' · ') || 'Se llena con el PDF de solicitud';
+    $('#resCfdi', m.el).textContent = [f.folio, f.uuid && 'UUID …' + f.uuid.slice(-6), f.rfcCliente].filter(Boolean).join(' · ');
+    $('#resPct', m.el).textContent = `IVA ${f.ivaRate}% · ISR ${f.retIsrRate}% · IVA ret. ${f.retIvaRate}%`;
+    const pct = (v, base) => base ? Math.round(v / base * 1e4) / 100 : 0;
     $('#calc', m.el).innerHTML = R('factura-calc', {
-      ...d, suma, total: f.total, importe: r2(d.subtotal + d.iva),
-      ivaRate: pct(d.iva, d.subtotal), retIsrRate: pct(d.retIsr, d.subtotal), retIvaRate: pct(d.retIva, d.subtotal),
-      noCuadra: f.desgloseManual && Math.abs(suma - f.total) > 0.05
+      subtotal: f.subtotal, iva: f.iva, retIsr: f.retIsr, retIva: f.retIva, suma: f.total, timbrado: f.timbrado,
+      importe: r2(f.subtotal + f.iva), ivaRate: pct(f.iva, f.subtotal), retIsrRate: pct(f.retIsr, f.subtotal), retIvaRate: pct(f.retIva, f.subtotal)
     });
-    const e = estadoFactura(tmp), falta = r2(f.total - f.montoCobrado);
-    $('#cobroHint', m.el).innerHTML = R('factura-cobro', { ...ESTADOS[e], cobrado: f.montoCobrado > 0, sinIva: cobradoSinIva(f), falta: f.montoCobrado && falta > 0.05 ? falta : 0 });
+    const e = estadoFactura(tmp);
+    $('#cobroHint', m.el).innerHTML = R('factura-cobro', { ...ESTADOS[e], cobrado: e === 'cobrado' ? f.total : 0, fecha: fechaPago });
   }
-  /** Al elegir un archivo: queda pendiente; si es XML, se leen sus datos. */
+
+  /** Al elegir un archivo: queda pendiente y, según el tipo, se leen sus datos. */
   async function onFile(key, file) {
     pending[key] = file;
-    if (key === 'solicitud') { drawSlots(); await leerSolicitud(file); return; }
-    if (key === 'facturaPdf') { drawSlots(); await leerFacturaPdf(file); return; }
-    if (key === 'complementoPdf') { drawSlots(); await leerComplementoPdf(file); return; }
+    drawSlots();
+    if (key === 'solicitud') return leerSolicitud(file);
+    if (key === 'facturaPdf') return leerFacturaPdf(file);
+    if (key === 'complementoPdf') return leerComplementoPdf(file);
     if (extOf(file.name) === 'xml') {
       try {
         const x = CFDI.parse(await file.text());
         if (key === 'facturaXml') applyFacturaXml(x);
         if (key === 'complementoXml') applyComplementoXml(x);
       } catch (e) { toast('No pude leer el XML: ' + e.message, 'err'); }
+      refresh();
     }
-    drawSlots();
   }
   /** Resalta en dorado los campos que se llenaron solos */
   const marcar = names => names.forEach(n => {
@@ -1390,102 +1333,85 @@ function openFactura(orig, preload = {}) {
     el.classList.remove('autofill'); void el.offsetWidth; el.classList.add('autofill');
     el.addEventListener('input', () => el.classList.remove('autofill'), { once: true });
   });
+  /** Pone un valor en un campo; con siempre=false sólo si está vacío */
+  const poner = (llenos, name, v, siempre = true) => {
+    if (v == null || v === '' || (!siempre && F(name).value)) return false;
+    F(name).value = v; llenos.push(name); return true;
+  };
+  /** Importes exactos de un CFDI timbrado (XML o PDF) */
+  function ponerTimbrado(x) {
+    if (x.total == null || !x.subtotal) return;
+    Object.assign(f, { timbrado: true, subtotal: x.subtotal, iva: x.iva || 0, retIsr: x.retIsr || 0, retIva: x.retIva || 0, total: x.total });
+    F('subtotal').value = x.subtotal;
+    F('ivaRate').value = Math.round((x.iva || 0) / x.subtotal * 1e4) / 100;
+    F('retIsrRate').value = Math.round((x.retIsr || 0) / x.subtotal * 1e4) / 100;
+    F('retIvaRate').value = Math.round((x.retIva || 0) / x.subtotal * 1e4) / 100;
+  }
 
   /** Lee el PDF/foto de solicitud y precarga el formulario */
   async function leerSolicitud(file) {
     const b = busy('Leyendo el PDF de solicitud…');
     try {
       const { texto, ocr } = await Solicitud.leerTexto(file, msg => b.set(msg));
-      const r = Solicitud.parse(texto);
-      applySolicitud(r, ocr);
+      applySolicitud(Solicitud.parse(texto), ocr);
     } catch (e) {
       $('#readbox', m.el).innerHTML = R('readbox', { ok: false, campos: [], avisos: [e.message] });
     } finally { b.done(); }
   }
   /**
-   * Pasa los datos leídos al formulario. Sólo sobrescribe campos vacíos,
-   * salvo los de la solicitud (contrato, parcialidad, periodo, desglose).
+   * Pasa los datos de la solicitud al formulario. De los importes sólo se
+   * toman la CANTIDAD y los porcentajes; IVA, retenciones y total se
+   * recalculan como el SAT (la UNAM usa 2/3 del IVA y su "total a pagar"
+   * puede diferir unos centavos del que saldrá timbrado).
    */
   function applySolicitud(r, ocr) {
     const campos = [], avisos = [], llenos = [];
-    const set = (name, v, label, siempre = true) => {
-      if (v == null || v === '' || (!siempre && F(name).value)) return;
-      F(name).value = v; llenos.push(name); if (label) campos.push(label);
-    };
-    set('contrato', r.contrato, r.contrato && `Contrato ${r.contrato}`);
-    set('parcialidad', r.parcialidad, r.parcialidad && `Parcialidad ${r.parcialidad} de ${r.parcialidades || '?'}`);
-    set('parcialidades', r.parcialidades);
-    set('referencia', refCorta(r.contrato, r.parcialidad), '', false);
-    set('periodoInicio', r.periodoInicio, r.periodoInicio && `Periodo ${fmtDate(r.periodoInicio)} al ${fmtDate(r.periodoFin)}`);
-    set('periodoFin', r.periodoFin);
-    set('fechaContrato', r.fechaContrato, r.fechaContrato && `Contrato firmado ${fmtDate(r.fechaContrato)}`);
-    set('coordinacion', r.coordinacion);
-    set('descripcion', r.actividad, r.actividad && 'Actividad (descripción)', false);
-    set('sede', r.dependencia, r.dependencia && `Dependencia ${r.dependencia}`, false);
-    if (r.esUnam) { set('cliente', C.RECEPTOR?.nombre, '', false); set('rfcCliente', C.RECEPTOR?.rfc, '', false); }
-    if (r.rfc) {
-      set('rfcEmisor', r.rfc, '', false);
-      if (C.RFC_EMISOR && r.rfc !== C.RFC_EMISOR) avisos.push(`El RFC del PDF (${r.rfc}) no es el tuyo (${C.RFC_EMISOR}).`);
-    }
-    /*
-     * Desglose: se toman la CANTIDAD y las tasas de la solicitud, y los
-     * impuestos se recalculan como el SAT (cantidad × tasa). La UNAM calcula
-     * la retención de IVA como 2/3 del IVA, así que su "total a pagar" puede
-     * diferir unos centavos del total que saldrá timbrado en tu factura.
-     */
+    if (poner(llenos, 'contrato', r.contrato)) campos.push(`Contrato ${r.contrato}`);
+    if (poner(llenos, 'parcialidad', r.parcialidad)) campos.push(`Parcialidad ${r.parcialidad} de ${r.parcialidades || '?'}`);
+    poner(llenos, 'parcialidades', r.parcialidades);
+    poner(llenos, 'referencia', refCorta(r.contrato, r.parcialidad), false);
+    if (poner(llenos, 'descripcion', r.actividad, false)) campos.push('Descripción (actividad)');
+    if (poner(llenos, 'sede', r.dependencia, false)) campos.push(`Sede ${r.dependencia}`);
+    if (r.rfc && C.EMISOR?.rfc && r.rfc !== C.EMISOR.rfc) avisos.push(`El RFC del PDF (${r.rfc}) no es el tuyo (${C.EMISOR.rfc}).`);
     if (r.cantidad != null) {
-      F('desgloseManual').checked = true;
-      if (r.ivaRate != null) set('ivaRate', r.ivaRate);
-      if (r.retIsrRate != null) set('retIsrRate', r.retIsrRate);
-      if (r.retIvaRate != null) set('retIvaRate', r.retIvaRate);
+      f.timbrado = false;
+      poner(llenos, 'subtotal', r.cantidad);
+      if (r.ivaRate != null) poner(llenos, 'ivaRate', r.ivaRate);
+      if (r.retIsrRate != null) poner(llenos, 'retIsrRate', r.retIsrRate);
+      if (r.retIvaRate != null) poner(llenos, 'retIvaRate', r.retIvaRate);
       const c = calcDesdeCantidad(r.cantidad, num(F('ivaRate').value), num(F('retIsrRate').value), num(F('retIvaRate').value));
-      set('subtotal', c.subtotal); set('iva', c.iva); set('retIsr', c.retIsr); set('retIva', c.retIva); set('total', c.total);
-      campos.push(`Cantidad ${money(c.subtotal)} → total a facturar ${money(c.total)}`);
+      campos.push(`Cantidad ${money(c.subtotal)} → total a pagar ${money(c.total)}`);
       if (r.total != null && Math.abs(r.total - c.total) > 0.005)
-        avisos.push(`La solicitud dice "total a pagar" ${money(r.total)} (retención de IVA ${money(r.retIva)}). Con la tasa del SAT de ${F('retIvaRate').value}% la retención es ${money(c.retIva)} y tu factura sale en ${money(c.total)}.`);
+        avisos.push(`La solicitud dice ${money(r.total)}; tu factura saldrá en ${money(c.total)} porque el SAT retiene IVA al ${F('retIvaRate').value}% (${money(c.retIva)}).`);
     }
-    if (r.periodoFin && !F('fechaTentativa').value) campos.push(`Pago aproximado ${fmtDate(addDays(r.periodoFin, C.DIAS_PAGO_ESTIMADO))}`);
-    // ¿Ya existe esta parcialidad?
     const dup = r.contrato && db.facturas.find(x => x.id !== f.id && x.contrato === r.contrato && x.parcialidad === r.parcialidad);
     if (dup) avisos.push(`Ya tienes registrada esta parcialidad en la factura #${dup.seq}.`);
-    if (ocr) avisos.push('Se leyó con OCR: verifica montos y fechas.');
+    if (ocr) avisos.push('Se leyó con OCR: verifica la cantidad.');
     $('#readbox', m.el).innerHTML = R('readbox', { ok: campos.length > 0, ocr, campos, avisos });
-    marcar(llenos);
-    refresh();
+    marcar(llenos); refresh();
     if (campos.length) toast('Datos de la solicitud precargados', 'ok');
   }
 
-  /**
-   * Lee el PDF de la factura timbrada (representación impresa) y toma UUID,
-   * fecha, método e importes. Si después subes el XML, el XML manda.
-   */
+  /** Lee el PDF de la factura timbrada (folio fiscal, fecha, importes). Si hay XML, el XML manda. */
   async function leerFacturaPdf(file) {
+    if (pending.facturaXml || f.docs.facturaXml) return;
     const b = busy('Leyendo el PDF de la factura…');
     try {
       const { texto, ocr } = await Solicitud.leerTexto(file, msg => b.set(msg));
       const x = Solicitud.parseFactura(texto);
       if (!x.uuid && x.total == null) return;   // no parece CFDI: sólo se guarda el archivo
       const campos = [], avisos = [], llenos = [];
-      const set = (n, v, label) => { if (v == null || v === '') return; F(n).value = v; llenos.push(n); if (label) campos.push(label); };
       if (x.efecto && !/ingreso/i.test(x.efecto)) avisos.push(`El PDF es de tipo "${x.efecto}", no una factura de ingreso.`);
-      if (pending.facturaXml || f.docs.facturaXml) avisos.push('Ya tienes el XML: sus datos tienen prioridad sobre el PDF.');
-      else {
-        set('uuid', x.uuid, x.uuid && `Folio fiscal ${x.uuid}`);
-        set('fechaEmision', x.fecha, x.fecha && `Emitida ${fmtDate(x.fecha)}`);
-        set('folio', [x.serie, x.folio].filter(Boolean).join('-'));
-        set('metodoPago', x.metodoPago);
-        set('rfcCliente', x.rfcReceptor); set('cliente', x.nombreReceptor);
-        if (x.total != null) {
-          const antes = num(F('total').value);
-          F('desgloseManual').checked = true;
-          set('subtotal', x.subtotal); set('iva', x.iva); set('retIsr', x.retIsr ?? 0); set('retIva', x.retIva ?? 0);
-          set('total', x.total, `Total timbrado ${money(x.total)}`);
-          if (x.subtotal) {
-            F('retIsrRate').value = Math.round((x.retIsr || 0) / x.subtotal * 1e4) / 100;
-            F('retIvaRate').value = Math.round((x.retIva || 0) / x.subtotal * 1e4) / 100;
-          }
-          if (antes && Math.abs(antes - x.total) > 0.005) avisos.push(`El total esperado era ${money(antes)} y la factura dice ${money(x.total)}.`);
-        }
+      if (poner(llenos, 'uuid', x.uuid)) campos.push(`Folio fiscal ${x.uuid}`);
+      if (poner(llenos, 'fechaEmision', x.fecha)) campos.push(`Emitida ${fmtDate(x.fecha)}`);
+      poner(llenos, 'folio', [x.serie, x.folio].filter(Boolean).join('-'));
+      poner(llenos, 'metodoPago', x.metodoPago);
+      poner(llenos, 'rfcCliente', x.rfcReceptor); poner(llenos, 'cliente', x.nombreReceptor);
+      if (x.total != null) {
+        const antes = f.total;
+        ponerTimbrado(x);
+        campos.push(`Total timbrado ${money(x.total)}`);
+        if (antes && Math.abs(antes - x.total) > 0.005) avisos.push(`Esperabas ${money(antes)} y la factura dice ${money(x.total)}.`);
       }
       if (x.rfcEmisor && C.EMISOR?.rfc && x.rfcEmisor !== C.EMISOR.rfc) avisos.push(`El RFC emisor (${x.rfcEmisor}) no es el tuyo.`);
       if (ocr) avisos.push('Se leyó con OCR: verifica los datos.');
@@ -1493,109 +1419,51 @@ function openFactura(orig, preload = {}) {
       marcar(llenos); refresh();
     } catch (e) { console.warn(e); } finally { b.done(); }
   }
-
-  /** Llena el formulario con el XML de la factura (folio, UUID, importes…) */
+  /** Llena el formulario con el XML de la factura (folio, UUID, importes exactos) */
   function applyFacturaXml(x) {
     if (x.tipo && x.tipo !== 'I') toast(`Ojo: el XML es tipo ${x.tipo}, no de ingreso (I).`, 'err');
-    const set = (n, v) => { if (v) F(n).value = v; };
-    set('folio', [x.serie, x.folio].filter(Boolean).join('-'));
-    set('uuid', x.uuid); set('fechaEmision', x.fecha); set('cliente', x.receptorNombre);
-    set('rfcCliente', x.receptorRfc); set('rfcEmisor', x.emisorRfc); set('metodoPago', x.metodoPago);
-    if (!F('descripcion').value) set('descripcion', x.descripcion);
+    const llenos = [];
+    poner(llenos, 'folio', [x.serie, x.folio].filter(Boolean).join('-'));
+    poner(llenos, 'uuid', x.uuid); poner(llenos, 'fechaEmision', x.fecha); poner(llenos, 'cliente', x.receptorNombre);
+    poner(llenos, 'rfcCliente', x.receptorRfc); poner(llenos, 'rfcEmisor', x.emisorRfc); poner(llenos, 'metodoPago', x.metodoPago);
+    poner(llenos, 'descripcion', x.descripcion, false);
     if (x.total != null) {
-      const antes = num(F('total').value);
-      if (antes && Math.abs(antes - x.total) > 0.005) toast(`Ojo: esperabas ${money(antes)} y el XML timbrado dice ${money(x.total)}.`, 'err');
-      F('total').value = x.total;
-      F('desgloseManual').checked = true;   // usa los importes exactos del XML
-      F('subtotal').value = x.subtotal ?? 0; F('iva').value = x.iva; F('retIsr').value = x.retIsr; F('retIva').value = x.retIva;
-      if (x.subtotal) {
-        F('ivaRate').value = Math.round(x.iva / x.subtotal * 1e4) / 100;
-        F('retIsrRate').value = Math.round(x.retIsr / x.subtotal * 1e4) / 100;
-        F('retIvaRate').value = Math.round(x.retIva / x.subtotal * 1e4) / 100;
-      }
+      if (f.total && Math.abs(f.total - x.total) > 0.005) toast(`Ojo: esperabas ${money(f.total)} y el XML timbrado dice ${money(x.total)}.`, 'err');
+      ponerTimbrado(x);
     }
+    marcar(llenos);
     toast('Datos leídos del XML de la factura', 'ok');
   }
-  /**
-   * Monto cobrado por defecto = TOTAL A PAGAR de la factura (lo que deposita
-   * la UNAM). Se usa cuando el complemento no trae el monto o es un PDF.
-   */
-  function cobroPorDefecto(fecha) {
-    if (!num(F('montoCobrado').value)) { F('montoCobrado').value = num(F('total').value).toFixed(2); marcar(['montoCobrado']); }
-    if (!F('fechaCobro').value) { F('fechaCobro').value = fecha || today(); marcar(['fechaCobro']); }
-  }
-  /** PDF del complemento de pago: intenta leer fecha y monto; si no, usa el total */
-  async function leerComplementoPdf(file) {
-    if (pending.complementoXml || f.docs.complementoXml) return refresh();   // el XML ya dio los datos
-    let fecha = '', monto = null;
-    try {
-      const { texto } = await Solicitud.leerTexto(file);
-      const una = texto.replace(/\s+/g, ' ');
-      const fx = una.match(/Fecha (?:de )?pago\s*:?\s*(\d{4}-\d{2}-\d{2})/i);
-      const mx = una.match(/(?:Importe pagado|Monto(?: del pago)?)\s*:?\s*\$?\s*([\d,]+\.\d{2})/i);
-      if (fx) fecha = fx[1];
-      if (mx) monto = parseFloat(mx[1].replace(/,/g, ''));
-    } catch (e) { console.warn(e); }
-    if (monto) { F('montoCobrado').value = monto.toFixed(2); marcar(['montoCobrado']); }
-    cobroPorDefecto(fecha);
-    toast(`Cobrado: ${money(num(F('montoCobrado').value))} el ${fmtDate(F('fechaCobro').value)}`, 'ok');
-    refresh();
-  }
-  /** Llena monto y fecha de cobro con el complemento; avisa si no menciona esta factura */
+  /** Complemento en XML: toma la fecha del pago y revisa que mencione esta factura */
   function applyComplementoXml(x) {
     if (x.tipo !== 'P') { toast('Ese XML no es un complemento de pago (tipo P)', 'err'); return; }
     const uuid = F('uuid').value.trim().toUpperCase();
     const p = uuid ? CFDI.pagoDeFactura(x, uuid) : null;
     if (uuid && !p) toast('El complemento no menciona el UUID de esta factura. Revisa que sea el correcto.', 'err');
-    const pago = p || (x.pagos[0] ? { fecha: x.pagos[0].fecha, monto: x.pagos[0].monto } : null);
-    if (pago) {
-      F('montoCobrado').value = pago.monto ?? '';
-      F('fechaCobro').value = pago.fecha || '';
-      marcar(['montoCobrado', 'fechaCobro']);
-      cobroPorDefecto(pago.fecha);
-      toast(`Pago leído: ${money(pago.monto)} el ${fmtDate(pago.fecha)}` + (p?.saldoInsoluto ? ` · saldo insoluto ${money(p.saldoInsoluto)}` : ''), 'ok');
-    }
+    fechaPago = p?.fecha || x.pagos[0]?.fecha || fechaPago || today();
+    const monto = p?.monto ?? x.pagos[0]?.monto;
+    if (monto != null && f.total && Math.abs(monto - f.total) > 0.005) toast(`El complemento ampara ${money(monto)} y el total es ${money(f.total)}.`, 'err');
+    else toast(`Cobrado ${money(f.total)} el ${fmtDate(fechaPago)}`, 'ok');
+  }
+  /** Complemento en PDF: intenta leer la fecha de pago (si no, hoy) */
+  async function leerComplementoPdf(file) {
+    if (pending.complementoXml || f.docs.complementoXml) return;
+    try {
+      const { texto } = await Solicitud.leerTexto(file);
+      const fx = texto.replace(/\s+/g, ' ').match(/Fecha (?:de )?pago\s*:?\s*(\d{4}-\d{2}-\d{2})/i);
+      if (fx) fechaPago = fx[1];
+    } catch (e) { console.warn(e); }
+    fechaPago ||= today();
+    toast(`Cobrado ${money(f.total)} el ${fmtDate(fechaPago)}`, 'ok');
+    refresh();
   }
 
-  /*
-   * Modo "desde la cantidad" (recomendado UNAM):
-   *  - si cambias la cantidad o una tasa → se recalculan los impuestos y el total
-   *  - si corriges a mano un impuesto → sólo se recalcula el TOTAL
-   * Modo "desde el total": se escribe el total y se despeja la cantidad.
-   */
-  const RECALC_TODO = ['subtotal', 'ivaRate', 'retIsrRate', 'retIvaRate', 'desgloseManual'];
-  const RECALC_TOTAL = ['iva', 'retIsr', 'retIva'];
-  function recalcular(campo) {
-    if (!F('desgloseManual').checked) return;
-    const v = n => num(F(n).value);
-    if (RECALC_TODO.includes(campo)) {
-      const c = calcDesdeCantidad(v('subtotal'), v('ivaRate'), v('retIsrRate'), v('retIvaRate'));
-      F('iva').value = c.iva.toFixed(2); F('retIsr').value = c.retIsr.toFixed(2); F('retIva').value = c.retIva.toFixed(2);
-    }
-    if (RECALC_TODO.includes(campo) || RECALC_TOTAL.includes(campo))
-      F('total').value = r2(v('subtotal') + v('iva') - v('retIsr') - v('retIva')).toFixed(2);
-  }
-  form.addEventListener('input', e => { recalcular(e.target.name); refresh(); });
-  form.addEventListener('change', e => {
-    if (e.target.name === 'desgloseManual') recalcular('desgloseManual');
-    if (e.target.name === 'pagadaSinComplemento' && e.target.checked) cobroPorDefecto();
+  // Si se cambia la cantidad o un porcentaje, se deja de usar el importe timbrado y se recalcula
+  form.addEventListener('input', e => {
+    if (['subtotal', 'ivaRate', 'retIsrRate', 'retIvaRate'].includes(e.target.name)) f.timbrado = false;
     refresh();
   });
-  // Botones de porcentajes rápidos (IVA, ISR retenido, IVA retenido)
-  $$('[data-pre]', m.el).forEach(b => b.onclick = () => {
-    const [a, bb, c] = b.dataset.pre.split(',');
-    F('ivaRate').value = a; F('retIsrRate').value = bb; F('retIvaRate').value = c;
-    if (num(F('subtotal').value) > 0) F('desgloseManual').checked = true;
-    recalcular('ivaRate'); refresh();
-  });
-  // "Datos para facturar en el SAT": copiar un dato o todos
-  $('#cfdiDatos', m.el).addEventListener('click', async e => {
-    const btn = e.target.closest('[data-copy]'); if (!btn) return;
-    const filas = datosCfdi();
-    const texto = btn.dataset.copy === 'todo' ? filas.map(r => `${r.label}: ${r.valor}`).join('\n') : filas[+btn.dataset.copy].valor;
-    try { await navigator.clipboard.writeText(texto); toast('Copiado', 'ok'); }
-    catch { toast('No se pudo copiar; mantén presionado el texto para copiarlo', 'err'); }
-  });
+  form.addEventListener('change', refresh);
   // Botones de cada archivo: pick | view | orig | remove | undo
   $('#slots', m.el).addEventListener('click', async e => {
     const btn = e.target.closest('[data-act]'); if (!btn) return;
@@ -1611,10 +1479,11 @@ function openFactura(orig, preload = {}) {
   /*
    * Guardar:
    *  1. valida consecutivo único
-   *  2. sube/borra los archivos pendientes
-   *  3. renombra todos los archivos a 053_RFC_REF… (por si cambió la referencia)
-   *  4. pone o quita la marca FACTURADO
-   *  5. guarda db
+   *  2. si quedó cobrada: cobrado = total a pagar (fecha del complemento o hoy)
+   *  3. sube/borra los archivos pendientes
+   *  4. renombra todos los archivos a 053_RFC_REF… (por si cambió la referencia)
+   *  5. pone o quita la marca FACTURADO
+   *  6. guarda db
    */
   $('#save', m.el).onclick = async () => {
     readForm();
@@ -1622,11 +1491,10 @@ function openFactura(orig, preload = {}) {
     if (!(f.seq > 0)) return toast('El número consecutivo debe ser mayor a 0', 'err');
     const dup = db.facturas.find(x => x.seq === f.seq && x.id !== f.id);
     if (dup) return toast(`El consecutivo ${f.seq} ya lo usa la factura ${dup.referencia || ''}`, 'err');
-    if (!f.desgloseManual) Object.assign(f, calcDesglose(f.total, f.ivaRate, f.retIsrRate, f.retIvaRate));
     if (isNew) f.createdAt = new Date().toISOString();
-    // Si ya está cobrada y no se capturó el monto, el cobrado es el total a pagar
-    const cobradaAlGuardar = f.pagadaSinComplemento || DOCS_F.some(d => /complemento/.test(d.key) && (pending[d.key] instanceof File || (f.docs[d.key] && pending[d.key] !== 'REMOVE')));
-    if (cobradaAlGuardar && !f.montoCobrado) { f.montoCobrado = f.total; f.fechaCobro ||= today(); }
+    const cobrada = estadoFactura({ ...f, docs: docsEfectivos() }) === 'cobrado';
+    f.montoCobrado = cobrada ? f.total : 0;
+    f.fechaCobro = cobrada ? (fechaPago || f.fechaCobro || today()) : '';
     const keys = Object.keys(pending);
     const b = busy('Guardando…');
     try {
@@ -2050,10 +1918,10 @@ function download(blob, name) {
 }
 /** Exporta las facturas a CSV (se abre en Excel con acentos correctos). */
 function exportCSV() {
-  const head = ['#', 'Archivo', 'Referencia', 'Contrato', 'Parcialidad', 'Periodo del', 'Periodo al', 'Pago tentativo', 'Descripción', 'Sede', 'Cliente', 'RFC cliente', 'Folio', 'UUID', 'Fecha emisión', 'Método', 'Total', 'Subtotal sin IVA', 'IVA', 'ISR retenido', 'IVA retenido', 'Cobrado', 'Cobrado sin IVA', 'Fecha cobro', 'Estado', 'Fecha alta'];
+  const head = ['#', 'Archivo', 'Referencia', 'Contrato', 'Parcialidad', 'Descripción', 'Sede', 'Cliente', 'RFC cliente', 'Folio', 'UUID', 'Fecha emisión', 'Método', 'Total', 'Subtotal sin IVA', 'IVA', 'ISR retenido', 'IVA retenido', 'Cobrado', 'Cobrado sin IVA', 'Fecha cobro', 'Estado', 'Fecha alta'];
   const rows = [...db.facturas].sort((a, b) => a.seq - b.seq).map(f => {
     const d = desglose(f);
-    return [f.seq, baseName(f), f.referencia, f.contrato, f.parcialidad ? `${f.parcialidad} de ${f.parcialidades || '?'}` : '', f.periodoInicio, f.periodoFin, fechaTentativa(f), f.descripcion, f.sede, f.cliente, f.rfcCliente, f.folio, f.uuid, f.fechaEmision, f.metodoPago, f.total, d.subtotal, d.iva, d.retIsr, d.retIva, f.montoCobrado, cobradoSinIva(f), f.fechaCobro, ESTADOS[estadoFactura(f)].label, (f.createdAt || '').slice(0, 10)];
+    return [f.seq, baseName(f), f.referencia, f.contrato, f.parcialidad ? `${f.parcialidad} de ${f.parcialidades || '?'}` : '', f.descripcion, f.sede, f.cliente, f.rfcCliente, f.folio, f.uuid, f.fechaEmision, f.metodoPago, f.total, d.subtotal, d.iva, d.retIsr, d.retIva, f.montoCobrado, cobradoSinIva(f), f.fechaCobro, ESTADOS[estadoFactura(f)].label, (f.createdAt || '').slice(0, 10)];
   });
   const csv = [head, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
   download(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), `facturas-${today()}.csv`);
