@@ -216,6 +216,7 @@
   <div class="kpi amber"><small>Por cobrar</small><b>{{:~money(k.porCobrar)}}</b><span class="sub">{{:k.nPend}} factura(s)</span></div>
   <div class="kpi green"><small>Cobrado {{:k.year}}</small><b>{{:~money(k.cobrado)}}</b><span class="sub">Sin IVA: {{:~money(k.cobradoSinIva)}}</span></div>
   <div class="kpi"><small>Por facturar</small><b>{{:k.nPorFacturar}}</b><span class="sub">solicitud(es) recibidas</span></div>
+  <div class="kpi navy"><small>IVA cobrado {{:k.year}}</small><b>{{:~money(k.ivaAnual)}}</b><span class="sub">Retenido {{:~money(k.ivaRetAnual)}} · neto {{:~money(k.ivaNetoAnual)}}</span></div>
   <a class="kpi violet" href="#/saldos"><small>Saldo a favor disponible</small><b>{{:~money(k.saldoDisp)}}</b><span class="sub">en {{:k.nSaldo}} declaración(es)</span></a>
 </div>
 <div class="toolbar">
@@ -229,14 +230,14 @@
   <div class="table-wrap">
     <table class="ftable">
       <thead><tr>
-        <th class="sticky">#</th><th>Referencia</th><th class="r">Total a pagar</th><th>Estado</th>
+        <th>#</th><th>Referencia</th><th>Estado</th>
         <th class="r">Cantidad</th><th class="r">Cobrado</th><th>Descripción</th>
-        <th>Parcialidad</th><th>Sede</th><th>Fecha alta</th><th>Siguiente paso</th>
+        <th>Parcialidad</th><th class="opt">Sede</th><th class="opt">Fecha alta</th><th>Siguiente paso</th>
       </tr></thead>
       <tbody>{{for cards tmpl="factura-row"/}}</tbody>
     </table>
   </div>
-  <p class="hint" style="margin:8px 2px">Desliza la tabla a los lados para ver más columnas · toca un renglón para abrirlo.</p>
+  <p class="hint" style="margin:8px 2px">Toca un renglón para abrirlo.</p>
 {{else hayFacturas}}
   <div class="empty"><h3>Sin resultados</h3><p>Prueba con otro filtro o búsqueda.</p></div>
 {{else}}
@@ -246,19 +247,21 @@
 </script>
 
 <!-- Renglón de la tabla de facturas (en el orden en que se agregaron).
+     En escritorio es una fila; en celular el CSS lo convierte en tarjeta
+     (cada celda muestra su título con data-l).
+     "Cobrado" muestra el total a pagar: en gris mientras no se cobra.
      Datos: cardVM() en app.js -->
 <script type="text/x-jsrender" id="factura-row">
 <tr class="frow e-{{:estado}}" data-id="{{:id}}" tabindex="0">
-  <td class="sticky seqc"><span class="seq">{{:seq}}</span></td>
-  <td class="refc"><b>{{>ref}}</b>{{if facturado}} <span class="tag wm">FACTURADO</span>{{/if}}{{if metodo}}<small>{{>metodo}}</small>{{/if}}</td>
-  <td class="r num"><b>{{:~money(total)}}</b></td>
-  <td><span class="badge {{:estadoCls}}">{{>estadoLabel}}</span></td>
-  <td class="r num">{{:~money(subtotal)}}</td>
-  <td class="r num">{{if cobrado}}{{:~money(cobrado)}}{{else}}<span class="muted">—</span>{{/if}}</td>
-  <td class="desc" title="{{>desc}}">{{>desc}}</td>
-  <td>{{>parcialidadTxt}}</td>
-  <td>{{>sede}}</td>
-  <td>{{>alta}}</td>
+  <td class="seqc"><span class="seq">{{:seq}}</span></td>
+  <td class="refc"><b>{{>ref}}</b>{{if metodo}}<small>{{>metodo}}</small>{{/if}}</td>
+  <td class="estc"><span class="badge {{:estadoCls}}">{{>estadoLabel}}</span></td>
+  <td class="r num" data-l="Cantidad">{{:~money(subtotal)}}</td>
+  <td class="r num cobc" data-l="{{if cobrado}}Cobrado{{else}}Por cobrar{{/if}}">{{if cobrado}}<b>{{:~money(cobrado)}}</b>{{else}}<span class="muted" title="Total a pagar, aún no cobrado">{{:~money(total)}}</span>{{/if}}</td>
+  <td class="desc" title="{{>desc}}"><span>{{>desc}}</span></td>
+  <td data-l="Parcialidad">{{>parcialidadTxt}}</td>
+  <td class="opt" data-l="Sede">{{>sede}}</td>
+  <td class="opt" data-l="Alta">{{>alta}}</td>
   <td class="nextc">{{>sig}}</td>
 </tr>
 </script>

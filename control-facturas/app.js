@@ -42,7 +42,7 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '8',
+  VERSION: '9',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
@@ -892,6 +892,16 @@ function openModal({ title, body, footer = '', size = '' }) {
   bg.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
   return { el: bg, close, body: $('.modal-b', bg) };
 }
+/**
+ * Tecla Esc: cierra la vista previa de documentos que esté hasta arriba.
+ * Si hay varias abiertas, se cierran una por una (la última primero).
+ * Los formularios no se cierran con Esc para no perder lo capturado.
+ */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const top = $$('.modal-bg').pop();
+  if (top && top.querySelector('.modal.full')) { e.preventDefault(); top.querySelector('[data-close]').click(); }
+});
 /** Pregunta Sí/No. Devuelve Promise<boolean>. */
 function confirmar(msg, ok = 'Aceptar', danger = false) {
   return new Promise(res => {
@@ -1141,6 +1151,10 @@ function renderFacturas() {
     k: {
       porCobrar: pend.reduce((s, f) => s + (f.total || 0), 0), nPend: pend.length, year,
       cobrado: cobradas.reduce((s, f) => s + (f.montoCobrado || 0), 0), cobradoSinIva: cobradas.reduce((s, f) => s + cobradoSinIva(f), 0),
+      // IVA del año: trasladado de las facturas cobradas (flujo de efectivo), retenido por la UNAM y neto
+      ivaAnual: r2(cobradas.reduce((s, f) => s + desglose(f).iva, 0)),
+      ivaRetAnual: r2(cobradas.reduce((s, f) => s + desglose(f).retIva, 0)),
+      ivaNetoAnual: r2(cobradas.reduce((s, f) => s + desglose(f).iva - desglose(f).retIva, 0)),
       nPorFacturar: cuenta('porfacturar'), saldoDisp: saldoTotalDisp(), nSaldo: declsConSaldo().filter(r => saldoDisp(r) > 0).length
     },
     q: ui.q, ordenLabel: ui.orden === 'asc' ? '↑ Más antiguas' : '↓ Más recientes',

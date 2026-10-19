@@ -141,7 +141,8 @@
 
     /* ---------- Indicadores ---------- */
     .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
-    @media (min-width: 760px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
+    .kpis > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+    @media (min-width: 760px) { .kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); } .kpis > :last-child:nth-child(odd) { grid-column: auto; } }
     .kpi { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 14px 12px; box-shadow: var(--shadow); color: inherit; text-decoration: none; }
     .kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--azul); }
     .kpi::after { content: ''; position: absolute; right: -24px; top: -24px; width: 80px; height: 80px; border-radius: 50%; background: var(--azul-soft); opacity: .7; }
@@ -150,6 +151,7 @@
     .kpi .sub { font-size: 12px; color: var(--muted); position: relative; z-index: 1; }
     .kpi.amber::before { background: var(--oro); } .kpi.amber::after { background: var(--oro-soft); } .kpi.amber b { color: var(--oro-ink); }
     .kpi.green::before { background: var(--green); } .kpi.green::after { background: var(--green-bg); } .kpi.green b { color: var(--green); }
+    .kpi.navy::before { background: var(--azul-2); } .kpi.navy b { color: var(--azul-2); }
     .kpi.violet::before { background: var(--violet); } .kpi.violet::after { background: var(--violet-bg); } .kpi.violet b { color: var(--violet); }
 
     .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
@@ -364,26 +366,55 @@
     .hash-out { display: block; margin-top: 8px; word-break: break-all; font-size: 12px; padding: 8px; }
     .hash-out:empty { display: none; }
 
-    /* Tabla de facturas */
-    .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .ftable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; min-width: 980px; }
-    .ftable thead th { position: sticky; top: 0; background: var(--azul); color: #fff; font-weight: 700; font-size: 12px; text-align: left; padding: 11px 12px; white-space: nowrap; border-bottom: 3px solid var(--oro); letter-spacing: .02em; }
+    /* Tabla de facturas
+       - Escritorio: tabla ajustada al ancho de la pantalla (sin scroll lateral)
+       - Celular (< 760px): cada renglón se muestra como tarjeta */
+    .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .ftable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+    .ftable thead th { background: var(--azul); color: #fff; font-weight: 700; font-size: 12px; text-align: left; padding: 11px 10px; white-space: nowrap; border-bottom: 3px solid var(--oro); letter-spacing: .02em; }
     .ftable th.r, .ftable td.r { text-align: right; }
-    .ftable td { padding: 11px 12px; border-top: 1px solid var(--line-2); vertical-align: middle; white-space: nowrap; background: #fff; }
+    .ftable td { padding: 10px; border-top: 1px solid var(--line-2); vertical-align: middle; background: #fff; }
+    .ftable td.num, .ftable td.seqc, .ftable td.estc, .ftable td.refc { white-space: nowrap; }
     .ftable tbody tr:nth-child(even) td { background: #fafbfd; }
     .ftable tbody tr { cursor: pointer; }
     .ftable tbody tr:hover td { background: var(--azul-soft); }
-    .ftable .sticky { position: sticky; left: 0; z-index: 1; }
-    .ftable thead .sticky { z-index: 2; }
-    .ftable td.seqc { box-shadow: inset 4px 0 0 var(--gray); width: 56px; }
+    .ftable td.seqc { box-shadow: inset 4px 0 0 var(--gray); width: 48px; }
     .ftable tr.e-pendiente td.seqc { box-shadow: inset 4px 0 0 var(--oro); }
     .ftable tr.e-cobrado td.seqc { box-shadow: inset 4px 0 0 var(--green); }
     .ftable tr.e-cancelada td.seqc { box-shadow: inset 4px 0 0 var(--red); }
     .ftable .refc b { color: var(--azul-900); }
     .ftable .refc small { display: block; font-size: 11px; color: var(--muted); }
-    .ftable td.desc { max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
-    .ftable td.nextc { color: var(--azul); font-size: 12px; font-weight: 600; }
-    .ftable .ichip { font-size: 11px; }
+    .ftable td.desc { width: 32%; min-width: 180px; }
+    .ftable td.desc span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; }
+    .ftable td.nextc { color: var(--azul); font-size: 12px; font-weight: 600; min-width: 110px; }
+    .ftable td.cobc b { color: var(--green); }
+    @media (max-width: 1100px) { .ftable .opt { display: none; } }
+
+    @media (max-width: 759px) {
+      .table-wrap { background: none; border: 0; box-shadow: none; overflow: visible; }
+      .ftable, .ftable tbody { display: block; }
+      .ftable thead { display: none; }
+      .ftable tbody { display: flex; flex-direction: column; gap: 12px; }
+      .ftable tr.frow { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px 10px; align-items: center;
+        background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 13px 14px 12px 18px; overflow: hidden; }
+      .ftable tr.frow::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--gray); }
+      .ftable tr.e-pendiente::before { background: var(--oro) !important; }
+      .ftable tr.e-cobrado::before { background: var(--green) !important; }
+      .ftable tr.e-cancelada::before { background: var(--red) !important; }
+      .ftable tbody tr:nth-child(even) td, .ftable tbody tr:hover td, .ftable td { background: none; }
+      .ftable td { display: block; padding: 0; border: 0; box-shadow: none !important; width: auto; min-width: 0; }
+      .ftable td.seqc { grid-column: span 1; }
+      .ftable td.refc { grid-column: span 3; }
+      .ftable td.estc { grid-column: span 2; text-align: right; }
+      .ftable td.num { grid-column: span 3; }
+      .ftable td[data-l]:not(.num) { grid-column: span 2; }
+      .ftable td.desc { grid-column: 1 / -1; }
+      .ftable td[data-l]::before { content: attr(data-l); display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
+      .ftable td.r[data-l] { text-align: left; }
+      .ftable .opt { display: block; }
+      .ftable td.nextc { grid-column: 1 / -1; border-top: 1px dashed var(--line); padding-top: 7px; min-width: 0; }
+      .ftable td.nextc:empty { display: none; }
+    }
 
     /* Sección colapsable dentro de un formulario */
     .sub-acc { margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
