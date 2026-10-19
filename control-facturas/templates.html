@@ -226,7 +226,17 @@
   {{for chips}}<button class="chip {{if on}}on{{/if}}" data-f="{{:k}}">{{>label}}<span class="c">{{:count}}</span></button>{{/for}}
 </div>
 {{if cards.length}}
-  <div class="grid">{{for cards tmpl="factura-card"/}}</div>
+  <div class="table-wrap">
+    <table class="ftable">
+      <thead><tr>
+        <th class="sticky">#</th><th>Referencia</th><th class="r">Total a pagar</th><th>Estado</th>
+        <th class="r">Cantidad</th><th class="r">Cobrado</th><th>Descripción</th>
+        <th>Parcialidad</th><th>Periodo</th><th>Pago aprox.</th><th>Sede</th><th>Fecha alta</th><th>Siguiente paso</th>
+      </tr></thead>
+      <tbody>{{for cards tmpl="factura-row"/}}</tbody>
+    </table>
+  </div>
+  <p class="hint" style="margin:8px 2px">Desliza la tabla a los lados para ver más columnas · toca un renglón para abrirlo.</p>
 {{else hayFacturas}}
   <div class="empty"><h3>Sin resultados</h3><p>Prueba con otro filtro o búsqueda.</p></div>
 {{else}}
@@ -235,32 +245,26 @@
 {{/if}}
 </script>
 
-<!-- Tarjeta de una factura. Datos: cardVM() en app.js -->
-<script type="text/x-jsrender" id="factura-card">
-<article class="card e-{{:estado}}" data-id="{{:id}}" tabindex="0">
-  <div class="card-top">
-    <span class="seq">#{{:seq}}</span><span class="ref">{{>ref}}</span>
-    {{if metodo}}<span class="tag">{{>metodo}}</span>{{/if}}
-    {{if facturado}}<span class="tag wm">FACTURADO</span>{{/if}}
-    <span style="flex:1"></span>
-    <span class="badge {{:estadoCls}}">{{>estadoLabel}}</span>
-  </div>
-  <h3>{{>desc}}</h3>
-  <div class="meta">{{>meta}}</div>
-  {{if chips.length}}
-  <div class="infochips">
-    {{for chips}}<span class="ichip {{:cls}}" title="{{>title}}">{{:~icon(icon)}}{{>text}}</span>{{/for}}
-  </div>
-  {{/if}}
-  <div class="amounts">
-    <div><small>Total</small><b>{{:~money(total)}}</b></div>
-    <div><small>Sin IVA</small><b>{{:~money(subtotal)}}</b></div>
-    <div><small>{{>tercerLabel}}</small><b>{{:~money(tercer)}}</b></div>
-  </div>
-  <div class="steps" title="Solicitud · Factura · Cobro">{{for steps}}<span class="step {{if #data}}done{{/if}}"></span>{{/for}}</div>
-  {{if sig}}<div class="next"><span>Siguiente: <b>{{>sig}}</b></span></div>{{/if}}
-</article>
+<!-- Renglón de la tabla de facturas (en el orden en que se agregaron).
+     Datos: cardVM() en app.js -->
+<script type="text/x-jsrender" id="factura-row">
+<tr class="frow e-{{:estado}}" data-id="{{:id}}" tabindex="0">
+  <td class="sticky seqc"><span class="seq">{{:seq}}</span></td>
+  <td class="refc"><b>{{>ref}}</b>{{if facturado}} <span class="tag wm">FACTURADO</span>{{/if}}{{if metodo}}<small>{{>metodo}}</small>{{/if}}</td>
+  <td class="r num"><b>{{:~money(total)}}</b></td>
+  <td><span class="badge {{:estadoCls}}">{{>estadoLabel}}</span></td>
+  <td class="r num">{{:~money(subtotal)}}</td>
+  <td class="r num">{{if cobrado}}{{:~money(cobrado)}}{{else}}<span class="muted">—</span>{{/if}}</td>
+  <td class="desc" title="{{>desc}}">{{>desc}}</td>
+  <td>{{>parcialidadTxt}}</td>
+  <td>{{>periodoTxt}}</td>
+  <td>{{if pago}}<span class="ichip {{:pago.cls}}">{{>pago.text}}</span>{{else}}<span class="muted">—</span>{{/if}}</td>
+  <td>{{>sede}}</td>
+  <td>{{>alta}}</td>
+  <td class="nextc">{{>sig}}</td>
+</tr>
 </script>
+
 
 <!-- Menú del botón "+" -->
 <script type="text/x-jsrender" id="fab-sheet">
@@ -302,34 +306,40 @@
     <label class="f">Tu RFC (emisor)<input name="rfcEmisor" value="{{>f.rfcEmisor}}" style="text-transform:uppercase" placeholder="NEMP920226AU6"></label>
     <label class="f">Sede<input name="sede" value="{{>f.sede}}" placeholder="DGTIC Mascarones" list="sedes"></label>
     <label class="f full">Descripción<textarea name="descripcion" rows="2">{{>f.descripcion}}</textarea></label>
-    <label class="f">Cliente (receptor)<input name="cliente" value="{{>f.cliente}}"></label>
-    <label class="f">RFC del cliente<input name="rfcCliente" value="{{>f.rfcCliente}}" style="text-transform:uppercase"></label>
-    <label class="f">Serie y folio<input name="folio" value="{{>f.folio}}"></label>
     <label class="f">Fecha de emisión<input name="fechaEmision" type="date" value="{{>f.fechaEmision}}"></label>
-    <label class="f full">UUID (folio fiscal)<input name="uuid" value="{{>f.uuid}}" style="text-transform:uppercase;font-size:13px"></label>
     <label class="f">Método de pago<select name="metodoPago">
       <option value="PPD" {{if f.metodoPago=='PPD'}}selected{{/if}}>PPD · Pago en parcialidades o diferido</option>
       <option value="PUE" {{if f.metodoPago=='PUE'}}selected{{/if}}>PUE · Pago en una sola exhibición</option>
     </select></label>
   </div>
+  <!-- Colapsado por defecto: se llena solo con el XML o el PDF de la factura -->
+  <details class="sub-acc" id="cfdiTimbrado">
+    <summary><span>Folio, UUID y cliente</span><em id="timbradoResumen"></em>{{:~icon('chev')}}</summary>
+    <div class="form-grid r1">
+      <label class="f">Serie y folio<input name="folio" value="{{>f.folio}}"></label>
+      <label class="f full">UUID (folio fiscal)<input name="uuid" value="{{>f.uuid}}" style="text-transform:uppercase;font-size:13px"></label>
+      <label class="f">Cliente (receptor)<input name="cliente" value="{{>f.cliente}}"></label>
+      <label class="f">RFC del cliente<input name="rfcCliente" value="{{>f.rfcCliente}}" style="text-transform:uppercase"></label>
+    </div>
+  </details>
   <datalist id="sedes">{{for sedes}}<option value="{{>#data}}">{{/for}}</datalist>
   </fieldset>
 
   <fieldset><legend>Importes y desglose de IVA</legend>
     <div class="form-grid">
-      <label class="f full">Total de la factura<input name="total" type="number" step="0.01" inputmode="decimal" value="{{:f.total}}"></label>
+      <label class="f full">Total de la factura <span style="font-weight:400">(se recalcula solo al cambiar la cantidad, tasas o impuestos)</span><input name="total" type="number" step="0.01" inputmode="decimal" value="{{:f.total}}"></label>
       <label class="f">IVA %<input name="ivaRate" type="number" step="0.0001" inputmode="decimal" value="{{:f.ivaRate}}"></label>
       <label class="f">Retención ISR %<input name="retIsrRate" type="number" step="0.0001" inputmode="decimal" value="{{:f.retIsrRate}}"></label>
       <label class="f">Retención IVA %<input name="retIvaRate" type="number" step="0.0001" inputmode="decimal" value="{{:f.retIvaRate}}"></label>
-      <label class="check" style="align-self:end;padding-bottom:10px"><input type="checkbox" name="desgloseManual" {{if f.desgloseManual}}checked{{/if}}> Editar desglose a mano</label>
+      <label class="check" style="align-self:end;padding-bottom:10px"><input type="checkbox" name="desgloseManual" {{if f.desgloseManual}}checked{{/if}}> Calcular desde la cantidad (recomendado)</label>
     </div>
     <div class="presets">
-      <button type="button" class="btn sm" data-pre="16,10,10.6667">UNAM honorarios · ISR 10% · IVA ret. 10.67%</button>
-      <button type="button" class="btn sm" data-pre="16,1.25,10.6667">RESICO · ISR 1.25% · IVA ret. 10.67%</button>
+      <button type="button" class="btn sm" data-pre="16,10,10.67">UNAM honorarios · ISR 10% · IVA ret. 10.67%</button>
+      <button type="button" class="btn sm" data-pre="16,1.25,10.67">RESICO · ISR 1.25% · IVA ret. 10.67%</button>
       <button type="button" class="btn sm" data-pre="16,0,0">Sólo IVA 16%</button>
     </div>
     <div class="form-grid" id="manual" style="margin-top:10px" {{if !f.desgloseManual}}hidden{{/if}}>
-      <label class="f">Subtotal (sin IVA)<input name="subtotal" type="number" step="0.01" value="{{:f.subtotal}}"></label>
+      <label class="f">Cantidad (sin IVA)<input name="subtotal" type="number" step="0.01" inputmode="decimal" value="{{:f.subtotal}}"></label>
       <label class="f">IVA trasladado<input name="iva" type="number" step="0.01" value="{{:f.iva}}"></label>
       <label class="f">ISR retenido<input name="retIsr" type="number" step="0.01" value="{{:f.retIsr}}"></label>
       <label class="f">IVA retenido<input name="retIva" type="number" step="0.01" value="{{:f.retIva}}"></label>
@@ -338,12 +348,17 @@
   </fieldset>
 
   <fieldset><legend>Cobro</legend><div class="form-grid">
-    <label class="f">Monto cobrado<input name="montoCobrado" type="number" step="0.01" inputmode="decimal" value="{{:f.montoCobrado}}"></label>
+    <label class="f">Monto cobrado <span style="font-weight:400">(= total a pagar)</span><input name="montoCobrado" type="number" step="0.01" inputmode="decimal" value="{{:f.montoCobrado || ''}}" placeholder="Se llena al subir el complemento"></label>
     <label class="f">Fecha de cobro<input name="fechaCobro" type="date" value="{{>f.fechaCobro}}"></label>
     <label class="check full"><input type="checkbox" name="pagadaSinComplemento" {{if f.pagadaSinComplemento}}checked{{/if}}> Cobrada sin complemento (factura PUE)</label>
     <label class="check full"><input type="checkbox" name="cancelada" {{if f.cancelada}}checked{{/if}}> Factura cancelada</label>
     <p class="hint full" id="cobroHint"></p>
   </div></fieldset>
+
+  <fieldset><legend>Datos para facturar en el SAT</legend>
+    <div id="cfdiDatos"></div>
+    <p class="hint">Valores fijos tomados de tu factura timbrada (se cambian en CONFIG.EMISOR / RECEPTOR / CONCEPTO de app.js).</p>
+  </fieldset>
 
   <fieldset><legend>Notas</legend><label class="f"><textarea name="notas" rows="2">{{>f.notas}}</textarea></label></fieldset>
 </form>
@@ -380,6 +395,18 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
 {{if falta}} · Saldo pendiente del cliente: <b>{{:~money(falta)}}</b>{{/if}}
 </script>
 
+<!-- Datos a capturar en el portal del SAT, con botón de copiar.
+     Datos: { filas:[{label, valor}] } -->
+<script type="text/x-jsrender" id="cfdi-datos">
+<div class="cfdi">
+  {{for filas}}
+  <div class="cfdi-row"><span class="k">{{>label}}</span><span class="v">{{>valor}}</span>
+    <button type="button" class="icon-btn mini" data-copy="{{:#index}}" aria-label="Copiar {{>label}}">{{:~icon('copy')}}</button></div>
+  {{/for}}
+</div>
+<button type="button" class="btn sm" data-copy="todo" style="margin-top:10px">{{:~icon('copy')}} Copiar todo</button>
+</script>
+
 <!-- Resultado de leer el PDF de solicitud (texto u OCR).
      Datos: { ok, ocr, campos:[texto], avisos:[texto] } -->
 <script type="text/x-jsrender" id="readbox">
@@ -387,7 +414,7 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
   <div class="ic">{{:~icon('scan')}}</div>
   <div>
     {{if ok}}
-      <b>Datos leídos del PDF{{if ocr}} con OCR{{/if}}</b> — revisa los campos resaltados en dorado.
+      <b>{{if titulo}}{{>titulo}}{{else}}Datos leídos del PDF{{/if}}{{if ocr}} con OCR{{/if}}</b> — revisa los campos resaltados en dorado.
     {{else}}
       <b>No pude leer datos de este archivo.</b> Captúralos a mano.
     {{/if}}

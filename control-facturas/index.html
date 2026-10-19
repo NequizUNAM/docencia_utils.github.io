@@ -364,6 +364,45 @@
     .hash-out { display: block; margin-top: 8px; word-break: break-all; font-size: 12px; padding: 8px; }
     .hash-out:empty { display: none; }
 
+    /* Tabla de facturas */
+    .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .ftable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; min-width: 1180px; }
+    .ftable thead th { position: sticky; top: 0; background: var(--azul); color: #fff; font-weight: 700; font-size: 12px; text-align: left; padding: 11px 12px; white-space: nowrap; border-bottom: 3px solid var(--oro); letter-spacing: .02em; }
+    .ftable th.r, .ftable td.r { text-align: right; }
+    .ftable td { padding: 11px 12px; border-top: 1px solid var(--line-2); vertical-align: middle; white-space: nowrap; background: #fff; }
+    .ftable tbody tr:nth-child(even) td { background: #fafbfd; }
+    .ftable tbody tr { cursor: pointer; }
+    .ftable tbody tr:hover td { background: var(--azul-soft); }
+    .ftable .sticky { position: sticky; left: 0; z-index: 1; }
+    .ftable thead .sticky { z-index: 2; }
+    .ftable td.seqc { box-shadow: inset 4px 0 0 var(--gray); width: 56px; }
+    .ftable tr.e-pendiente td.seqc { box-shadow: inset 4px 0 0 var(--oro); }
+    .ftable tr.e-cobrado td.seqc { box-shadow: inset 4px 0 0 var(--green); }
+    .ftable tr.e-cancelada td.seqc { box-shadow: inset 4px 0 0 var(--red); }
+    .ftable .refc b { color: var(--azul-900); }
+    .ftable .refc small { display: block; font-size: 11px; color: var(--muted); }
+    .ftable td.desc { max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+    .ftable td.nextc { color: var(--azul); font-size: 12px; font-weight: 600; }
+    .ftable .ichip { font-size: 11px; }
+
+    /* Sección colapsable dentro de un formulario */
+    .sub-acc { margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+    .sub-acc summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-size: 13px; font-weight: 700; color: var(--azul); }
+    .sub-acc summary::-webkit-details-marker { display: none; }
+    .sub-acc summary em { flex: 1; min-width: 0; font-style: normal; font-weight: 500; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+    .sub-acc summary .chev { width: 16px; height: 16px; transition: transform .2s; flex: none; }
+    .sub-acc[open] summary .chev { transform: rotate(90deg); }
+    .sub-acc > .form-grid { padding: 0 12px 12px; }
+
+    /* Datos para el SAT */
+    .cfdi { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .cfdi-row { display: grid; grid-template-columns: 38% 1fr auto; gap: 8px; align-items: center; padding: 7px 6px 7px 12px; font-size: 13px; border-top: 1px solid var(--line-2); }
+    .cfdi-row:first-child { border-top: 0; }
+    .cfdi-row:nth-child(odd) { background: var(--surface-2); }
+    .cfdi-row .k { color: var(--muted); font-weight: 600; }
+    .cfdi-row .v { color: var(--azul-900); word-break: break-word; }
+    .cfdi-row .icon-btn svg { width: 16px; height: 16px; color: var(--azul); }
+
     .setup { max-width: 470px; margin: 30px auto; display: flex; flex-direction: column; gap: 12px; }
     .setup h2 { margin: 0 0 4px; color: var(--azul); }
   </style>
