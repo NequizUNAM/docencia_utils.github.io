@@ -1,0 +1,641 @@
+<!--
+  =====================================================================
+  CONTROL DE FACTURAS · PLANTILLAS (JsRender)
+  ---------------------------------------------------------------------
+  Aquí viven TODAS las pantallas de la app. Cada plantilla es un
+  <script type="text/x-jsrender" id="NOMBRE"> que app.js descarga una
+  vez, compila y dibuja con  R('NOMBRE', datos).
+
+  Sintaxis JsRender usada:
+    {{>texto}}        imprime texto escapado (seguro para datos del usuario)
+    {{:html}}         imprime HTML tal cual (sólo para HTML generado por la app)
+    {{if x}}…{{else}}…{{/if}}     condiciones
+    {{for lista}}…{{else}}…{{/for}}   ciclos ({{else}} = lista vacía)
+    {{for lista tmpl="otra"/}}   dibuja otra plantilla por cada elemento
+    #data             el elemento actual dentro de un {{for}}
+    ~money() ~fecha() ~periodo() ~icon()   ayudantes definidos en app.js
+
+  Secciones:
+    1. Comunes       estructura, menú, modales, archivos, ajustes, visor
+    2. Facturas      lista, tarjeta y formulario de factura
+    3. Saldos        saldos a favor por declaración y sus usos
+    4. Mensuales     declaraciones mensuales
+    5. Anuales       declaraciones anuales
+
+  ⚠ Si editas este archivo, sube CONFIG.VERSION en app.js para que los
+    navegadores no usen una copia vieja guardada en caché.
+  =====================================================================
+-->
+
+
+<!-- =================================================================
+     1. COMUNES
+     ================================================================= -->
+
+<!-- Estructura general: barra superior, contenedor de la vista y navegación inferior.
+     Datos: { title, icon, syncLabel, fab, nav:[{key,icon,label,active}] } -->
+<script type="text/x-jsrender" id="shell">
+<header class="topbar">
+  <button class="icon-btn" id="menuBtn" aria-label="Menú">{{:~icon('menu')}}</button>
+  <h1><span class="chip-ico">{{:~icon(icon)}}</span><span class="ttl">{{>title}}</span></h1>
+  <div class="sync ok" id="sync"><span class="dot"></span><span class="lbl">{{>syncLabel}}</span></div>
+  <button class="icon-btn" id="lockBtn" aria-label="Bloquear" title="Bloquear">{{:~icon('lock')}}</button>
+</header>
+<main id="view"></main>
+{{if fab}}<button class="fab" id="fab" aria-label="Agregar">{{:~icon('plus')}}</button>{{/if}}
+<nav class="bottomnav">
+  {{for nav}}<a href="#/{{:key}}" class="{{if active}}active{{/if}}">{{:~icon(icon)}}<span>{{>label}}</span></a>{{/for}}
+</nav>
+</script>
+
+<!-- Menú lateral (☰). Los ejercicios anuales se muestran como lista desplegable.
+     Datos: { appName, view, years:[], driveLink } -->
+<script type="text/x-jsrender" id="drawer">
+<div class="drawer-bg"></div>
+<nav class="drawer">
+  <h2>{{>appName}}</h2>
+  <a href="#/facturas" class="{{if view=='facturas'}}active{{/if}}">{{:~icon('file')}} Facturas</a>
+  <a href="#/saldos" class="{{if view=='saldos'}}active{{/if}}">{{:~icon('coin')}} Saldos a favor</a>
+  <a href="#/mensuales" class="{{if view=='mensuales'}}active{{/if}}">{{:~icon('cal')}} Declaraciones mensuales</a>
+  <details {{if view=='anuales'}}open{{/if}}>
+    <summary>{{:~icon('archive')}} Declaraciones anuales {{:~icon('chev')}}</summary>
+    {{for years}}<a href="#/anuales/{{:#data}}">Ejercicio {{:#data}}</a>{{/for}}
+    <a href="#/anuales/nuevo">+ Agregar ejercicio</a>
+  </details>
+  <hr>
+  <button class="d-item" id="dSet">{{:~icon('gear')}} Ajustes y respaldos</button>
+  {{if driveLink}}<a href="{{>driveLink}}" target="_blank" rel="noopener">{{:~icon('drive')}} Abrir carpeta en Drive</a>{{/if}}
+  <button class="d-item" id="dLock">{{:~icon('lock')}} Bloquear</button>
+</nav>
+</script>
+
+<!-- Ventana modal genérica. body y footer llegan como HTML ya dibujado por otras plantillas.
+     Datos: { title, size:''|'wide'|'full', body, footer } -->
+<script type="text/x-jsrender" id="modal">
+<div class="modal {{>size}}" role="dialog" aria-modal="true" aria-label="{{>title}}">
+  <header class="modal-h"><h2>{{>title}}</h2><button class="icon-btn" data-close aria-label="Cerrar">{{:~icon('x')}}</button></header>
+  <div class="modal-b">{{:body}}</div>
+  {{if footer}}<footer class="modal-f">{{:footer}}</footer>{{/if}}
+</div>
+</script>
+
+<!-- Diálogo de confirmación. Datos: { msg } / { ok, danger } -->
+<script type="text/x-jsrender" id="confirm-body">
+<p style="margin:0">{{>msg}}</p>
+</script>
+<script type="text/x-jsrender" id="confirm-footer">
+<button class="btn" data-close>Cancelar</button>
+<button class="btn {{if danger}}danger{{else}}primary{{/if}}" data-ok>{{>ok}}</button>
+</script>
+
+<!-- Pie simple: Cancelar + botón principal. Datos: { id, label } -->
+<script type="text/x-jsrender" id="footer-ok">
+<button class="btn" data-close>Cancelar</button>
+<button class="btn primary" id="{{:id}}">{{>label}}</button>
+</script>
+
+<!-- Renglón de un archivo (PDF/XML) con botones Ver / Subir / Cambiar / Quitar.
+     Los botones llevan data-act y app.js decide qué hacer.
+     Datos: ver slotVM() en app.js -->
+<script type="text/x-jsrender" id="slot">
+<div class="slot {{:cls}}" data-slot="{{:key}}">
+  <div class="ico {{:icoCls}}">{{>extLabel}}</div>
+  <div class="info">
+    <b>{{>label}}</b>
+    <span>{{>sub}}</span>
+    {{if note}}<em class="slot-note">{{>note}}</em>{{/if}}
+  </div>
+  <div class="acts">
+    {{if canView}}<button type="button" class="btn sm" data-act="view">Ver</button>{{/if}}
+    {{if extra}}<button type="button" class="btn sm" data-act="{{:extra.act}}">{{>extra.label}}</button>{{/if}}
+    {{if removed}}
+      <button type="button" class="btn sm" data-act="undo">Deshacer</button>
+    {{else}}
+      <button type="button" class="btn sm {{if !hasFile}}primary{{/if}}" data-act="pick">{{if hasFile}}Cambiar{{else}}Subir{{/if}}</button>
+    {{/if}}
+    {{if canRemove}}<button type="button" class="icon-btn mini" data-act="remove" aria-label="Quitar">{{:~icon('x')}}</button>{{/if}}
+  </div>
+</div>
+</script>
+
+<!-- Lista de renglones de archivo. Datos: { slots:[slotVM] } -->
+<script type="text/x-jsrender" id="slots">
+{{for slots tmpl="slot"/}}
+</script>
+
+<!-- Primera vez: elegir dónde guardar -->
+<script type="text/x-jsrender" id="setup">
+<main><div class="setup">
+  <h2>¿Dónde guardamos tus documentos?</h2>
+  <p class="muted" style="margin:0">Puedes cambiarlo después en Ajustes.</p>
+  <div class="sheet-opts">
+    <button class="sheet-opt" data-m="drive"><div class="ic">{{:~icon('drive')}}</div><div><b>Google Drive (recomendado)</b><span>Tus PDF y XML en una carpeta de tu Drive. Disponible en cualquier dispositivo.</span></div></button>
+    <button class="sheet-opt" data-m="local"><div class="ic">{{:~icon('file')}}</div><div><b>Sólo este dispositivo</b><span>Se guarda en el navegador. Útil para probar; haz respaldos.</span></div></button>
+  </div>
+</div></main>
+</script>
+
+<!-- Pantalla para iniciar sesión con Google. Datos: { folder } -->
+<script type="text/x-jsrender" id="connect">
+<main><div class="setup">
+  <h2>Conecta tu Google Drive</h2>
+  <p class="muted" style="margin:0">Se creará la carpeta <b>{{>folder}}</b>. La app sólo puede ver los archivos que ella misma crea.</p>
+  <button class="btn primary block" id="cnx">{{:~icon('drive')}} Conectar con Google</button>
+  <button class="btn ghost" id="loc">Usar sólo este dispositivo</button>
+</div></main>
+</script>
+
+<!-- Ajustes: almacenamiento, exportar, contraseña.
+     Datos: { drive, driveAvailable, minutos, ejemplo } -->
+<script type="text/x-jsrender" id="ajustes">
+<fieldset><legend>Almacenamiento</legend>
+  <p style="margin:0 0 10px">Modo actual: <b>{{if drive}}Google Drive{{else}}Sólo este dispositivo{{/if}}</b></p>
+  {{if driveAvailable}}
+    {{if drive}}<button class="btn" id="toLocal">Desconectar Drive</button>
+    {{else}}<button class="btn primary" id="toDrive">{{:~icon('drive')}} Conectar Google Drive</button>{{/if}}
+  {{else}}
+    <p class="hint" style="margin:0">Para usar Drive, escribe tu GOOGLE_CLIENT_ID en CONFIG, al inicio de app.js.</p>
+  {{/if}}
+</fieldset>
+<fieldset><legend>Nombres de archivo</legend>
+  <p class="small" style="margin:0">Las facturas se guardan como <code>{{>ejemplo}}.pdf</code> y <code>.xml</code>.</p>
+</fieldset>
+<fieldset><legend>Exportar</legend>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn" id="csv">Facturas a Excel (CSV)</button>
+    <button class="btn" id="bk">Respaldo de datos (JSON)</button>
+    <button class="btn" id="rs">Restaurar respaldo</button>
+  </div>
+  <p class="hint">El respaldo JSON guarda los datos y referencias; los PDF se quedan en Drive.</p>
+</fieldset>
+<fieldset><legend>Cambiar contraseña</legend>
+  <p class="small" style="margin:0 0 8px">Bloqueo automático tras {{:minutos}} min sin uso. Escribe la nueva contraseña, copia el código y pégalo en <code>PASSWORD_SHA256</code> dentro de CONFIG en app.js.</p>
+  <div class="form-grid">
+    <label class="f full">Nueva contraseña<input id="newPw" type="text" autocomplete="off"></label>
+    <button type="button" class="btn" id="genHash">Generar código</button>
+  </div>
+  <code id="hashOut" class="hash-out"></code>
+</fieldset>
+</script>
+
+<!-- Pie del visor de PDF/XML. Datos: { link } (enlace a Drive, opcional) -->
+<script type="text/x-jsrender" id="viewer-footer">
+<span class="spacer"></span>
+{{if link}}<a class="btn" href="{{>link}}" target="_blank" rel="noopener">{{:~icon('drive')}} Abrir en Drive</a>{{/if}}
+<a class="btn" id="vtab" target="_blank" rel="noopener">Abrir en pestaña</a>
+<a class="btn primary" id="vdl">Descargar</a>
+</script>
+
+<!-- Resumen legible de un XML CFDI + el XML completo. Datos: resultado de CFDI.parse() + { tipoLabel, texto } -->
+<script type="text/x-jsrender" id="xml-resumen">
+<div class="calc" style="width:100%;background:var(--surface)">
+  <div class="row"><span>Tipo</span><b>{{>tipoLabel}}</b></div>
+  <div class="row"><span>Emisor</span><span>{{>emisorRfc}} · {{>emisorNombre}}</span></div>
+  <div class="row"><span>Receptor</span><span>{{>receptorNombre}}</span></div>
+  <div class="row"><span>UUID</span><span style="font-size:12px">{{>uuid}}</span></div>
+  {{if tipo=='P'}}
+    {{for pagos}}<div class="row total"><span>Pago {{:~fecha(fecha)}}</span><span>{{:~money(monto)}}</span></div>{{/for}}
+  {{else}}
+    <div class="row"><span>Subtotal</span><span>{{:~money(subtotal)}}</span></div>
+    <div class="row"><span>IVA</span><span>{{:~money(iva)}}</span></div>
+    <div class="row total"><span>Total</span><span>{{:~money(total)}}</span></div>
+  {{/if}}
+</div>
+<pre>{{>texto}}</pre>
+</script>
+
+
+<!-- =================================================================
+     2. FACTURAS
+     ================================================================= -->
+
+<!-- Página principal: indicadores, búsqueda, filtros y tarjetas.
+     Datos: { k:{indicadores}, q, ordenLabel, chips:[], cards:[cardVM], hayFacturas } -->
+<script type="text/x-jsrender" id="vista-facturas">
+<div class="kpis">
+  <div class="kpi amber"><small>Por cobrar</small><b>{{:~money(k.porCobrar)}}</b><span class="sub">{{:k.nPend}} factura(s)</span></div>
+  <div class="kpi green"><small>Cobrado {{:k.year}}</small><b>{{:~money(k.cobrado)}}</b><span class="sub">Sin IVA: {{:~money(k.cobradoSinIva)}}</span></div>
+  <div class="kpi"><small>Por facturar</small><b>{{:k.nPorFacturar}}</b><span class="sub">solicitud(es) recibidas</span></div>
+  <a class="kpi violet" href="#/saldos"><small>Saldo a favor disponible</small><b>{{:~money(k.saldoDisp)}}</b><span class="sub">en {{:k.nSaldo}} declaración(es)</span></a>
+</div>
+<div class="toolbar">
+  <div class="search">{{:~icon('search')}}<input id="q" type="search" placeholder="Buscar referencia, folio, UUID, sede…" value="{{>q}}"></div>
+  <button class="btn" id="orden" title="Cambiar orden">{{>ordenLabel}}</button>
+</div>
+<div class="chips">
+  {{for chips}}<button class="chip {{if on}}on{{/if}}" data-f="{{:k}}">{{>label}}<span class="c">{{:count}}</span></button>{{/for}}
+</div>
+{{if cards.length}}
+  <div class="grid">{{for cards tmpl="factura-card"/}}</div>
+{{else hayFacturas}}
+  <div class="empty"><h3>Sin resultados</h3><p>Prueba con otro filtro o búsqueda.</p></div>
+{{else}}
+  <div class="empty"><h3>Aún no hay facturas</h3><p>Empieza subiendo el PDF que te llega para facturar.</p>
+    <button class="btn primary" id="emptyNew">{{:~icon('plus')}} Nueva factura</button></div>
+{{/if}}
+</script>
+
+<!-- Tarjeta de una factura. Datos: cardVM() en app.js -->
+<script type="text/x-jsrender" id="factura-card">
+<article class="card" data-id="{{:id}}" tabindex="0">
+  <div class="card-top">
+    <span class="seq">#{{:seq}}</span><span class="ref">{{>ref}}</span>
+    {{if metodo}}<span class="tag">{{>metodo}}</span>{{/if}}
+    {{if facturado}}<span class="tag wm">FACTURADO</span>{{/if}}
+    <span style="flex:1"></span>
+    <span class="badge {{:estadoCls}}">{{>estadoLabel}}</span>
+  </div>
+  <h3>{{>desc}}</h3>
+  <div class="meta">{{>meta}}</div>
+  <div class="amounts">
+    <div><small>Total</small><b>{{:~money(total)}}</b></div>
+    <div><small>Sin IVA</small><b>{{:~money(subtotal)}}</b></div>
+    <div><small>{{>tercerLabel}}</small><b>{{:~money(tercer)}}</b></div>
+  </div>
+  <div class="steps" title="Solicitud · Factura · Cobro">{{for steps}}<span class="step {{if #data}}done{{/if}}"></span>{{/for}}</div>
+  {{if sig}}<div class="next"><span>Siguiente: <b>{{>sig}}</b></span></div>{{/if}}
+</article>
+</script>
+
+<!-- Menú del botón "+" -->
+<script type="text/x-jsrender" id="fab-sheet">
+<div class="sheet-opts">
+  <button class="sheet-opt" data-a="new"><div class="ic">{{:~icon('file')}}</div><div><b>Nueva factura</b><span>Empieza con el PDF que te llega para facturar (paso 1).</span></div></button>
+  <button class="sheet-opt" data-a="xml"><div class="ic">{{:~icon('upload')}}</div><div><b>Nueva desde XML de factura</b><span>Llena folio, UUID, cliente e importes automáticamente.</span></div></button>
+  <button class="sheet-opt" data-a="rep"><div class="ic">{{:~icon('coin')}}</div><div><b>Cargar complemento de pago</b><span>Sube el XML del REP y lo asigno a su factura por UUID.</span></div></button>
+</div>
+</script>
+
+<!-- Formulario de factura. Las partes dinámicas (#tl, #slots, #calc, #cobroHint)
+     se llenan desde app.js con las plantillas factura-timeline, slots, factura-calc y factura-cobro.
+     Datos: { f:factura, isNew, sedes:[] } -->
+<script type="text/x-jsrender" id="factura-form">
+<form id="ff" autocomplete="off">
+  <div class="timeline" id="tl"></div>
+  <fieldset><legend>Documentos</legend>
+    <div class="slots" id="slots"></div>
+    <p class="hint">Se guardarán como <b id="nombreArchivo"></b>. Al subir un XML se leen solos el folio, UUID, RFC, cliente, importes y la fecha de pago. Al cargar el complemento, el PDF de la factura recibe la marca de agua <b>FACTURADO</b> (el original se conserva).</p>
+  </fieldset>
+
+  <fieldset><legend>Datos</legend><div class="form-grid r1">
+    <label class="f">No. consecutivo<input name="seq" type="number" min="1" inputmode="numeric" value="{{:f.seq}}" required></label>
+    <label class="f">Referencia de contrato<input name="referencia" value="{{>f.referencia}}" placeholder="03124"></label>
+    <label class="f">Tu RFC (emisor)<input name="rfcEmisor" value="{{>f.rfcEmisor}}" style="text-transform:uppercase" placeholder="NEMP920226AU6"></label>
+    <label class="f">Sede<input name="sede" value="{{>f.sede}}" placeholder="DGTIC Mascarones" list="sedes"></label>
+    <label class="f full">Descripción<textarea name="descripcion" rows="2">{{>f.descripcion}}</textarea></label>
+    <label class="f">Cliente (receptor)<input name="cliente" value="{{>f.cliente}}"></label>
+    <label class="f">RFC del cliente<input name="rfcCliente" value="{{>f.rfcCliente}}" style="text-transform:uppercase"></label>
+    <label class="f">Serie y folio<input name="folio" value="{{>f.folio}}"></label>
+    <label class="f">Fecha de emisión<input name="fechaEmision" type="date" value="{{>f.fechaEmision}}"></label>
+    <label class="f full">UUID (folio fiscal)<input name="uuid" value="{{>f.uuid}}" style="text-transform:uppercase;font-size:13px"></label>
+    <label class="f">Método de pago<select name="metodoPago">
+      <option value="PPD" {{if f.metodoPago=='PPD'}}selected{{/if}}>PPD · Pago en parcialidades o diferido</option>
+      <option value="PUE" {{if f.metodoPago=='PUE'}}selected{{/if}}>PUE · Pago en una sola exhibición</option>
+    </select></label>
+  </div>
+  <datalist id="sedes">{{for sedes}}<option value="{{>#data}}">{{/for}}</datalist>
+  </fieldset>
+
+  <fieldset><legend>Importes y desglose de IVA</legend>
+    <div class="form-grid">
+      <label class="f full">Total de la factura<input name="total" type="number" step="0.01" inputmode="decimal" value="{{:f.total}}"></label>
+      <label class="f">IVA %<input name="ivaRate" type="number" step="0.0001" inputmode="decimal" value="{{:f.ivaRate}}"></label>
+      <label class="f">Retención ISR %<input name="retIsrRate" type="number" step="0.0001" inputmode="decimal" value="{{:f.retIsrRate}}"></label>
+      <label class="f">Retención IVA %<input name="retIvaRate" type="number" step="0.0001" inputmode="decimal" value="{{:f.retIvaRate}}"></label>
+      <label class="check" style="align-self:end;padding-bottom:10px"><input type="checkbox" name="desgloseManual" {{if f.desgloseManual}}checked{{/if}}> Editar desglose a mano</label>
+    </div>
+    <div class="presets">
+      <button type="button" class="btn sm" data-pre="16,0,0">Sólo IVA 16%</button>
+      <button type="button" class="btn sm" data-pre="16,1.25,0">RESICO a persona moral (ISR 1.25%)</button>
+      <button type="button" class="btn sm" data-pre="16,10,10.6667">Honorarios a persona moral (ISR 10%, IVA 2/3)</button>
+    </div>
+    <div class="form-grid" id="manual" style="margin-top:10px" {{if !f.desgloseManual}}hidden{{/if}}>
+      <label class="f">Subtotal (sin IVA)<input name="subtotal" type="number" step="0.01" value="{{:f.subtotal}}"></label>
+      <label class="f">IVA trasladado<input name="iva" type="number" step="0.01" value="{{:f.iva}}"></label>
+      <label class="f">ISR retenido<input name="retIsr" type="number" step="0.01" value="{{:f.retIsr}}"></label>
+      <label class="f">IVA retenido<input name="retIva" type="number" step="0.01" value="{{:f.retIva}}"></label>
+    </div>
+    <div class="calc" id="calc"></div>
+  </fieldset>
+
+  <fieldset><legend>Cobro</legend><div class="form-grid">
+    <label class="f">Monto cobrado<input name="montoCobrado" type="number" step="0.01" inputmode="decimal" value="{{:f.montoCobrado}}"></label>
+    <label class="f">Fecha de cobro<input name="fechaCobro" type="date" value="{{>f.fechaCobro}}"></label>
+    <label class="check full"><input type="checkbox" name="pagadaSinComplemento" {{if f.pagadaSinComplemento}}checked{{/if}}> Cobrada sin complemento (factura PUE)</label>
+    <label class="check full"><input type="checkbox" name="cancelada" {{if f.cancelada}}checked{{/if}}> Factura cancelada</label>
+    <p class="hint full" id="cobroHint"></p>
+  </div></fieldset>
+
+  <fieldset><legend>Notas</legend><label class="f"><textarea name="notas" rows="2">{{>f.notas}}</textarea></label></fieldset>
+</form>
+</script>
+
+<!-- Botones del formulario de factura. Datos: { isNew } -->
+<script type="text/x-jsrender" id="factura-footer">
+{{if !isNew}}<button class="btn danger" id="del">Eliminar</button>{{/if}}
+<span class="spacer"></span>
+<button class="btn" data-close>Cancelar</button>
+<button class="btn primary" id="save">Guardar</button>
+</script>
+
+<!-- Las 3 etapas: Solicitud → Factura + XML → Cobrado. Datos: { etapas:[{t,n,done}] } -->
+<script type="text/x-jsrender" id="factura-timeline">
+{{for etapas}}<div class="tl {{if done}}done{{/if}}"><span class="n">{{if done}}✓{{else}}{{:n}}{{/if}}</span><b>{{>t}}</b></div>{{/for}}
+</script>
+
+<!-- Desglose del total. Datos: { subtotal, iva, retIsr, retIva, suma, total, noCuadra } -->
+<script type="text/x-jsrender" id="factura-calc">
+<div class="row hl"><span>Monto sin IVA (subtotal)</span><span>{{:~money(subtotal)}}</span></div>
+<div class="row"><span>+ IVA trasladado</span><span>{{:~money(iva)}}</span></div>
+{{if retIsr}}<div class="row"><span>− ISR retenido</span><span>{{:~money(retIsr)}}</span></div>{{/if}}
+{{if retIva}}<div class="row"><span>− IVA retenido</span><span>{{:~money(retIva)}}</span></div>{{/if}}
+<div class="row total"><span>Total</span><span>{{:~money(suma)}}</span></div>
+{{if noCuadra}}<p class="hint" style="color:var(--red)">El desglose no cuadra con el total ({{:~money(total)}}).</p>{{/if}}
+</script>
+
+<!-- Estado y cobro. Datos: { label, cls, cobrado, sinIva, falta } -->
+<script type="text/x-jsrender" id="factura-cobro">
+Estado: <span class="badge {{:cls}}">{{>label}}</span>
+{{if cobrado}} · Cobrado sin IVA: <b>{{:~money(sinIva)}}</b>{{/if}}
+{{if falta}} · Saldo pendiente del cliente: <b>{{:~money(falta)}}</b>{{/if}}
+</script>
+
+
+<!-- =================================================================
+     3. SALDOS A FAVOR  (nacen en una declaración mensual)
+     ================================================================= -->
+
+<!-- Página de saldos. "Disponibles" muestra sólo declaraciones con saldo > 0.
+     Las agotadas salen de la lista y quedan en el historial plegado.
+     Datos: { total, usado, disp, activos:[saldoVM], agotados:[saldoVM] } -->
+<script type="text/x-jsrender" id="vista-saldos">
+<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+  <div class="kpi"><small>Acumulado</small><b>{{:~money(total)}}</b></div>
+  <div class="kpi"><small>Usado</small><b>{{:~money(usado)}}</b></div>
+  <div class="kpi violet"><small>Disponible</small><b>{{:~money(disp)}}</b></div>
+</div>
+{{if disp > 0}}
+  <button class="btn primary block" id="usarSaldo" style="margin-bottom:6px">{{:~icon('coin')}} Usar saldo en una declaración</button>
+  <p class="hint" style="margin:0 2px 12px">Se toma primero de las declaraciones más antiguas.</p>
+{{/if}}
+
+<div class="section-title"><h2>Declaraciones con saldo a favor ({{:activos.length}})</h2></div>
+{{if activos.length}}
+  <div class="grid">{{for activos tmpl="saldo-card"/}}</div>
+{{else}}
+  <div class="empty"><p>No tienes saldo a favor disponible. Se captura al cargar una declaración mensual, en “Saldo a favor de esta declaración”.</p></div>
+{{/if}}
+
+{{if agotados.length}}
+<details class="year-acc" style="margin-top:14px">
+  <summary>Historial · ya utilizados ({{:agotados.length}}) {{:~icon('chev')}}</summary>
+  <div class="year-body"><div class="grid">{{for agotados tmpl="saldo-card"/}}</div></div>
+</details>
+{{/if}}
+</script>
+
+<!-- Tarjeta de saldo de una declaración. Datos: saldoVM() en app.js -->
+<script type="text/x-jsrender" id="saldo-card">
+<article class="saldo-card {{if agotado}}agotado{{/if}}" data-p="{{:periodo}}">
+  <div class="card-top">
+    <span class="ref">{{>label}}</span><span class="tag">{{>concepto}}</span><span style="flex:1"></span>
+    {{if agotado}}<span class="badge st-gray">Utilizado</span>{{else}}<span class="badge st-violet">{{:~money(disp)}} disponible</span>{{/if}}
+  </div>
+  <div class="bar"><i style="width:{{:pct}}%"></i></div>
+  <div class="meta">A favor {{:~money(monto)}} · usado {{:~money(usado)}}{{if nota}} · {{>nota}}{{/if}}</div>
+  <div class="btnrow">
+    {{if hasDecl}}<button type="button" class="btn sm" data-ver="declaracion">{{:~icon('file')}} Declaración</button>{{/if}}
+    {{if hasVista}}<button type="button" class="btn sm" data-ver="vistaPrevia">{{:~icon('file')}} Vista previa</button>{{/if}}
+    {{if !hasDecl && !hasVista}}<span class="small muted">Sin PDF cargado</span>{{/if}}
+  </div>
+  {{if usos.length}}
+  <div class="usos">
+    <small>Usado en</small>
+    {{for usos}}
+    <div class="li">
+      <div class="grow"><b>{{:~money(monto)}}</b> · {{>periodoLabel}}<small>{{>nota}}</small></div>
+      {{if hasDecl}}<button type="button" class="btn sm" data-decl="{{:periodo}}">Ver</button>{{/if}}
+    </div>
+    {{/for}}
+  </div>
+  {{/if}}
+  <div class="btnrow">
+    <button type="button" class="btn sm" data-open>Abrir declaración</button>
+    {{if !agotado}}<button type="button" class="btn sm primary" data-aplicar>Registrar uso</button>{{/if}}
+  </div>
+</article>
+</script>
+
+<!-- Registrar o quitar usos de UN saldo. Datos: saldoVM() + { mes } -->
+<script type="text/x-jsrender" id="saldo-modal">
+<div class="kv" style="grid-template-columns:repeat(3,1fr)">
+  <div><small>A favor {{>concepto}}</small><b>{{:~money(monto)}}</b></div>
+  <div><small>Usado</small><b>{{:~money(usado)}}</b></div>
+  <div><small>Disponible</small><b style="color:var(--violet)">{{:~money(disp)}}</b></div>
+</div>
+<div class="bar"><i style="width:{{:pct}}%"></i></div>
+<p class="hint">Registra en qué declaración lo compensaste o acreditaste. Al llegar a $0 deja de aparecer en la lista de disponibles.</p>
+<h3 style="font-size:14px;margin:16px 0 8px">Usos</h3>
+<div class="list">
+  {{for usos}}
+    <div class="li"><div class="grow"><b>{{:~money(monto)}}</b> en la declaración de {{>periodoLabel}}<small>{{>nota}}{{if fecha}} · registrado {{:~fecha(fecha)}}{{/if}}</small></div>
+    <button class="icon-btn" data-delap="{{:id}}" aria-label="Quitar">{{:~icon('x')}}</button></div>
+  {{else}}
+    <p class="muted small">Todavía no lo has usado.</p>
+  {{/for}}
+</div>
+{{if disp > 0}}
+<form id="apf" style="margin-top:16px"><div class="form-grid">
+  <label class="f">Declaración donde lo usas<input name="periodo" type="month" value="{{:mes}}" min="{{:minMes}}" required></label>
+  <label class="f">Monto usado<input name="monto" type="number" step="0.01" inputmode="decimal" value="{{:disp}}" max="{{:disp}}" required></label>
+  <label class="f full">Nota<input name="nota" placeholder="Ej. compensado contra IVA a cargo"></label>
+  <button class="btn primary full">Registrar uso</button>
+</div></form>
+{{else}}
+  <p style="margin-top:14px"><span class="badge st-gray">Saldo utilizado por completo</span></p>
+{{/if}}
+</script>
+
+<!-- Usar saldo repartido entre varias declaraciones. Datos: { mes, disp, conceptos:[] } -->
+<script type="text/x-jsrender" id="usar-saldo">
+<form id="usf"><div class="form-grid">
+  <label class="f">Declaración donde lo usas<input name="periodo" type="month" value="{{:mes}}" required></label>
+  <label class="f">Monto a usar<input name="monto" type="number" step="0.01" inputmode="decimal" value="{{:disp}}" required></label>
+  <label class="f full">Impuesto<select name="concepto"><option value="">Todos</option>{{for conceptos}}<option>{{:#data}}</option>{{/for}}</select></label>
+  <label class="f full">Nota<input name="nota" placeholder="Ej. compensado contra IVA a cargo"></label>
+</div></form>
+<h3 style="font-size:14px;margin:16px 0 8px">Se tomará de</h3>
+<div id="usPrev"></div>
+</script>
+
+<!-- Vista previa del reparto. Datos: { filas:[{label,concepto,toma,queda}], faltante } -->
+<script type="text/x-jsrender" id="usar-preview">
+<div class="list">
+  {{for filas}}
+    <div class="li"><div class="grow"><b>{{>label}}</b><small>{{>concepto}} · le quedan {{:~money(queda)}}</small></div><b class="num">{{:~money(toma)}}</b></div>
+  {{else}}<p class="muted small">No hay saldo de meses anteriores para ese impuesto.</p>{{/for}}
+</div>
+{{if faltante}}<p class="hint" style="color:var(--red)">Faltan {{:~money(faltante)}}: no hay saldo suficiente.</p>{{/if}}
+</script>
+
+
+<!-- =================================================================
+     4. DECLARACIONES MENSUALES
+     ================================================================= -->
+
+<!-- Calendario de 12 meses. Datos: { year, presentadas, pagado, saldoDisp, meses:[...] } -->
+<script type="text/x-jsrender" id="vista-mensuales">
+<div class="yearbar">
+  <button class="icon-btn" id="yPrev" aria-label="Año anterior">{{:~icon('left')}}</button>
+  <b>{{:year}}</b>
+  <button class="icon-btn" id="yNext" aria-label="Año siguiente">{{:~icon('right')}}</button>
+</div>
+<div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+  <div class="kpi"><small>Presentadas</small><b>{{:presentadas}}/12</b></div>
+  <div class="kpi"><small>Pagado</small><b>{{:~money(pagado)}}</b></div>
+  <a class="kpi violet" href="#/saldos"><small>Saldo a favor disponible</small><b>{{:~money(saldoDisp)}}</b></a>
+</div>
+<div class="months">
+  {{for meses}}
+  <div class="month {{if futuro}}future{{/if}}" data-p="{{:p}}" tabindex="0">
+    <h3>{{>nombre}} {{if est}}<span class="badge {{:est.cls}}">{{>est.label}}</span>{{/if}}</h3>
+    <div class="docchecks">
+      <span class="{{if decl}}ok{{/if}}">{{if decl}}✓{{else}}○{{/if}} Declaración</span>
+      <span class="{{if vista}}ok{{/if}}">{{if vista}}✓{{else}}○{{/if}} Vista previa</span>
+    </div>
+    {{if pagado}}<span class="small num">Pagado {{:~money(pagado)}}</span>{{/if}}
+    {{if aFavor}}<span class="badge st-violet">A favor {{:~money(aFavor)}}</span>{{/if}}
+    {{if usado}}<span class="badge st-gray">Usó saldo {{:~money(usado)}}</span>{{/if}}
+  </div>
+  {{/for}}
+</div>
+</script>
+
+<!-- Formulario de un mes. Incluye el saldo a favor que GENERA esta declaración
+     y los saldos de otros meses que se USARON en ella.
+     Datos: { r:registro, estados:[], conceptos:[], usosPropios:[], aplicadosAqui:[], hayDisp } -->
+<script type="text/x-jsrender" id="mensual-form">
+<form id="mf">
+  <fieldset><legend>Documentos</legend><div class="slots" id="mslots"></div></fieldset>
+  <fieldset><legend>Datos</legend><div class="form-grid">
+    <label class="f">Estado<select name="estado">{{for estados}}<option value="{{:k}}" {{if sel}}selected{{/if}}>{{>label}}</option>{{/for}}</select></label>
+    <label class="f">Fecha de presentación<input name="fechaPresentacion" type="date" value="{{>r.fechaPresentacion}}"></label>
+    <label class="f">ISR a cargo<input name="isr" type="number" step="0.01" inputmode="decimal" value="{{:r.isr || ''}}"></label>
+    <label class="f">IVA a cargo<input name="iva" type="number" step="0.01" inputmode="decimal" value="{{:r.iva || ''}}"></label>
+    <label class="f full">Total pagado<input name="totalPagado" type="number" step="0.01" inputmode="decimal" value="{{:r.totalPagado || ''}}"></label>
+    <label class="f full">Notas<textarea name="notas" rows="2">{{>r.notas}}</textarea></label>
+  </div></fieldset>
+
+  <fieldset><legend>Saldo a favor de esta declaración</legend><div class="form-grid">
+    <label class="f">Monto a favor<input name="saldoMonto" type="number" step="0.01" inputmode="decimal" value="{{:r.saldo.monto || ''}}" placeholder="0.00"></label>
+    <label class="f">Impuesto<select name="saldoConcepto">{{for conceptos}}<option {{if sel}}selected{{/if}}>{{:v}}</option>{{/for}}</select></label>
+    <label class="f full">Nota<input name="saldoNota" value="{{>r.saldo.nota}}" placeholder="Ej. IVA retenido mayor al trasladado"></label>
+  </div>
+  {{if usosPropios.length}}
+    <p class="hint">Este saldo ya se usó en:</p>
+    <div class="list">{{for usosPropios}}<div class="li"><div class="grow"><b>{{:~money(monto)}}</b> · {{>periodoLabel}}<small>{{>nota}}</small></div></div>{{/for}}</div>
+  {{/if}}
+  </fieldset>
+
+  <fieldset><legend>Saldos a favor usados en este mes</legend>
+    <div class="list">
+      {{for aplicadosAqui}}
+        <div class="li"><div class="grow"><b>{{:~money(monto)}}</b> de la declaración de {{>origenLabel}}<small>{{>concepto}}{{if nota}} · {{>nota}}{{/if}}</small></div>
+        <button type="button" class="btn sm" data-origen="{{:origen}}">Ver origen</button></div>
+      {{else}}
+        <p class="muted small" style="margin:0">Ninguno registrado.</p>
+      {{/for}}
+    </div>
+    {{if hayDisp}}<button type="button" class="btn" id="mUsar" style="margin-top:10px">{{:~icon('coin')}} Usar saldo a favor en este mes</button>{{/if}}
+  </fieldset>
+</form>
+</script>
+
+<!-- Botones del formulario mensual. Datos: { existe } -->
+<script type="text/x-jsrender" id="mensual-footer">
+{{if existe}}<button class="btn danger" id="mdel">Borrar mes</button>{{/if}}
+<span class="spacer"></span>
+<button class="btn" data-close>Cancelar</button>
+<button class="btn primary" id="msave">Guardar</button>
+</script>
+
+
+<!-- =================================================================
+     5. DECLARACIONES ANUALES
+     ================================================================= -->
+
+<!-- Lista de ejercicios como acordeón. Datos: { anios:[{y, abierto, presentada, resultado, monto, fecha, notas, docs:[]}] } -->
+<script type="text/x-jsrender" id="vista-anuales">
+<div class="section-title" style="margin-top:4px">
+  <h2>Ejercicios fiscales</h2>
+  <button class="btn primary sm" id="addY">{{:~icon('plus')}} Agregar ejercicio</button>
+</div>
+<p class="muted small" style="margin:-4px 2px 12px">La declaración anual de personas físicas se presenta en abril del año siguiente.</p>
+{{for anios}}
+<details class="year-acc" {{if abierto}}open{{/if}}>
+  <summary>{{:~icon('archive')}} Ejercicio {{:y}} <span class="badge {{if presentada}}st-green{{else}}st-gray{{/if}}">{{if presentada}}Presentada{{else}}Pendiente{{/if}}</span>{{:~icon('chev')}}</summary>
+  <div class="year-body">
+    <div class="kv">
+      <div><small>Resultado</small><b>{{>resultado}}</b></div>
+      <div><small>Monto</small><b class="num">{{:~money(monto)}}</b></div>
+      <div><small>Presentada</small><b>{{if fecha}}{{:~fecha(fecha)}}{{else}}—{{/if}}</b></div>
+      <div><small>Documentos</small><b>{{:docs.length}}</b></div>
+    </div>
+    {{if notas}}<p class="small" style="margin:0">{{>notas}}</p>{{/if}}
+    <div class="list">
+      {{for docs ~y=y}}
+        <div class="li"><span class="mini-ico">{{>ext}}</span><div class="grow"><b>{{>tipo}}</b><small>{{>nombre}}</small></div>
+        <button class="btn sm" data-view="{{:~y}}|{{:id}}">Ver</button></div>
+      {{else}}<p class="muted small" style="margin:0">Sin documentos.</p>{{/for}}
+    </div>
+    <button class="btn" data-edit="{{:y}}">Editar ejercicio {{:y}}</button>
+  </div>
+</details>
+{{else}}
+<div class="empty"><h3>Sin ejercicios</h3><p>Agrega el año de tu declaración anual.</p></div>
+{{/for}}
+</script>
+
+<!-- Pedir año nuevo. Datos: { def } -->
+<script type="text/x-jsrender" id="nuevo-ejercicio">
+<label class="f">Año del ejercicio<input id="ny" type="number" min="2000" max="2100" value="{{:def}}"></label>
+</script>
+
+<!-- Formulario de un ejercicio anual. Datos: { a, tipos:[], resultados:[] } -->
+<script type="text/x-jsrender" id="anual-form">
+<form id="af">
+  <fieldset><legend>Datos</legend><div class="form-grid">
+    <label class="f">Estado<select name="estado"><option value="pendiente">Pendiente</option><option value="presentada" {{if a.estado=='presentada'}}selected{{/if}}>Presentada</option></select></label>
+    <label class="f">Fecha de presentación<input type="date" name="fechaPresentacion" value="{{>a.fechaPresentacion}}"></label>
+    <label class="f">Resultado<select name="resultado"><option value="">—</option>{{for resultados}}<option value="{{:k}}" {{if sel}}selected{{/if}}>{{>label}}</option>{{/for}}</select></label>
+    <label class="f">Monto<input type="number" step="0.01" inputmode="decimal" name="monto" value="{{:a.monto || ''}}"></label>
+    <label class="f full">Notas<textarea name="notas" rows="2">{{>a.notas}}</textarea></label>
+  </div></fieldset>
+  <fieldset><legend>Documentos</legend>
+    <div class="list" id="adocs"></div>
+    <div class="form-grid" style="margin-top:10px">
+      <label class="f">Tipo<select id="atipo">{{for tipos}}<option>{{>#data}}</option>{{/for}}</select></label>
+      <button type="button" class="btn" id="aadd" style="align-self:end">{{:~icon('upload')}} Agregar PDF</button>
+    </div>
+  </fieldset>
+</form>
+</script>
+
+<!-- Documentos del ejercicio (guardados + nuevos). Datos: { rows:[{id,tipo,nombre,quitar}] } -->
+<script type="text/x-jsrender" id="anual-docs">
+{{for rows}}
+<div class="li" {{if quitar}}style="opacity:.5;text-decoration:line-through"{{/if}}>
+  <div class="grow"><b>{{>tipo}}</b><small>{{>nombre}}</small></div>
+  <button type="button" class="btn sm" data-v="{{:id}}">Ver</button>
+  <button type="button" class="icon-btn" data-r="{{:id}}" aria-label="Quitar">{{if quitar}}↺{{else}}{{:~icon('x')}}{{/if}}</button>
+</div>
+{{else}}<p class="muted small" style="margin:0">Sin documentos.</p>{{/for}}
+</script>
+
+<!-- Botones del formulario anual -->
+<script type="text/x-jsrender" id="anual-footer">
+<button class="btn danger" id="adel">Eliminar ejercicio</button>
+<span class="spacer"></span>
+<button class="btn" data-close>Cancelar</button>
+<button class="btn primary" id="asave">Guardar</button>
+</script>
