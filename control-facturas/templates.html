@@ -237,7 +237,7 @@
 
 <!-- Tarjeta de una factura. Datos: cardVM() en app.js -->
 <script type="text/x-jsrender" id="factura-card">
-<article class="card" data-id="{{:id}}" tabindex="0">
+<article class="card e-{{:estado}}" data-id="{{:id}}" tabindex="0">
   <div class="card-top">
     <span class="seq">#{{:seq}}</span><span class="ref">{{>ref}}</span>
     {{if metodo}}<span class="tag">{{>metodo}}</span>{{/if}}
@@ -247,6 +247,11 @@
   </div>
   <h3>{{>desc}}</h3>
   <div class="meta">{{>meta}}</div>
+  {{if chips.length}}
+  <div class="infochips">
+    {{for chips}}<span class="ichip {{:cls}}" title="{{>title}}">{{:~icon(icon)}}{{>text}}</span>{{/for}}
+  </div>
+  {{/if}}
   <div class="amounts">
     <div><small>Total</small><b>{{:~money(total)}}</b></div>
     <div><small>Sin IVA</small><b>{{:~money(subtotal)}}</b></div>
@@ -260,7 +265,8 @@
 <!-- Menú del botón "+" -->
 <script type="text/x-jsrender" id="fab-sheet">
 <div class="sheet-opts">
-  <button class="sheet-opt" data-a="new"><div class="ic">{{:~icon('file')}}</div><div><b>Nueva factura</b><span>Empieza con el PDF que te llega para facturar (paso 1).</span></div></button>
+  <button class="sheet-opt star" data-a="pdf"><div class="ic">{{:~icon('scan')}}</div><div><b>Nueva desde PDF de solicitud</b><span>Sube el comprobante de la UNAM y leo referencia, actividad, periodo y desglose.</span></div></button>
+  <button class="sheet-opt" data-a="new"><div class="ic">{{:~icon('file')}}</div><div><b>Nueva factura en blanco</b><span>Captura los datos a mano.</span></div></button>
   <button class="sheet-opt" data-a="xml"><div class="ic">{{:~icon('upload')}}</div><div><b>Nueva desde XML de factura</b><span>Llena folio, UUID, cliente e importes automáticamente.</span></div></button>
   <button class="sheet-opt" data-a="rep"><div class="ic">{{:~icon('coin')}}</div><div><b>Cargar complemento de pago</b><span>Sube el XML del REP y lo asigno a su factura por UUID.</span></div></button>
 </div>
@@ -272,10 +278,23 @@
 <script type="text/x-jsrender" id="factura-form">
 <form id="ff" autocomplete="off">
   <div class="timeline" id="tl"></div>
+  <div id="readbox"></div>
   <fieldset><legend>Documentos</legend>
     <div class="slots" id="slots"></div>
-    <p class="hint">Se guardarán como <b id="nombreArchivo"></b>. Al subir un XML se leen solos el folio, UUID, RFC, cliente, importes y la fecha de pago. Al cargar el complemento, el PDF de la factura recibe la marca de agua <b>FACTURADO</b> (el original se conserva).</p>
+    <p class="hint">Se guardarán como <b id="nombreArchivo"></b>. Al subir el <b>PDF de solicitud</b> se leen referencia, actividad, periodo y desglose; al subir un <b>XML</b>, folio, UUID e importes timbrados. Al cargar el complemento, el PDF de la factura recibe la marca de agua <b>FACTURADO</b> (el original se conserva).</p>
   </fieldset>
+
+  <fieldset><legend>Solicitud UNAM</legend><div class="form-grid">
+    <label class="f full">Referencia del contrato<input name="contrato" value="{{>f.contrato}}" placeholder="522-08-2026-00510"></label>
+    <label class="f">Parcialidad<input name="parcialidad" type="number" min="1" inputmode="numeric" value="{{:f.parcialidad || ''}}" placeholder="1"></label>
+    <label class="f">De<input name="parcialidades" type="number" min="1" inputmode="numeric" value="{{:f.parcialidades || ''}}" placeholder="3"></label>
+    <label class="f">Periodo del<input name="periodoInicio" type="date" value="{{>f.periodoInicio}}"></label>
+    <label class="f">Al<input name="periodoFin" type="date" value="{{>f.periodoFin}}"></label>
+    <label class="f">Fecha del contrato<input name="fechaContrato" type="date" value="{{>f.fechaContrato}}"></label>
+    <label class="f">Fecha tentativa de pago<input name="fechaTentativa" type="date" value="{{>f.fechaTentativa}}"></label>
+    <label class="f full">Coordinación<input name="coordinacion" value="{{>f.coordinacion}}"></label>
+    <p class="hint full" id="tentativaHint"></p>
+  </div></fieldset>
 
   <fieldset><legend>Datos</legend><div class="form-grid r1">
     <label class="f">No. consecutivo<input name="seq" type="number" min="1" inputmode="numeric" value="{{:f.seq}}" required></label>
@@ -305,9 +324,9 @@
       <label class="check" style="align-self:end;padding-bottom:10px"><input type="checkbox" name="desgloseManual" {{if f.desgloseManual}}checked{{/if}}> Editar desglose a mano</label>
     </div>
     <div class="presets">
+      <button type="button" class="btn sm" data-pre="16,10,10.6667">UNAM honorarios · ISR 10% · IVA ret. 10.67%</button>
+      <button type="button" class="btn sm" data-pre="16,1.25,10.6667">RESICO · ISR 1.25% · IVA ret. 10.67%</button>
       <button type="button" class="btn sm" data-pre="16,0,0">Sólo IVA 16%</button>
-      <button type="button" class="btn sm" data-pre="16,1.25,0">RESICO a persona moral (ISR 1.25%)</button>
-      <button type="button" class="btn sm" data-pre="16,10,10.6667">Honorarios a persona moral (ISR 10%, IVA 2/3)</button>
     </div>
     <div class="form-grid" id="manual" style="margin-top:10px" {{if !f.desgloseManual}}hidden{{/if}}>
       <label class="f">Subtotal (sin IVA)<input name="subtotal" type="number" step="0.01" value="{{:f.subtotal}}"></label>
@@ -345,11 +364,12 @@
 
 <!-- Desglose del total. Datos: { subtotal, iva, retIsr, retIva, suma, total, noCuadra } -->
 <script type="text/x-jsrender" id="factura-calc">
-<div class="row hl"><span>Monto sin IVA (subtotal)</span><span>{{:~money(subtotal)}}</span></div>
-<div class="row"><span>+ IVA trasladado</span><span>{{:~money(iva)}}</span></div>
-{{if retIsr}}<div class="row"><span>− ISR retenido</span><span>{{:~money(retIsr)}}</span></div>{{/if}}
-{{if retIva}}<div class="row"><span>− IVA retenido</span><span>{{:~money(retIva)}}</span></div>{{/if}}
-<div class="row total"><span>Total</span><span>{{:~money(suma)}}</span></div>
+<div class="row hl"><span class="lbl">Cantidad <small>(monto sin IVA)</small></span><span>{{:~money(subtotal)}}</span></div>
+<div class="row"><span class="lbl">+ IVA {{:ivaRate}}%</span><span>{{:~money(iva)}}</span></div>
+<div class="row sep"><span class="lbl">Importe <small>(cantidad + IVA)</small></span><span>{{:~money(importe)}}</span></div>
+{{if retIsr}}<div class="row"><span class="lbl">− Retención I.S.R. {{:retIsrRate}}%</span><span>{{:~money(retIsr)}}</span></div>{{/if}}
+{{if retIva}}<div class="row"><span class="lbl">− Retención I.V.A. {{:retIvaRate}}%</span><span>{{:~money(retIva)}}</span></div>{{/if}}
+<div class="row total"><span>Total a pagar</span><span>{{:~money(suma)}}</span></div>
 {{if noCuadra}}<p class="hint" style="color:var(--red)">El desglose no cuadra con el total ({{:~money(total)}}).</p>{{/if}}
 </script>
 
@@ -358,6 +378,23 @@
 Estado: <span class="badge {{:cls}}">{{>label}}</span>
 {{if cobrado}} · Cobrado sin IVA: <b>{{:~money(sinIva)}}</b>{{/if}}
 {{if falta}} · Saldo pendiente del cliente: <b>{{:~money(falta)}}</b>{{/if}}
+</script>
+
+<!-- Resultado de leer el PDF de solicitud (texto u OCR).
+     Datos: { ok, ocr, campos:[texto], avisos:[texto] } -->
+<script type="text/x-jsrender" id="readbox">
+<div class="readbox {{if !ok}}warn{{/if}}">
+  <div class="ic">{{:~icon('scan')}}</div>
+  <div>
+    {{if ok}}
+      <b>Datos leídos del PDF{{if ocr}} con OCR{{/if}}</b> — revisa los campos resaltados en dorado.
+    {{else}}
+      <b>No pude leer datos de este archivo.</b> Captúralos a mano.
+    {{/if}}
+    {{if campos.length}}<ul>{{for campos}}<li>{{>#data}}</li>{{/for}}</ul>{{/if}}
+    {{for avisos}}<p class="hint" style="color:var(--oro-ink)">⚠ {{>#data}}</p>{{/for}}
+  </div>
+</div>
 </script>
 
 
