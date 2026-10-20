@@ -296,7 +296,7 @@
       <label class="f">No. consecutivo<input name="seq" type="number" min="1" inputmode="numeric" value="{{:f.seq}}" required></label>
       <label class="f">Referencia<input name="referencia" value="{{>f.referencia}}" placeholder="00510-01"></label>
       <label class="f full">Sede<input name="sede" value="{{>f.sede}}" placeholder="DGTIC Mascarones" list="sedes"></label>
-      <label class="f full">Descripción<textarea name="descripcion" rows="2">{{>f.descripcion}}</textarea></label>
+      <label class="f full">Descripción <span style="font-weight:400">(actividad + periodo)</span><textarea name="descripcion" rows="4">{{>f.descripcion}}</textarea></label>
     </div>
     <datalist id="sedes">{{for sedes}}<option value="{{>#data}}">{{/for}}</datalist>
 

@@ -43,7 +43,7 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '10',
+  VERSION: '11',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
@@ -394,8 +394,9 @@ const Solicitud = (() => {
     if (x) r.rfc = x[1];
     x = m(/DEPENDENCIA\s*:?\s*(.+?)\s+ACTIVIDAD/i);
     if (x) r.dependencia = x[1].trim();
-    x = m(/ACTIVIDAD\s*:?\s*(.+?)\s+PERIODO\b/i);
-    if (x) r.actividad = x[1].trim();
+    // Actividad: sólo el texto entre "ACTIVIDAD:" y "PERIODO" (sin otros rótulos del formato)
+    x = m(/ACTIVIDAD\s*:?\s*(.+?)\s+PERIODO\s+DEL\b/i);
+    if (x) r.actividad = x[1].split(/\s+(?:COORDINACI[OÓ]N|DESGLOSE DEL PAGO|DEPENDENCIA|DATOS DEL)\b/i)[0].replace(/\s+/g, ' ').trim();
     x = m(/PERIODO\s+DEL\s+(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+del?\s+(\d{4})\s+AL\s+(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+del?\s+(\d{4})/i);
     if (x) {
       r.periodoInicio = fechaTexto(x[1], x[2], x[3]); r.periodoFin = fechaTexto(x[4], x[5], x[6]);
@@ -1471,9 +1472,9 @@ function openFactura(orig, preload = {}) {
     if (poner(llenos, 'parcialidad', r.parcialidad)) campos.push(`Parcialidad ${r.parcialidad} de ${r.parcialidades || '?'}`);
     poner(llenos, 'parcialidades', r.parcialidades);
     poner(llenos, 'referencia', refCorta(r.contrato, r.parcialidad), false);
-    // Descripción = actividad + periodo, tal como va en el CFDI
+    // Descripción = SÓLO actividad + periodo, tal como va en el CFDI (reemplaza lo que hubiera)
     const desc = [r.actividad, r.periodoTexto].filter(Boolean).join(' ');
-    if (poner(llenos, 'descripcion', desc, false)) campos.push(r.periodoTexto ? `Descripción con ${r.periodoTexto.toLowerCase()}` : 'Descripción (actividad)');
+    if (poner(llenos, 'descripcion', desc)) campos.push(r.periodoTexto ? `Descripción con ${r.periodoTexto.toLowerCase()}` : 'Descripción (actividad)');
     if (poner(llenos, 'sede', r.dependencia, false)) campos.push(`Sede ${r.dependencia}`);
     if (r.rfc && C.EMISOR?.rfc && r.rfc !== C.EMISOR.rfc) avisos.push(`El RFC del PDF (${r.rfc}) no es el tuyo (${C.EMISOR.rfc}).`);
     if (r.cantidad != null) {
