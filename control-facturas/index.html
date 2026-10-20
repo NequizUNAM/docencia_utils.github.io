@@ -433,6 +433,22 @@
     .cfdi-row .k { color: var(--muted); font-weight: 600; }
     .cfdi-row .v { color: var(--azul-900); word-break: break-word; }
     .cfdi-row .icon-btn svg { width: 16px; height: 16px; color: var(--azul); }
+    .cfdi-row .v small { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .cfdi-row .icon-btn.ok { background: var(--green-bg); }
+    .cfdi-row .icon-btn.ok svg { color: var(--green); }
+    .df-calc { background: linear-gradient(135deg, var(--oro-soft), #fff); border: 1px solid #f1dca6; border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; }
+    .df-sec { margin-bottom: 16px; }
+    .df-sec header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .df-sec header h3 { flex: 1; margin: 0; font-size: 14px; color: var(--azul); text-transform: uppercase; letter-spacing: .04em; }
+    .df-sec header .ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--azul); color: var(--oro-2); }
+    .df-sec header .ic svg { width: 16px; height: 16px; }
+    .topbtn { box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+    @media (max-width: 560px) {
+      .topbar h1 .chip-ico { display: none; }
+      .topbtn { padding: 6px 9px; font-size: 12px; gap: 4px; } .topbtn svg { width: 16px; height: 16px; }
+      .sync .lbl { display: none; } .sync { padding: 6px; }
+    }
+    @media (max-width: 360px) { .topbtn span { display: none; } }
 
     .setup { max-width: 470px; margin: 30px auto; display: flex; flex-direction: column; gap: 12px; }
     .setup h2 { margin: 0 0 4px; color: var(--azul); }

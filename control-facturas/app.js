@@ -21,6 +21,7 @@
     13. Mensuales ......... declaraciones mensuales
     14. Anuales ........... declaraciones anuales
     15. Visor ............. vista previa de PDF/XML
+    15b. Datos para facturar  guía con botón de copiar (factura y complemento)
     16. Ajustes ........... respaldo, CSV, cambio de contraseña
 
    Ciclo de una factura
@@ -42,7 +43,7 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '9',
+  VERSION: '10',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
@@ -88,7 +89,10 @@ const CONFIG = {
   /** Idioma del OCR para PDF escaneados o fotos (tesseract.js). */
   OCR_LANG: 'spa',
 
-  /** Datos por defecto de emisor y receptor (tomados de tu CFDI timbrado). */
+  /**
+   * Datos para facturar a la UNAM (tomados de tu factura y tu complemento timbrados).
+   * Se usan como valores por defecto y en el botón "Datos para facturar".
+   */
   EMISOR: {
     rfc: 'NEMP920226AU6',
     nombre: 'PEDRO ERNESTO NEQUIZ MEDINA',
@@ -101,6 +105,21 @@ const CONFIG = {
     cp: '04510',
     regimen: '603 · Personas Morales con Fines no Lucrativos',
     usoCfdi: 'G03 · Gastos en general'
+  },
+  /** Factura de ingreso a la UNAM (honorarios por actividad) */
+  FACTURA: {
+    tipo: 'I · Ingreso', moneda: 'MXN · Peso Mexicano', formaPago: '99 · Por definir',
+    metodoPago: 'PPD · Pago en parcialidades o diferido', exportacion: '01 · No aplica',
+    claveProdServ: '86101601', cantidad: '1', claveUnidad: 'ACT', unidad: 'Actividad',
+    objetoImp: '02 · Sí objeto de impuesto',
+    tasaIva: '0.160000', tasaRetIva: '0.106700', tasaRetIsr: '0.100000'
+  },
+  /** Complemento de pago (REP 2.0), tomado de tu complemento timbrado */
+  COMPLEMENTO: {
+    tipo: 'P · Pago', usoCfdi: 'CP01 · Pagos', claveProdServ: '84111506', cantidad: '1', claveUnidad: 'ACT',
+    descripcion: 'Pago', valorUnitario: '0', objetoImp: '01 · No objeto de impuesto', moneda: 'XXX',
+    version: '2.0', formaPago: '03 · Transferencia electrónica de fondos', monedaPago: 'MXN · Peso Mexicano', tipoCambio: '1',
+    objetoImpDR: '02 · Sí objeto de impuesto'
   }
 };
 const C = CONFIG;
@@ -222,11 +241,22 @@ const CFDI = (() => {
         out.pagos.push({
           fecha: (p.getAttribute('FechaPago') || '').slice(0, 10),
           monto: n(p.getAttribute('Monto')),
-          doctos: byTag(p, 'DoctoRelacionado').map(d => ({
-            uuid: (d.getAttribute('IdDocumento') || '').toUpperCase(),
-            pagado: n(d.getAttribute('ImpPagado')),
-            saldoInsoluto: n(d.getAttribute('ImpSaldoInsoluto'))
-          }))
+          doctos: byTag(p, 'DoctoRelacionado').map(d => {
+            // Impuestos del documento relacionado (Pagos 2.0): desglose real de lo pagado
+            const imp = (tag, cod) => byTag(d, tag).filter(t => t.getAttribute('ImpuestoDR') === cod);
+            const tIva = imp('TrasladoDR', '002')[0];
+            const sum = arr => arr.reduce((a, t) => a + (n(t.getAttribute('ImporteDR')) || 0), 0);
+            return {
+              uuid: (d.getAttribute('IdDocumento') || '').toUpperCase(),
+              parcialidad: n(d.getAttribute('NumParcialidad')),
+              saldoAnterior: n(d.getAttribute('ImpSaldoAnt')),
+              pagado: n(d.getAttribute('ImpPagado')),
+              saldoInsoluto: n(d.getAttribute('ImpSaldoInsoluto')),
+              base: tIva ? n(tIva.getAttribute('BaseDR')) : null,
+              iva: tIva ? n(tIva.getAttribute('ImporteDR')) : null,
+              retIva: sum(imp('RetencionDR', '002')), retIsr: sum(imp('RetencionDR', '001'))
+            };
+          })
         });
       });
     }
@@ -241,7 +271,7 @@ const CFDI = (() => {
     const u = (uuid || '').toUpperCase();
     for (const p of cfdi.pagos) {
       const d = p.doctos.find(x => x.uuid === u);
-      if (d) return { fecha: p.fecha, monto: d.pagado ?? p.monto, saldoInsoluto: d.saldoInsoluto };
+      if (d) return { ...d, fechaPago: p.fecha, fecha: cfdi.fecha, monto: d.pagado ?? p.monto };
     }
     return null;
   }
@@ -367,7 +397,11 @@ const Solicitud = (() => {
     x = m(/ACTIVIDAD\s*:?\s*(.+?)\s+PERIODO\b/i);
     if (x) r.actividad = x[1].trim();
     x = m(/PERIODO\s+DEL\s+(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+del?\s+(\d{4})\s+AL\s+(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+del?\s+(\d{4})/i);
-    if (x) { r.periodoInicio = fechaTexto(x[1], x[2], x[3]); r.periodoFin = fechaTexto(x[4], x[5], x[6]); }
+    if (x) {
+      r.periodoInicio = fechaTexto(x[1], x[2], x[3]); r.periodoFin = fechaTexto(x[4], x[5], x[6]);
+      // Texto tal cual para la descripción del CFDI: "PERIODO DEL 01 de Abril del 2026 AL 30 de Abril del 2026"
+      r.periodoTexto = `PERIODO DEL ${pad(x[1], 2)} de ${x[2]} del ${x[3]} AL ${pad(x[4], 2)} de ${x[5]} del ${x[6]}`;
+    }
     x = m(/COORDINACI[OÓ0]N\s*:?\s*([^\n]+)/i, t);
     if (x) r.coordinacion = x[1].trim();
     x = m(/FECHA DEL CONTRATO\s*:?\s*(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+del?\s+(\d{4})/i);
@@ -425,7 +459,43 @@ const Solicitud = (() => {
     return r;
   }
 
-  return { leerTexto, parse, parseFactura };
+  /**
+   * Lee la representación impresa de un COMPLEMENTO DE PAGO (CFDI tipo Pago 2.0).
+   * @returns {{uuid, fecha, fechaPago, relacionado, parcialidad, saldoAnterior, pagado,
+   *   saldoInsoluto, monto, forma, base, iva, retIva, retIsr, esPago:boolean}}
+   */
+  function parseComplemento(texto) {
+    const una = texto.replace(/\s+/g, ' ');
+    const m = re => una.match(re);
+    const UUID = '([0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12})';
+    const r = { esPago: /Efecto de comprobante\s*:?\s*Pago/i.test(una) || /Recepci[oó]n de Pagos/i.test(una) };
+    let x;
+    if ((x = m(new RegExp('Folio fiscal\\s*:?\\s*' + UUID, 'i')))) r.uuid = x[1].toUpperCase();
+    if ((x = m(/(\d{4}-\d{2}-\d{2})[ T]\d{2}:\d{2}:\d{2}/))) r.fecha = x[1];          // fecha de emisión
+    if ((x = m(/N[uú]mero de operaci[oó]n.{0,80}?(\d{4}-\d{2}-\d{2})/i))) r.fechaPago = x[1];  // fecha del depósito
+    if ((x = m(new RegExp('Identificador del documento.{0,200}?' + UUID, 'i')))) r.relacionado = x[1].toUpperCase();
+    if (r.relacionado && (x = m(new RegExp(r.relacionado + '\\s+(?:[A-Z0-9]+\\s+)*?Peso Mexicano\\s+[\\d.]+\\s+(\\d+)\\s+([\\d,]+\\.\\d{2})', 'i')))) {
+      r.parcialidad = +x[1]; r.saldoAnterior = importe(x[2]);
+    }
+    if ((x = m(/Importe pagado\s+Importe de saldo insoluto\s+Objeto de impuesto\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})/i))) {
+      r.pagado = importe(x[1]); r.saldoInsoluto = importe(x[2]);
+    }
+    if ((x = m(/Monto Total de Pagos.{0,30}?(\d[\d,]*\.\d{2})/i))) r.monto = importe(x[1]);
+    if (/Transferencia electr[oó]nica/i.test(una)) r.forma = '03 · Transferencia electrónica de fondos';
+    // Impuestos del documento relacionado (para conocer el desglose real que se pagó)
+    const sec = (una.split(/Impuestos del Documento Relacionado/i)[1] || '').split(/Impuestos del Pago/i)[0];
+    if (sec) {
+      const [ret, tras] = sec.split(/Traslados/i);
+      const fila = (txt, imp) => { const y = (txt || '').match(new RegExp('([\\d.]+)\\s+' + imp + '\\s+Tasa\\s+([\\d.]+)\\s+([\\d.]+)', 'i')); return y ? { base: +y[1], tasa: +y[2], importe: r2(+y[3]) } : null; };
+      const rIva = fila(ret, 'IVA'), rIsr = fila(ret, 'ISR'), tIva = fila(tras, 'IVA');
+      if (tIva) { r.base = tIva.base; r.iva = tIva.importe; }
+      if (rIva) r.retIva = rIva.importe;
+      if (rIsr) r.retIsr = rIsr.importe;
+    }
+    return r;
+  }
+
+  return { leerTexto, parse, parseFactura, parseComplemento };
 })();
 
 
@@ -678,6 +748,7 @@ const R = (name, data = {}) => {
        id, seq (consecutivo), referencia (ej. 00510-01), rfcEmisor, descripcion, sede,
        contrato (522-08-2026-00510), parcialidad, parcialidades, timbrado
        (true = importes tomados del CFDI), montoCobrado (= total al cobrar),
+       complemento: { uuid, parcialidad, saldoInsoluto }  ← datos del REP,
        cliente, rfcCliente, folio, uuid, fechaEmision, metodoPago (PUE|PPD),
        total, ivaRate, retIsrRate, retIvaRate, desgloseManual,
        subtotal, iva, retIsr, retIva, montoCobrado, fechaCobro,
@@ -809,6 +880,7 @@ function nuevaFactura() {
     referencia: '', rfcEmisor: C.EMISOR?.rfc || C.RFC_EMISOR || '', descripcion: '', sede: '',
     cliente: C.RECEPTOR?.nombre || '', rfcCliente: C.RECEPTOR?.rfc || '', folio: '', uuid: '', fechaEmision: '',
     contrato: '', parcialidad: 0, parcialidades: 0, timbrado: false,
+    complemento: { uuid: '', parcialidad: 0, saldoInsoluto: null },
     metodoPago: 'PPD', total: 0, ivaRate: C.IVA_DEFAULT, retIsrRate: C.RET_ISR_DEFAULT, retIvaRate: C.RET_IVA_DEFAULT,
     desgloseManual: true, subtotal: 0, iva: 0, retIsr: 0, retIva: 0,   // true = se captura la cantidad y se calcula el total
     montoCobrado: 0, fechaCobro: '', pagadaSinComplemento: false, cancelada: false, notas: '',
@@ -826,6 +898,7 @@ function migrar(d) {
     f.rfcEmisor ??= C.RFC_EMISOR || '';
     f.docs.facturaPdfOriginal ??= null;
     f.contrato ??= ''; f.parcialidad ??= 0; f.parcialidades ??= 0;
+    f.complemento ??= { uuid: '', parcialidad: 0, saldoInsoluto: null };
     // v<8 calculaba desde el total: se pasa a "desde la cantidad".
     // Si no tenía retenciones ni XML (versiones de prueba), lo capturado era la CANTIDAD:
     // se toma como cantidad y se aplican los porcentajes por defecto.
@@ -893,14 +966,14 @@ function openModal({ title, body, footer = '', size = '' }) {
   return { el: bg, close, body: $('.modal-b', bg) };
 }
 /**
- * Tecla Esc: cierra la vista previa de documentos que esté hasta arriba.
+ * Tecla Esc: cierra la vista previa de documentos (o "Datos para facturar") que esté hasta arriba.
  * Si hay varias abiertas, se cierran una por una (la última primero).
  * Los formularios no se cierran con Esc para no perder lo capturado.
  */
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   const top = $$('.modal-bg').pop();
-  if (top && top.querySelector('.modal.full')) { e.preventDefault(); top.querySelector('[data-close]').click(); }
+  if (top && top.querySelector('.modal.full, [data-esc]')) { e.preventDefault(); top.querySelector('[data-close]').click(); }
 });
 /** Pregunta Sí/No. Devuelve Promise<boolean>. */
 function confirmar(msg, ok = 'Aceptar', danger = false) {
@@ -1095,6 +1168,7 @@ function renderShell() {
   });
   $('#menuBtn').onclick = openDrawer;
   $('#lockBtn').onclick = lock;
+  $('#datosBtn').onclick = () => openDatosFacturar();
   $('#fab') && ($('#fab').onclick = openFabSheet);
   V.render();
 }
@@ -1185,18 +1259,26 @@ function openFabSheet() {
       const file = await pickFile('application/pdf,.pdf,image/*');
       return file && openFactura(null, { solicitud: file });
     }
-    const file = await pickFile('.xml,text/xml,application/xml');
+    const esRep = b.dataset.a === 'rep';
+    const file = await pickFile(esRep ? '.xml,.pdf,text/xml,application/xml,application/pdf' : '.xml,text/xml,application/xml');
     if (!file) return;
-    if (b.dataset.a === 'xml') return openFactura(null, { facturaXml: file });
-    // Complemento: busca la factura cuyo UUID aparece en el XML del pago
+    if (!esRep) return openFactura(null, { facturaXml: file });
+    // Complemento (XML o PDF): busca la factura cuyo UUID aparece como documento relacionado
     try {
-      const x = CFDI.parse(await file.text());
-      if (x.tipo !== 'P') return toast('Ese XML no es un complemento de pago (tipo P)', 'err');
-      const uuids = x.pagos.flatMap(p => p.doctos.map(d => d.uuid));
+      let uuids;
+      const esPdf = /\.pdf$/i.test(file.name) || /pdf/.test(file.type);
+      if (esPdf) {
+        const c = Solicitud.parseComplemento((await Solicitud.leerTexto(file)).texto);
+        uuids = c.relacionado ? [c.relacionado] : [];
+      } else {
+        const x = CFDI.parse(await file.text());
+        if (x.tipo !== 'P') return toast('Ese XML no es un complemento de pago (tipo P)', 'err');
+        uuids = x.pagos.flatMap(p => p.doctos.map(d => d.uuid));
+      }
       const f = db.facturas.find(f => f.uuid && uuids.includes(f.uuid.toUpperCase()));
       if (!f) return toast('No encontré la factura con UUID ' + (uuids[0] || '?') + '. Ábrela y súbelo manualmente.', 'err');
       if (uuids.length > 1) toast(`El complemento ampara ${uuids.length} facturas; se asignó a #${f.seq}.`);
-      openFactura(f, { complementoXml: file });
+      openFactura(f, { [esPdf ? 'complementoPdf' : 'complementoXml']: file });
     } catch (e) { handleErr(e); }
   });
 }
@@ -1267,7 +1349,6 @@ function openFactura(orig, preload = {}) {
   const isNew = !orig;
   const f = isNew ? nuevaFactura() : structuredClone(orig);   // se edita una copia
   const pending = {};                                          // key → File | 'REMOVE'
-  let fechaPago = f.fechaCobro || '';                          // la da el complemento
   const m = openModal({
     title: isNew ? 'Nueva factura' : `Factura #${f.seq} · ${f.referencia || 'sin referencia'}`, size: 'wide',
     body: R('factura-form', { f, sedes: [...new Set(db.facturas.map(x => x.sede).filter(Boolean))] }),
@@ -1283,6 +1364,9 @@ function openFactura(orig, preload = {}) {
     ['seq', 'parcialidad', 'parcialidades'].forEach(k => f[k] = Math.round(num(F(k).value)));
     ['subtotal', 'ivaRate', 'retIsrRate', 'retIvaRate'].forEach(k => f[k] = num(F(k).value));
     ['pagadaSinComplemento', 'cancelada'].forEach(k => f[k] = F(k).checked);
+    f.fechaCobro = F('fechaCobro').value; f.montoCobrado = num(F('montoCobrado').value);
+    f.complemento = { uuid: F('compUuid').value.trim().toUpperCase(), parcialidad: Math.round(num(F('compParcialidad').value)),
+      saldoInsoluto: F('compSaldo').value === '' ? null : num(F('compSaldo').value) };
     // Importes: los del CFDI timbrado si se cargaron; si no, cantidad × porcentajes
     if (!f.timbrado) Object.assign(f, calcDesdeCantidad(f.subtotal, f.ivaRate, f.retIsrRate, f.retIvaRate));
     f.desgloseManual = true;
@@ -1315,6 +1399,8 @@ function openFactura(orig, preload = {}) {
     // Resúmenes de las secciones colapsadas
     $('#resContrato', m.el).textContent = [f.contrato, f.parcialidad && `parcialidad ${f.parcialidad}${f.parcialidades ? '/' + f.parcialidades : ''}`].filter(Boolean).join(' · ') || 'Se llena con el PDF de solicitud';
     $('#resCfdi', m.el).textContent = [f.folio, f.uuid && 'UUID …' + f.uuid.slice(-6), f.rfcCliente].filter(Boolean).join(' · ');
+    $('#resComp', m.el).textContent = [f.fechaCobro && fmtDate(f.fechaCobro), f.montoCobrado && money(f.montoCobrado),
+      f.complemento.uuid && 'UUID …' + f.complemento.uuid.slice(-6)].filter(Boolean).join(' · ') || 'Se llena al subir el complemento';
     $('#resPct', m.el).textContent = `IVA ${f.ivaRate}% · ISR ${f.retIsrRate}% · IVA ret. ${f.retIvaRate}%`;
     const pct = (v, base) => base ? Math.round(v / base * 1e4) / 100 : 0;
     $('#calc', m.el).innerHTML = R('factura-calc', {
@@ -1322,7 +1408,8 @@ function openFactura(orig, preload = {}) {
       importe: r2(f.subtotal + f.iva), ivaRate: pct(f.iva, f.subtotal), retIsrRate: pct(f.retIsr, f.subtotal), retIvaRate: pct(f.retIva, f.subtotal)
     });
     const e = estadoFactura(tmp);
-    $('#cobroHint', m.el).innerHTML = R('factura-cobro', { ...ESTADOS[e], cobrado: e === 'cobrado' ? f.total : 0, fecha: fechaPago });
+    F('montoCobrado').placeholder = f.total ? f.total.toFixed(2) + ' (total a pagar)' : '= total a pagar';
+    $('#cobroHint', m.el).innerHTML = R('factura-cobro', { ...ESTADOS[e], cobrado: e === 'cobrado' ? (f.montoCobrado || f.total) : 0, fecha: f.fechaCobro });
   }
 
   /** Al elegir un archivo: queda pendiente y, según el tipo, se leen sus datos. */
@@ -1384,7 +1471,9 @@ function openFactura(orig, preload = {}) {
     if (poner(llenos, 'parcialidad', r.parcialidad)) campos.push(`Parcialidad ${r.parcialidad} de ${r.parcialidades || '?'}`);
     poner(llenos, 'parcialidades', r.parcialidades);
     poner(llenos, 'referencia', refCorta(r.contrato, r.parcialidad), false);
-    if (poner(llenos, 'descripcion', r.actividad, false)) campos.push('Descripción (actividad)');
+    // Descripción = actividad + periodo, tal como va en el CFDI
+    const desc = [r.actividad, r.periodoTexto].filter(Boolean).join(' ');
+    if (poner(llenos, 'descripcion', desc, false)) campos.push(r.periodoTexto ? `Descripción con ${r.periodoTexto.toLowerCase()}` : 'Descripción (actividad)');
     if (poner(llenos, 'sede', r.dependencia, false)) campos.push(`Sede ${r.dependencia}`);
     if (r.rfc && C.EMISOR?.rfc && r.rfc !== C.EMISOR.rfc) avisos.push(`El RFC del PDF (${r.rfc}) no es el tuyo (${C.EMISOR.rfc}).`);
     if (r.cantidad != null) {
@@ -1448,28 +1537,54 @@ function openFactura(orig, preload = {}) {
     marcar(llenos);
     toast('Datos leídos del XML de la factura', 'ok');
   }
-  /** Complemento en XML: toma la fecha del pago y revisa que mencione esta factura */
+  /**
+   * Datos del complemento de pago (de XML o PDF) → formulario.
+   * - Fecha de pago = fecha de EMISIÓN del complemento
+   * - Monto pagado, parcialidad, saldo insoluto y UUID del complemento
+   * - Si la factura no tiene importes timbrados y el complemento liquida todo,
+   *   se toma su desglose real (base, IVA y retenciones del documento relacionado)
+   */
+  function applyComplemento(c, origen) {
+    const llenos = [], campos = [], avisos = [];
+    const uuidFac = F('uuid').value.trim().toUpperCase();
+    if (c.relacionado && uuidFac && c.relacionado !== uuidFac) avisos.push(`El complemento paga la factura …${c.relacionado.slice(-6)}, no ésta (…${uuidFac.slice(-6)}). Revisa que sea el correcto.`);
+    if (c.relacionado && !uuidFac) poner(llenos, 'uuid', c.relacionado);
+    if (poner(llenos, 'fechaCobro', c.fecha)) campos.push(`Fecha de pago ${fmtDate(c.fecha)} (emisión del complemento)`);
+    if (poner(llenos, 'compUuid', c.uuid)) campos.push(`UUID del complemento …${c.uuid.slice(-6)}`);
+    if (c.parcialidad) poner(llenos, 'compParcialidad', c.parcialidad);
+    if (c.saldoInsoluto != null) poner(llenos, 'compSaldo', c.saldoInsoluto);
+    const monto = c.pagado ?? c.monto;
+    if (monto != null) {
+      if (!f.timbrado && c.base && c.saldoInsoluto === 0 && c.saldoAnterior === monto) {
+        const antes = f.total;
+        ponerTimbrado({ subtotal: c.base, iva: c.iva || 0, retIsr: c.retIsr || 0, retIva: c.retIva || 0, total: monto });
+        if (antes && Math.abs(antes - monto) > 0.005) avisos.push(`Total ajustado al complemento: ${money(monto)} (antes ${money(antes)}); la retención de IVA fue ${money(c.retIva || 0)}.`);
+      } else if (f.total && Math.abs(monto - f.total) > 0.005) avisos.push(`El complemento ampara ${money(monto)} y el total es ${money(f.total)}.`);
+      poner(llenos, 'montoCobrado', monto.toFixed(2));
+      campos.push(`Monto pagado ${money(monto)}${c.saldoInsoluto ? ' · saldo insoluto ' + money(c.saldoInsoluto) : ''}`);
+    }
+    if (!F('fechaCobro').value) poner(llenos, 'fechaCobro', today());
+    $('#readbox', m.el).innerHTML = R('readbox', { ok: campos.length > 0, campos, avisos, titulo: 'Datos leídos del complemento' + (origen ? ` (${origen})` : '') });
+    marcar(llenos); refresh();
+  }
+  /** Complemento en XML */
   function applyComplementoXml(x) {
     if (x.tipo !== 'P') { toast('Ese XML no es un complemento de pago (tipo P)', 'err'); return; }
     const uuid = F('uuid').value.trim().toUpperCase();
-    const p = uuid ? CFDI.pagoDeFactura(x, uuid) : null;
-    if (uuid && !p) toast('El complemento no menciona el UUID de esta factura. Revisa que sea el correcto.', 'err');
-    fechaPago = p?.fecha || x.pagos[0]?.fecha || fechaPago || today();
-    const monto = p?.monto ?? x.pagos[0]?.monto;
-    if (monto != null && f.total && Math.abs(monto - f.total) > 0.005) toast(`El complemento ampara ${money(monto)} y el total es ${money(f.total)}.`, 'err');
-    else toast(`Cobrado ${money(f.total)} el ${fmtDate(fechaPago)}`, 'ok');
+    const d = (uuid && CFDI.pagoDeFactura(x, uuid)) || (x.pagos[0] && { ...x.pagos[0].doctos[0], monto: x.pagos[0].monto });
+    applyComplemento({ ...(d || {}), relacionado: d?.uuid, uuid: x.uuid, fecha: x.fecha }, 'XML');
   }
-  /** Complemento en PDF: intenta leer la fecha de pago (si no, hoy) */
+  /** Complemento en PDF (representación impresa); si el XML ya está, el XML manda */
   async function leerComplementoPdf(file) {
     if (pending.complementoXml || f.docs.complementoXml) return;
+    const b = busy('Leyendo el complemento…');
     try {
-      const { texto } = await Solicitud.leerTexto(file);
-      const fx = texto.replace(/\s+/g, ' ').match(/Fecha (?:de )?pago\s*:?\s*(\d{4}-\d{2}-\d{2})/i);
-      if (fx) fechaPago = fx[1];
-    } catch (e) { console.warn(e); }
-    fechaPago ||= today();
-    toast(`Cobrado ${money(f.total)} el ${fmtDate(fechaPago)}`, 'ok');
-    refresh();
+      const { texto } = await Solicitud.leerTexto(file, msg => b.set(msg));
+      const c = Solicitud.parseComplemento(texto);
+      if (!c.esPago && !c.uuid) { if (!F('fechaCobro').value) F('fechaCobro').value = today(); refresh(); return; }
+      if (!c.esPago) toast('Ese PDF no parece un complemento de pago', 'err');
+      applyComplemento(c, 'PDF');
+    } catch (e) { console.warn(e); } finally { b.done(); }
   }
 
   // Si se cambia la cantidad o un porcentaje, se deja de usar el importe timbrado y se recalcula
@@ -1507,8 +1622,8 @@ function openFactura(orig, preload = {}) {
     if (dup) return toast(`El consecutivo ${f.seq} ya lo usa la factura ${dup.referencia || ''}`, 'err');
     if (isNew) f.createdAt = new Date().toISOString();
     const cobrada = estadoFactura({ ...f, docs: docsEfectivos() }) === 'cobrado';
-    f.montoCobrado = cobrada ? f.total : 0;
-    f.fechaCobro = cobrada ? (fechaPago || f.fechaCobro || today()) : '';
+    f.montoCobrado = cobrada ? (f.montoCobrado || f.total) : 0;   // por defecto: total a pagar
+    f.fechaCobro = cobrada ? (f.fechaCobro || today()) : '';
     const keys = Object.keys(pending);
     const b = busy('Guardando…');
     try {
@@ -1548,6 +1663,8 @@ function openFactura(orig, preload = {}) {
       handleErr(e);
     }
   };
+  // Guía para facturar con los datos de ESTA factura
+  $('#datosFac', m.el).onclick = () => { readForm(); openDatosFacturar({ cantidad: f.subtotal, descripcion: f.descripcion, uuid: f.uuid, fechaPago: f.fechaCobro, monto: f.timbrado ? f.total : 0, parcialidad: f.complemento.parcialidad || f.parcialidad }); };
   $('#del', m.el) && ($('#del', m.el).onclick = async () => {
     if (!await confirmar(`¿Eliminar la factura #${f.seq} y sus documentos? En Drive van a la papelera.`, 'Eliminar', true)) return;
     const b = busy('Eliminando…');
@@ -1889,6 +2006,76 @@ async function openViewer(src) {
     $('#vw p', m.el).textContent = e.message;
     handleErr(e);
   }
+}
+
+
+/* =========================================================================
+   15b. DATOS PARA FACTURAR — guía para emitir la factura y el complemento
+   de pago a la UNAM en el portal del SAT. Cada dato tiene botón de copiar.
+   Incluye una calculadora: escribe la cantidad y obtienes impuestos y total.
+   ========================================================================= */
+/**
+ * Abre el modal "Datos para facturar".
+ * @param {{cantidad?:number, descripcion?:string, uuid?:string, fechaPago?:string, monto?:number, parcialidad?:number}} [pre]
+ *        datos de una factura en particular (si se abre desde ella)
+ */
+function openDatosFacturar(pre = {}) {
+  const E = C.EMISOR, Rc = C.RECEPTOR, Fa = C.FACTURA, Cp = C.COMPLEMENTO;
+  const m = openModal({ title: 'Datos para facturar a la UNAM', size: 'wide', body: '<div id="dfx" data-esc></div>' });   // data-esc: se cierra con Esc (sólo lectura)
+  let cantidad = pre.cantidad || 0;
+  const draw = () => {
+    const c = calcDesdeCantidad(cantidad, C.IVA_DEFAULT, C.RET_ISR_DEFAULT, C.RET_IVA_DEFAULT);
+    const v = (label, valor, nota) => ({ label, valor: String(valor ?? ''), nota });
+    const secciones = [
+      { titulo: 'Emisor (tú)', icon: 'file', filas: [v('RFC', E.rfc), v('Nombre', E.nombre), v('Régimen fiscal', E.regimen), v('Lugar de expedición (C.P.)', E.cp)] },
+      { titulo: 'Receptor (UNAM)', icon: 'file', filas: [v('RFC', Rc.rfc), v('Nombre / razón social', Rc.nombre), v('Código postal', Rc.cp), v('Régimen fiscal', Rc.regimen), v('Uso del CFDI', Rc.usoCfdi)] },
+      { titulo: 'Comprobante', icon: 'file', filas: [v('Tipo de comprobante', Fa.tipo), v('Moneda', Fa.moneda), v('Forma de pago', Fa.formaPago), v('Método de pago', Fa.metodoPago), v('Exportación', Fa.exportacion)] },
+      { titulo: 'Concepto', icon: 'layers', filas: [
+        v('Clave de producto o servicio', Fa.claveProdServ), v('Cantidad', Fa.cantidad), v('Clave de unidad', Fa.claveUnidad), v('Unidad', Fa.unidad),
+        v('Valor unitario', cantidad ? c.subtotal.toFixed(2) : '', 'Es la CANTIDAD (sin IVA) de la solicitud'),
+        v('Descripción', pre.descripcion || 'ACTIVIDAD … PERIODO DEL dd de Mes del aaaa AL dd de Mes del aaaa', pre.descripcion ? '' : 'Actividad de la solicitud + periodo'),
+        v('Objeto de impuesto', Fa.objetoImp)] },
+      { titulo: 'Impuestos del concepto', icon: 'coin', filas: [
+        v('IVA traslado · tasa', Fa.tasaIva, cantidad ? `Importe ${money(c.iva)}` : ''),
+        v('IVA retención · tasa', Fa.tasaRetIva, cantidad ? `Importe ${money(c.retIva)}` : ''),
+        v('ISR retención · tasa', Fa.tasaRetIsr, cantidad ? `Importe ${money(c.retIsr)}` : ''),
+        v('Total de la factura', cantidad ? c.total.toFixed(2) : '', 'Cantidad + IVA − retenciones')] },
+      { titulo: 'Complemento de pago (cuando te paguen)', icon: 'coin', filas: [
+        v('Tipo de comprobante', Cp.tipo), v('Uso del CFDI', Cp.usoCfdi), v('Clave de producto o servicio', Cp.claveProdServ),
+        v('Cantidad', Cp.cantidad), v('Clave de unidad', Cp.claveUnidad), v('Descripción', Cp.descripcion), v('Valor unitario', Cp.valorUnitario),
+        v('Objeto de impuesto', Cp.objetoImp), v('Moneda del comprobante', Cp.moneda), v('Versión de pagos', Cp.version),
+        v('Fecha de pago', pre.fechaPago ? pre.fechaPago : '', 'La del depósito de la UNAM'), v('Forma de pago', Cp.formaPago),
+        v('Moneda del pago', Cp.monedaPago), v('Tipo de cambio', Cp.tipoCambio),
+        v('Monto', pre.monto ? pre.monto.toFixed(2) : (cantidad ? c.total.toFixed(2) : ''), 'Igual al total de la factura'),
+        v('Documento relacionado (UUID de la factura)', pre.uuid || '', pre.uuid ? '' : 'Folio fiscal de la factura que te pagaron'),
+        v('Número de parcialidad', pre.parcialidad || '1'), v('Saldo anterior', pre.monto ? pre.monto.toFixed(2) : (cantidad ? c.total.toFixed(2) : '')),
+        v('Importe pagado', pre.monto ? pre.monto.toFixed(2) : (cantidad ? c.total.toFixed(2) : '')), v('Saldo insoluto', '0.00'),
+        v('Objeto de impuesto del documento', Cp.objetoImpDR),
+        v('Impuestos del documento', `IVA ${Fa.tasaIva} · ret. IVA ${Fa.tasaRetIva} · ret. ISR ${Fa.tasaRetIsr}`, 'Base = cantidad')] }
+    ];
+    $('#dfx', m.el).innerHTML = R('datos-facturar', { cantidad: cantidad || '', secciones });
+    m.secciones = secciones;
+  };
+  draw();
+  m.el.addEventListener('input', e => {
+    if (e.target.id !== 'dfCant') return;
+    cantidad = num(e.target.value);
+    const pos = e.target.selectionStart; draw();
+    const inp = $('#dfCant', m.el); inp.focus(); try { inp.setSelectionRange(pos, pos); } catch {}
+  });
+  m.el.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-cp]'); if (!btn) return;
+    const [si, fi] = btn.dataset.cp.split('.').map(Number);
+    let texto;
+    if (fi === -1) texto = m.secciones[si].filas.filter(r => r.valor).map(r => `${r.label}: ${r.valor}`).join('\n');
+    else {
+      const val = m.secciones[si].filas[fi].valor;
+      texto = /^[A-Z0-9]{1,5} · /.test(val) ? val.split(' · ')[0] : val;   // de "G03 · Gastos en general" copia "G03"
+    }
+    if (!texto) return toast('Ese dato está vacío', 'err');
+    try { await navigator.clipboard.writeText(texto); toast('Copiado: ' + (texto.length > 40 ? texto.slice(0, 40) + '…' : texto), 'ok'); btn.classList.add('ok'); setTimeout(() => btn.classList.remove('ok'), 900); }
+    catch { toast('No se pudo copiar; mantén presionado el texto para copiarlo', 'err'); }
+  });
 }
 
 

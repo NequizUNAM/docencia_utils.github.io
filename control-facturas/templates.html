@@ -38,6 +38,7 @@
 <header class="topbar">
   <button class="icon-btn" id="menuBtn" aria-label="Menú">{{:~icon('menu')}}</button>
   <h1><span class="chip-ico">{{:~icon(icon)}}</span><span class="ttl">{{>title}}</span></h1>
+  <button class="btn gold sm topbtn" id="datosBtn" title="Datos para facturar a la UNAM">{{:~icon('copy')}}<span>Datos para facturar</span></button>
   <div class="sync ok" id="sync"><span class="dot"></span><span class="lbl">{{>syncLabel}}</span></div>
   <button class="icon-btn" id="lockBtn" aria-label="Bloquear" title="Bloquear">{{:~icon('lock')}}</button>
 </header>
@@ -273,7 +274,7 @@
   <button class="sheet-opt star" data-a="pdf"><div class="ic">{{:~icon('scan')}}</div><div><b>Nueva desde PDF de solicitud</b><span>Sube el comprobante de la UNAM y leo referencia, actividad, periodo y desglose.</span></div></button>
   <button class="sheet-opt" data-a="new"><div class="ic">{{:~icon('file')}}</div><div><b>Nueva factura en blanco</b><span>Captura los datos a mano.</span></div></button>
   <button class="sheet-opt" data-a="xml"><div class="ic">{{:~icon('upload')}}</div><div><b>Nueva desde XML de factura</b><span>Llena folio, UUID, cliente e importes automáticamente.</span></div></button>
-  <button class="sheet-opt" data-a="rep"><div class="ic">{{:~icon('coin')}}</div><div><b>Cargar complemento de pago</b><span>Sube el XML del REP y lo asigno a su factura por UUID.</span></div></button>
+  <button class="sheet-opt" data-a="rep"><div class="ic">{{:~icon('coin')}}</div><div><b>Cargar complemento de pago</b><span>Sube el PDF o XML del complemento y lo asigno a su factura por UUID.</span></div></button>
 </div>
 </script>
 
@@ -342,6 +343,17 @@
     <label class="check"><input type="checkbox" name="pagadaSinComplemento" {{if f.pagadaSinComplemento}}checked{{/if}}> Cobrada sin complemento (factura PUE)</label>
     <label class="check" style="margin-top:8px"><input type="checkbox" name="cancelada" {{if f.cancelada}}checked{{/if}}> Factura cancelada</label>
     <p class="hint" id="cobroHint"></p>
+    <!-- Colapsado: se llena solo con el complemento (PDF o XML) -->
+    <details class="sub-acc">
+      <summary><span>Complemento de pago</span><em id="resComp"></em>{{:~icon('chev')}}</summary>
+      <div class="form-grid r1">
+        <label class="f">Fecha de pago<input name="fechaCobro" type="date" value="{{>f.fechaCobro}}"></label>
+        <label class="f">Monto pagado<input name="montoCobrado" type="number" step="0.01" inputmode="decimal" value="{{:f.montoCobrado || ''}}" placeholder="= total a pagar"></label>
+        <label class="f full">UUID del complemento<input name="compUuid" value="{{>f.complemento.uuid}}" style="text-transform:uppercase;font-size:13px"></label>
+        <label class="f">Parcialidad pagada<input name="compParcialidad" type="number" min="1" inputmode="numeric" value="{{:f.complemento.parcialidad || ''}}"></label>
+        <label class="f">Saldo insoluto<input name="compSaldo" type="number" step="0.01" inputmode="decimal" value="{{:f.complemento.saldoInsoluto ?? ''}}"></label>
+      </div>
+    </details>
   </fieldset>
 
   <fieldset><legend>Notas</legend><label class="f"><textarea name="notas" rows="2">{{>f.notas}}</textarea></label></fieldset>
@@ -351,6 +363,7 @@
 <!-- Botones del formulario de factura. Datos: { isNew } -->
 <script type="text/x-jsrender" id="factura-footer">
 {{if !isNew}}<button class="btn danger" id="del">Eliminar</button>{{/if}}
+<button class="btn" id="datosFac" title="Datos para facturar con esta cantidad y descripción">{{:~icon('copy')}} Datos para facturar</button>
 <span class="spacer"></span>
 <button class="btn" data-close>Cancelar</button>
 <button class="btn primary" id="save">Guardar</button>
@@ -375,7 +388,31 @@
 <!-- Estado y cobro. Datos: { label, cls, cobrado, sinIva, falta } -->
 <script type="text/x-jsrender" id="factura-cobro">
 Estado: <span class="badge {{:cls}}">{{>label}}</span>
-{{if cobrado}} · Cobrado <b>{{:~money(cobrado)}}</b> (= total a pagar){{if fecha}} el {{:~fecha(fecha)}}{{/if}}{{/if}}
+{{if cobrado}} · Cobrado <b>{{:~money(cobrado)}}</b>{{if fecha}} el {{:~fecha(fecha)}}{{/if}}{{/if}}
+</script>
+
+<!-- Modal "Datos para facturar": calculadora + secciones con botón de copiar.
+     Datos: { cantidad, secciones:[{titulo, icon, filas:[{label, valor, nota}]}] } -->
+<script type="text/x-jsrender" id="datos-facturar">
+<div class="df-calc">
+  <label class="f">Cantidad de la solicitud (sin IVA)<input id="dfCant" type="number" step="0.01" inputmode="decimal" value="{{:cantidad}}" placeholder="11075.00"></label>
+  <p class="hint" style="margin:6px 0 0">Escribe la cantidad y se llenan valor unitario, impuestos y total.</p>
+</div>
+{{for secciones}}
+<section class="df-sec">
+  <header><span class="ic">{{:~icon(icon)}}</span><h3>{{>titulo}}</h3>
+    <button type="button" class="btn sm" data-cp="{{:#index}}.-1">{{:~icon('copy')}} Copiar sección</button></header>
+  <div class="cfdi">
+    {{for filas ~si=#index}}
+    <div class="cfdi-row">
+      <span class="k">{{>label}}</span>
+      <span class="v">{{if valor}}{{>valor}}{{else}}<span class="muted">—</span>{{/if}}{{if nota}}<small>{{>nota}}</small>{{/if}}</span>
+      {{if valor}}<button type="button" class="icon-btn mini" data-cp="{{:~si}}.{{:#getIndex()}}" aria-label="Copiar {{>label}}">{{:~icon('copy')}}</button>{{else}}<span></span>{{/if}}
+    </div>
+    {{/for}}
+  </div>
+</section>
+{{/for}}
 </script>
 
 <!-- Resultado de leer el PDF de solicitud (texto u OCR).
