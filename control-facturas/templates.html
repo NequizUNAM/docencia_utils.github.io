@@ -39,7 +39,16 @@
   <button class="icon-btn" id="menuBtn" aria-label="Menú">{{:~icon('menu')}}</button>
   <h1><span class="chip-ico">{{:~icon(icon)}}</span><span class="ttl">{{>title}}</span></h1>
   <button class="btn gold sm topbtn" id="datosBtn" title="Datos para facturar a la UNAM">{{:~icon('copy')}}<span>Datos para facturar</span></button>
-  <div class="sync ok" id="sync"><span class="dot"></span><span class="lbl">{{>syncLabel}}</span></div>
+  {{if ro}}
+    <button class="icon-btn" id="reloadBtn" aria-label="Actualizar" title="Actualizar datos del panel">{{:~icon('refresh')}}</button>
+  {{else}}
+    <!-- Interruptor: usar o no tus datos de CONFIG al precargar -->
+    <label class="pf-toggle" title="Desactivar prellenado (tus datos: RFC, nombre, receptor)">
+      <input type="checkbox" id="prefillTg" {{if prefill}}checked{{/if}}><span class="sw" aria-hidden="true"></span><span class="t">Prellenado</span>
+    </label>
+    <button class="icon-btn" id="shareBtn" aria-label="Compartir solo lectura" title="Compartir solo lectura">{{:~icon('share')}}</button>
+  {{/if}}
+  <div class="sync ok {{if ro}}ro-pill{{/if}}" id="sync"><span class="dot"></span><span class="lbl">{{>syncLabel}}</span></div>
   <button class="icon-btn" id="lockBtn" aria-label="Bloquear" title="Bloquear">{{:~icon('lock')}}</button>
 </header>
 <main id="view"></main>
@@ -137,18 +146,95 @@
 </script>
 
 <!-- Pantalla para iniciar sesión con Google. Datos: { folder } -->
+<!-- Conectar Google. Datos: { folder, ro } (ro = modo solo lectura) -->
 <script type="text/x-jsrender" id="connect">
 <main><div class="setup">
-  <h2>Conecta tu Google Drive</h2>
-  <p class="muted" style="margin:0">Se creará la carpeta <b>{{>folder}}</b>. La app sólo puede ver los archivos que ella misma crea.</p>
-  <button class="btn primary block" id="cnx">{{:~icon('drive')}} Conectar con Google</button>
-  <button class="btn ghost" id="loc">Usar sólo este dispositivo</button>
+  {{if ro}}
+    <span class="badge st-violet" style="align-self:flex-start">Solo lectura</span>
+    <h2>Conecta tu cuenta de Google</h2>
+    <p class="muted" style="margin:0">Entra con <b>tu</b> cuenta. La app buscará la carpeta <b>{{>folder}}</b> que te compartieron y te mostrará el panel sin poder modificarlo.</p>
+    <button class="btn primary block" id="cnx">{{:~icon('drive')}} Conectar con Google</button>
+    <button class="btn ghost" id="salir">Salir</button>
+  {{else}}
+    <h2>Conecta tu Google Drive</h2>
+    <p class="muted" style="margin:0">Se creará la carpeta <b>{{>folder}}</b>. La app sólo puede ver los archivos que ella misma crea.</p>
+    <button class="btn primary block" id="cnx">{{:~icon('drive')}} Conectar con Google</button>
+    <button class="btn ghost" id="loc">Usar sólo este dispositivo</button>
+  {{/if}}
 </div></main>
+</script>
+
+<!-- Lector con varios paneles compartidos. Datos: { lista:[{id, owner, email}] } -->
+<script type="text/x-jsrender" id="elegir-panel">
+<main><div class="setup">
+  <h2>¿Qué panel quieres ver?</h2>
+  <div class="sheet-opts">
+    {{for lista}}<button class="sheet-opt" data-panel="{{:id}}"><div class="ic">{{:~icon('file')}}</div><div><b>{{>owner}}</b><span>{{>email}}</span></div></button>{{/for}}
+  </div>
+</div></main>
+</script>
+
+<!-- Aviso simple. Datos: { titulo, texto, reintentar } -->
+<script type="text/x-jsrender" id="aviso">
+<main><div class="setup">
+  <h2>{{>titulo}}</h2>
+  <p class="muted" style="margin:0">{{>texto}}</p>
+  {{if reintentar}}<button class="btn primary block" id="reint">Reintentar</button>{{/if}}
+  <button class="btn ghost" id="salir">Salir</button>
+</div></main>
+</script>
+
+<!-- Compartir solo lectura (sólo dueño).
+     Datos: { drive, url, pass, mensaje, folder, folderLink, consola, puedeCompartir } -->
+<script type="text/x-jsrender" id="compartir">
+{{if !drive}}
+  <div class="readbox warn"><div class="ic">{{:~icon('drive')}}</div><div><b>Primero conecta Google Drive.</b> Para compartir, tus datos deben estar en Drive (Ajustes → Conectar Google Drive).</div></div>
+{{else}}
+<ol class="pasos">
+  <li>
+    <b>Agrégala como usuaria de prueba</b> en Google Cloud (si no lo has hecho).
+    <div class="btnrow"><a class="btn sm" href="{{>consola}}" target="_blank" rel="noopener">{{:~icon('drive')}} Abrir Google Cloud → Público</a></div>
+  </li>
+  <li>
+    <b>Comparte tu carpeta “{{>folder}}”</b> como Lector. Google le enviará un correo.
+    <form id="shForm" class="share-row">
+      <input id="shEmail" type="email" placeholder="correo@gmail.com" autocomplete="off" required>
+      <button class="btn primary">{{:~icon('share')}} Compartir</button>
+    </form>
+    <div id="lectores"></div>
+  </li>
+  <li>
+    <b>Envíale el acceso.</b>
+    <div class="cfdi" style="margin-top:8px">
+      <div class="cfdi-row"><span class="k">Dirección</span><span class="v">{{>url}}</span><button type="button" class="icon-btn mini" data-copy="{{>url}}" aria-label="Copiar dirección">{{:~icon('copy')}}</button></div>
+      <div class="cfdi-row"><span class="k">Contraseña de solo lectura</span><span class="v"><b>{{>pass}}</b></span><button type="button" class="icon-btn mini" data-copy="{{>pass}}" aria-label="Copiar contraseña">{{:~icon('copy')}}</button></div>
+    </div>
+    <pre class="msg">{{>mensaje}}</pre>
+    <div class="btnrow">
+      <button type="button" class="btn sm primary" id="cpMsg">{{:~icon('copy')}} Copiar mensaje</button>
+      {{if puedeCompartir}}<button type="button" class="btn sm" id="shMsg">{{:~icon('share')}} Enviar…</button>{{/if}}
+      <a class="btn sm" href="https://wa.me/?text={{:~enc(mensaje)}}" target="_blank" rel="noopener">WhatsApp</a>
+    </div>
+  </li>
+</ol>
+<p class="hint">Para quitarle el acceso, usa “Quitar” en la lista de arriba: deja de ver el panel de inmediato aunque conozca la contraseña.</p>
+{{/if}}
+</script>
+
+<!-- Personas con acceso de lectura. Datos: { lista:[{id, emailAddress, displayName}] } -->
+<script type="text/x-jsrender" id="lectores">
+{{if lista.length}}
+<div class="list" style="margin-top:10px">
+  {{for lista}}<div class="li"><div class="grow"><b>{{>displayName || emailAddress}}</b><small>{{>emailAddress}} · Lector</small></div>
+    <button type="button" class="btn sm danger" data-quitar="{{:id}}">Quitar</button></div>{{/for}}
+</div>
+{{else}}<p class="hint">Todavía no la compartes con nadie.</p>{{/if}}
 </script>
 
 <!-- Ajustes: almacenamiento, exportar, contraseña.
      Datos: { drive, driveAvailable, minutos, ejemplo } -->
 <script type="text/x-jsrender" id="ajustes">
+{{if !ro}}
 <fieldset><legend>Almacenamiento</legend>
   <p style="margin:0 0 10px">Modo actual: <b>{{if drive}}Google Drive{{else}}Sólo este dispositivo{{/if}}</b></p>
   {{if driveAvailable}}
@@ -161,14 +247,16 @@
 <fieldset><legend>Nombres de archivo</legend>
   <p class="small" style="margin:0">Las facturas se guardan como <code>{{>ejemplo}}.pdf</code> y <code>.xml</code>.</p>
 </fieldset>
+{{/if}}
 <fieldset><legend>Exportar</legend>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn" id="csv">Facturas a Excel (CSV)</button>
     <button class="btn" id="bk">Respaldo de datos (JSON)</button>
-    <button class="btn" id="rs">Restaurar respaldo</button>
+    {{if !ro}}<button class="btn" id="rs">Restaurar respaldo</button>{{/if}}
   </div>
   <p class="hint">El respaldo JSON guarda los datos y referencias; los PDF se quedan en Drive.</p>
 </fieldset>
+{{if !ro}}
 <fieldset><legend>Cambiar contraseña</legend>
   <p class="small" style="margin:0 0 8px">Bloqueo automático tras {{:minutos}} min sin uso. Escribe la nueva contraseña, copia el código y pégalo en <code>PASSWORD_SHA256</code> dentro de CONFIG en app.js.</p>
   <div class="form-grid">
@@ -177,6 +265,7 @@
   </div>
   <code id="hashOut" class="hash-out"></code>
 </fieldset>
+{{/if}}
 </script>
 
 <!-- Pie del visor de PDF/XML. Datos: { link } (enlace a Drive, opcional) -->
@@ -557,6 +646,7 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
 
 <!-- Calendario de 12 meses. Datos: { year, presentadas, pagado, saldoDisp, meses:[...] } -->
 <script type="text/x-jsrender" id="vista-mensuales">
+<button class="btn primary block w" id="cargarAcuse" style="margin-bottom:12px">{{:~icon('upload')}} Cargar acuse de declaración (detecta el mes)</button>
 <div class="yearbar">
   <button class="icon-btn" id="yPrev" aria-label="Año anterior">{{:~icon('left')}}</button>
   <b>{{:year}}</b>
@@ -588,13 +678,16 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
      Datos: { r:registro, estados:[], conceptos:[], usosPropios:[], aplicadosAqui:[], hayDisp } -->
 <script type="text/x-jsrender" id="mensual-form">
 <form id="mf">
-  <fieldset><legend>Documentos</legend><div class="slots" id="mslots"></div></fieldset>
+  <div id="mreadbox"></div>
+  <fieldset><legend>Documentos</legend><div class="slots" id="mslots"></div>
+    <p class="hint">Al subir el <b>acuse</b> o la <b>vista previa</b> del SAT se llenan solos la fecha, el estado, el ISR y el IVA, la cantidad a pagar y el saldo a favor.</p>
+  </fieldset>
   <fieldset><legend>Datos</legend><div class="form-grid">
     <label class="f">Estado<select name="estado">{{for estados}}<option value="{{:k}}" {{if sel}}selected{{/if}}>{{>label}}</option>{{/for}}</select></label>
     <label class="f">Fecha de presentación<input name="fechaPresentacion" type="date" value="{{>r.fechaPresentacion}}"></label>
     <label class="f">ISR a cargo<input name="isr" type="number" step="0.01" inputmode="decimal" value="{{:r.isr || ''}}"></label>
     <label class="f">IVA a cargo<input name="iva" type="number" step="0.01" inputmode="decimal" value="{{:r.iva || ''}}"></label>
-    <label class="f full">Total pagado<input name="totalPagado" type="number" step="0.01" inputmode="decimal" value="{{:r.totalPagado || ''}}"></label>
+    <label class="f full">Cantidad a pagar / pagado<input name="totalPagado" type="number" step="0.01" inputmode="decimal" value="{{:r.totalPagado || ''}}"></label>
     <label class="f full">Notas<textarea name="notas" rows="2">{{>r.notas}}</textarea></label>
   </div></fieldset>
 

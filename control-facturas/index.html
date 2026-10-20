@@ -404,8 +404,8 @@
       .ftable tbody tr:nth-child(even) td, .ftable tbody tr:hover td, .ftable td { background: none; }
       .ftable td { display: block; padding: 0; border: 0; box-shadow: none !important; width: auto; min-width: 0; }
       .ftable td.seqc { grid-column: span 1; }
-      .ftable td.refc { grid-column: span 3; }
-      .ftable td.estc { grid-column: span 2; text-align: right; }
+      .ftable td.refc { grid-column: span 2; }
+      .ftable td.estc { grid-column: span 3; text-align: right; }
       .ftable td.num { grid-column: span 3; }
       .ftable td[data-l]:not(.num) { grid-column: span 2; }
       .ftable td.desc { grid-column: 1 / -1; }
@@ -443,10 +443,36 @@
     .df-sec header .ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--azul); color: var(--oro-2); }
     .df-sec header .ic svg { width: 16px; height: 16px; }
     .topbtn { box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+    /* Interruptor "Prellenado" en la barra superior */
+    .pf-toggle { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; color: #fff; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,.1); user-select: none; }
+    .pf-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .pf-toggle .sw { position: relative; width: 34px; height: 20px; border-radius: 999px; background: rgba(255,255,255,.35); transition: background .2s; flex: none; }
+    .pf-toggle .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s; }
+    .pf-toggle input:checked + .sw { background: var(--oro); }
+    .pf-toggle input:checked + .sw::after { transform: translateX(14px); }
+    .pf-toggle input:focus-visible + .sw { outline: 2px solid #fff; outline-offset: 2px; }
+    .sync.ro-pill { background: var(--violet); color: #fff; }
+    .sync.ro-pill .dot { background: #fff; box-shadow: none; }
+    /* Compartir */
+    .pasos { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .pasos li::marker { color: var(--azul); font-weight: 800; }
+    .pasos .btnrow { margin-top: 8px; }
+    .share-row { display: flex; gap: 8px; margin-top: 8px; }
+    .share-row input { flex: 1; min-width: 0; padding: 10px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); font-size: 15px; }
+    pre.msg { white-space: pre-wrap; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-size: 13px; margin: 10px 0 8px; font-family: inherit; }
+    /* SOLO LECTURA: se ocultan todos los controles que modifican datos */
+    body.ro :is(#fab, #emptyNew, #save, #del, #msave, #mdel, #asave, #adel, #aadd, #addY, #usarSaldo, #mUsar, #apf, #usOk,
+      [data-act="pick"], [data-act="remove"], [data-act="undo"], [data-aplicar], [data-delap], [data-edit], #cargarAcuse) { display: none !important; }
+    body.ro .modal-f .btn[data-close] { display: inline-flex; }
     @media (max-width: 560px) {
       .topbar h1 .chip-ico { display: none; }
       .topbtn { padding: 6px 9px; font-size: 12px; gap: 4px; } .topbtn svg { width: 16px; height: 16px; }
       .sync .lbl { display: none; } .sync { padding: 6px; }
+      .sync.ro-pill .lbl { display: inline; font-size: 11px; }
+      .pf-toggle .t { display: none; } .pf-toggle { padding: 4px; }
+      .topbar .ttl { display: none; }   /* la sección ya se ve en la barra inferior */
+      .topbar { gap: 4px; padding-left: 6px; padding-right: 6px; }
+      .topbar .icon-btn { width: 36px; height: 36px; }
     }
     @media (max-width: 360px) { .topbtn span { display: none; } }
 

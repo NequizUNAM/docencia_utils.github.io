@@ -22,6 +22,7 @@
     14. Anuales ........... declaraciones anuales
     15. Visor ............. vista previa de PDF/XML
     15b. Datos para facturar  guía con botón de copiar (factura y complemento)
+    15c. Compartir ........ solo lectura: compartir carpeta y mensaje de acceso
     16. Ajustes ........... respaldo, CSV, cambio de contraseña
 
    Ciclo de una factura
@@ -43,7 +44,7 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '11',
+  VERSION: '13',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
@@ -51,6 +52,15 @@ const CONFIG = {
    * Para cambiarla: Ajustes → "Cambiar contraseña" genera el código a pegar aquí.
    */
   PASSWORD_SHA256: 'b250a672224013ae26c6c25ef43e835e571ce633732005fdd30b10694d901074',
+
+  /**
+   * Contraseña de SOLO LECTURA. Quien entra con ella se conecta con SU cuenta
+   * de Google y la app encuentra sola la carpeta "Control Facturas" que tú le
+   * compartiste en Drive (como Lector). No puede agregar, editar ni borrar.
+   * Va en texto porque la protección real es compartir la carpeta sólo con
+   * su correo; se muestra en el botón "Compartir solo lectura".
+   */
+  READONLY_PASSWORD: 'Bere2026',
 
   /** Minutos sin uso antes de bloquear la app. */
   AUTO_LOCK_MINUTES: 15,
@@ -124,6 +134,19 @@ const CONFIG = {
 };
 const C = CONFIG;
 
+/**
+ * PRELLENADO: si está activo (por defecto), las facturas nuevas y la guía
+ * "Datos para facturar" usan TUS datos de CONFIG (RFC, nombre, receptor).
+ * Se apaga con el interruptor de arriba cuando otra persona captura sus
+ * propios datos. Los PDF/XML siguen llenando los campos al cargarlos.
+ * Se recuerda en este navegador.
+ */
+const prefill = () => {
+  if (Store.readOnly) return false;   // el lector nunca usa tus datos por defecto
+  try { return localStorage.getItem('cf_prefill') !== '0'; } catch { return true; }
+};
+const setPrefill = on => { try { localStorage.setItem('cf_prefill', on ? '1' : '0'); } catch {} };
+
 
 /* =========================================================================
    2. UTILIDADES
@@ -178,6 +201,8 @@ const ICONS = {
   scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 9h10M7 12h10M7 15h6"/></svg>',
   clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>',
   layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>'
 };
 
@@ -321,14 +346,16 @@ const Solicitud = (() => {
     const out = [];
     for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
       const tc = await (await pdf.getPage(i)).getTextContent();
-      const rows = new Map();
-      tc.items.forEach(it => {
-        if (!it.str || !it.str.trim()) return;
-        const y = Math.round(it.transform[5] / 3) * 3;
-        (rows.get(y) || rows.set(y, []).get(y)).push(it);
+      // Agrupa en renglones: piezas con altura (y) a menos de 3.5 pt se consideran la misma línea
+      // (en el acuse del SAT el valor está 2 pt más abajo que su rótulo)
+      const its = tc.items.filter(it => it.str && it.str.trim()).sort((a, b) => b.transform[5] - a.transform[5]);
+      const rows = [];
+      its.forEach(it => {
+        const y = it.transform[5], row = rows.find(r => Math.abs(r.y - y) <= 3.5);
+        row ? row.items.push(it) : rows.push({ y, items: [it] });
       });
-      [...rows.entries()].sort((a, b) => b[0] - a[0])
-        .forEach(([, its]) => out.push(its.sort((a, b) => a.transform[4] - b.transform[4]).map(x => x.str).join(' ').replace(/\s+/g, ' ').trim()));
+      rows.sort((a, b) => b.y - a.y)
+        .forEach(r => out.push(r.items.sort((a, b) => a.transform[4] - b.transform[4]).map(x => x.str).join(' ').replace(/\s+/g, ' ').trim()));
     }
     return out.join('\n');
   }
@@ -496,7 +523,50 @@ const Solicitud = (() => {
     return r;
   }
 
-  return { leerTexto, parse, parseFactura, parseComplemento };
+  /**
+   * Lee el ACUSE DE RECIBO (o la vista previa) de una declaración provisional
+   * mensual del SAT ("DECLARACIÓN PROVISIONAL O DEFINITIVA DE IMPUESTOS FEDERALES").
+   * @returns {{esDeclaracion, esAcuse, rfc, tipo, periodo:'AAAA-MM', fechaPresentacion, vencimiento,
+   *   operacion, lineaCaptura, isr:{aCargo, cantidadACargo, aPagar, aFavor}, iva:{…}, totalPagar, aFavor}}
+   */
+  function parseDeclaracion(texto) {
+    const una = texto.replace(/\s+/g, ' ');
+    const m = re => una.match(re);
+    const NUM = '\\$?\\s*(-?[\\d,]+(?:\\.\\d+)?)';
+    const r = {
+      esDeclaracion: /DECLARACI[OÓ]N (?:PROVISIONAL|DEFINITIVA)|IMPUESTOS FEDERALES|Per[ií]odo de la declaraci[oó]n/i.test(una),
+      esAcuse: /ACUSE DE RECIBO/i.test(una)
+    };
+    let x;
+    if ((x = m(/RFC\s*:?\s*([A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3})/))) r.rfc = x[1];
+    if ((x = m(/Tipo de declaraci[oó]n\s*:?\s*([A-Za-zÁÉÍÓÚáéíóú]+)/i))) r.tipo = x[1];
+    const mes = (x = m(/Per[ií]odo de la declaraci[oó]n\s*:?\s*([A-Za-zÁÉÍÓÚáéíóú]+)/i)) ? MES[x[1].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')] : null;
+    const anio = (x = m(/Ejercicio\s*:?\s*(\d{4})/i)) ? x[1] : null;
+    if (mes && anio) r.periodo = `${anio}-${pad(mes, 2)}`;
+    if ((x = m(/Fecha y hora de presentaci[oó]n\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i))) r.fechaPresentacion = `${x[3]}-${x[2]}-${x[1]}`;
+    if ((x = m(/Vencimiento(?: Obligaci[oó]n)?\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i))) r.vencimiento = `${x[3]}-${x[2]}-${x[1]}`;
+    if ((x = m(/N[uú]mero de operaci[oó]n\s*:?\s*(\d{6,})/i))) r.operacion = x[1];
+    if ((x = m(/L[ií]nea de captura\s*:?\s*([A-Z0-9]{10,})/i))) r.lineaCaptura = x[1];
+    // Cada "Concepto de pago N:" trae sus montos
+    const conceptos = una.split(/Concepto de pago \d+\s*:/i).slice(1).map(seg => {
+      seg = seg.split(/Es responsabilidad|Declaro bajo protesta|Impuestos que declara/i)[0];
+      const val = lbl => { const y = seg.match(new RegExp(lbl + '\\s*:?\\s*' + NUM, 'i')); return y ? importe(y[1]) : null; };
+      return {
+        nombre: seg.split(/\s+(?:A cargo|Cantidad a|A favor|Saldo a favor)/i)[0].trim(),
+        aCargo: val('(?<!Cantidad )A cargo'), cantidadACargo: val('Cantidad a cargo'), aPagar: val('Cantidad a pagar'),
+        aFavor: val('(?:Saldo|Cantidad) a favor') ?? val('A favor')
+      };
+    });
+    r.isr = conceptos.find(c => /\bISR\b|sobre la renta/i.test(c.nombre)) || null;
+    r.iva = conceptos.find(c => /Valor Agregado|\bIVA\b/i.test(c.nombre)) || null;
+    r.conceptos = conceptos;
+    r.totalPagar = r2(conceptos.reduce((a, c) => a + (c.aPagar || 0), 0));
+    if ((x = m(new RegExp('(?:Importe total a pagar|Total a pagar)\\s*:?\\s*' + NUM, 'i')))) r.totalPagar = importe(x[1]);
+    r.aFavor = r.iva?.aFavor ? { monto: r.iva.aFavor, concepto: 'IVA' } : r.isr?.aFavor ? { monto: r.isr.aFavor, concepto: 'ISR' } : null;
+    return r;
+  }
+
+  return { leerTexto, parse, parseFactura, parseComplemento, parseDeclaracion };
 })();
 
 
@@ -513,7 +583,15 @@ const Store = (() => {
   const API = 'https://www.googleapis.com/drive/v3';
   const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
   const FOLDER = 'application/vnd.google-apps.folder';
-  const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+  /*
+   * Rol de la sesión (lo define la contraseña):
+   *  - 'owner'  → permiso drive.file: sólo los archivos que crea la app (tu Drive)
+   *  - 'lector' → permiso drive.readonly: necesario para leer la carpeta que
+   *               el dueño le compartió; la app sólo lee esa carpeta.
+   */
+  let role = sessionStorage.getItem('cf_role') || 'owner';
+  const SCOPES = { owner: 'https://www.googleapis.com/auth/drive.file', lector: 'https://www.googleapis.com/auth/drive.readonly' };
+  const tokKey = () => 'cf_tok_' + role;
   const DB_NAME = 'base-datos.json';
 
   const local = {
@@ -525,22 +603,34 @@ const Store = (() => {
   /** Archivos ya descargados en esta sesión (evita bajarlos dos veces) */
   const cache = new Map();
   let mode = localStorage.getItem('cf_mode') || null;
+  const readOnly = () => role === 'lector';
+  const soloLectura = () => { if (readOnly()) throw new Error('Modo solo lectura: no se pueden hacer cambios.'); };
 
   const driveAvailable = () => !!C.GOOGLE_CLIENT_ID;
   const authErr = () => Object.assign(new Error('Tu sesión de Google Drive expiró. Vuelve a conectar.'), { auth: true });
 
-  // El token de Google dura ~1 h; se guarda en sessionStorage para sobrevivir recargas.
-  try {
-    const t = JSON.parse(sessionStorage.getItem('cf_tok') || 'null');
-    if (t && t.e > Date.now()) { D.token = t.t; D.exp = t.e; }
-  } catch {}
+  // El token de Google dura ~1 h; se guarda en sessionStorage (uno por rol) para sobrevivir recargas.
+  function cargarToken() {
+    D.token = null; D.exp = 0;
+    try {
+      const t = JSON.parse(sessionStorage.getItem(tokKey()) || 'null');
+      if (t && t.e > Date.now()) { D.token = t.t; D.exp = t.e; }
+    } catch {}
+  }
+  cargarToken();
+  /** Cambia el rol de la sesión (se llama al desbloquear) */
+  function setRole(r) {
+    role = r; sessionStorage.setItem('cf_role', r);
+    D.client = null; D.rootId = null; D.dbId = null; D.folders = {};
+    cargarToken();
+  }
   const tokenValid = () => D.token && Date.now() < D.exp;
 
   function initClient() {
     if (D.client) return;
     if (!window.google?.accounts?.oauth2) throw new Error('No se pudo cargar Google. Revisa tu conexión.');
     D.client = google.accounts.oauth2.initTokenClient({
-      client_id: C.GOOGLE_CLIENT_ID, scope: SCOPE, callback: () => {},
+      client_id: C.GOOGLE_CLIENT_ID, scope: SCOPES[role], callback: () => {},
       error_callback: e => D.onErr && D.onErr(e)
     });
   }
@@ -552,7 +642,7 @@ const Store = (() => {
         if (r.error) return rej(new Error('Google: ' + r.error));
         D.token = r.access_token;
         D.exp = Date.now() + (Number(r.expires_in || 3600) - 60) * 1000;
-        sessionStorage.setItem('cf_tok', JSON.stringify({ t: D.token, e: D.exp }));
+        sessionStorage.setItem(tokKey(), JSON.stringify({ t: D.token, e: D.exp }));
         res();
       };
       D.onErr = e => rej(new Error(e?.type === 'popup_closed' ? 'Cerraste la ventana de Google' : 'No se pudo abrir la ventana de Google (¿bloqueador de ventanas?)'));
@@ -563,7 +653,7 @@ const Store = (() => {
   async function api(url, opts = {}) {
     if (!tokenValid()) throw authErr();
     const r = await fetch(url, { ...opts, headers: { ...(opts.headers || {}), Authorization: 'Bearer ' + D.token } });
-    if (r.status === 401) { D.token = null; sessionStorage.removeItem('cf_tok'); throw authErr(); }
+    if (r.status === 401) { D.token = null; sessionStorage.removeItem(tokKey()); throw authErr(); }
     if (!r.ok) throw new Error('Drive ' + r.status + ': ' + (await r.text()).slice(0, 200));
     return r;
   }
@@ -610,16 +700,56 @@ const Store = (() => {
    * @param {boolean} interactive true sólo cuando viene de un clic del usuario
    */
   async function connect(interactive) {
-    if (mode !== 'drive') return;
+    if (mode !== 'drive' && !readOnly()) return;
     if (!tokenValid()) {
       if (!interactive) throw authErr();
       await requestToken();
     }
-    if (!D.rootId) D.rootId = await ensureFolder(C.DRIVE_ROOT_FOLDER, 'root');
+    if (D.rootId) return;
+    if (!readOnly()) { D.rootId = await ensureFolder(C.DRIVE_ROOT_FOLDER, 'root'); return; }
+    // Lector: busca la carpeta que le compartieron
+    const elegida = sessionStorage.getItem('cf_shared');
+    const lista = await compartidas();
+    if (!lista.length) throw Object.assign(new Error(`No hay ningún panel compartido contigo. Pide al dueño que te comparta la carpeta “${C.DRIVE_ROOT_FOLDER}” en Google Drive.`), { noShared: true });
+    const f = lista.find(x => x.id === elegida) || (lista.length === 1 ? lista[0] : null);
+    if (!f) throw Object.assign(new Error('Tienes varios paneles compartidos; elige uno.'), { choose: lista });
+    usarCarpeta(f.id);
+  }
+  /**
+   * Carpetas "Control Facturas" compartidas con el lector que tienen base-datos.json.
+   * @returns {Promise<Array<{id, owner, email}>>}
+   */
+  async function compartidas() {
+    const q = `name='${qs(C.DRIVE_ROOT_FOLDER)}' and mimeType='${FOLDER}' and sharedWithMe and trashed=false`;
+    const r = await api(`${API}/files?q=${encodeURIComponent(q)}&fields=files(id,name,owners(displayName,emailAddress))&pageSize=20`);
+    const out = [];
+    for (const f of (await r.json()).files) {
+      if (await findOne(DB_NAME, f.id)) out.push({ id: f.id, owner: f.owners?.[0]?.displayName || 'Dueño', email: f.owners?.[0]?.emailAddress || '' });
+    }
+    return out;
+  }
+  function usarCarpeta(id) { D.rootId = id; D.dbId = null; sessionStorage.setItem('cf_shared', id); }
+
+  /* ---- Compartir (sólo dueño): permisos de la carpeta raíz creada por la app ---- */
+  /** Comparte la carpeta como Lector con un correo; Google le manda aviso por correo. */
+  async function compartir(email, mensaje) {
+    soloLectura();
+    const url = `${API}/files/${D.rootId}/permissions?sendNotificationEmail=true&fields=id&emailMessage=${encodeURIComponent(mensaje || '')}`;
+    await api(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'user', emailAddress: email }) });
+  }
+  /** Personas con acceso de lectura a la carpeta */
+  async function lectores() {
+    const r = await api(`${API}/files/${D.rootId}/permissions?fields=permissions(id,emailAddress,displayName,role,type)`);
+    return (await r.json()).permissions.filter(x => x.role === 'reader');
+  }
+  /** Quita el acceso de un lector */
+  async function quitarLector(permId) {
+    soloLectura();
+    await api(`${API}/files/${D.rootId}/permissions/${permId}`, { method: 'DELETE' });
   }
   /** Lee la base de datos (objeto db) o null si aún no existe. */
   async function loadDB() {
-    if (mode === 'drive') {
+    if (mode === 'drive' || readOnly()) {
       const f = await findOne(DB_NAME, D.rootId);
       if (!f) return null;
       D.dbId = f.id;
@@ -630,6 +760,7 @@ const Store = (() => {
   const loadLocalDB = () => local.db.getItem('db');
   /** Guarda la base de datos completa. */
   async function saveDB(db) {
+    soloLectura();
     if (mode === 'drive') {
       const blob = new Blob([JSON.stringify(db, null, 1)], { type: 'application/json' });
       if (D.dbId) await api(`${UPLOAD}/files/${D.dbId}?uploadType=media`, { method: 'PATCH', body: blob, headers: { 'Content-Type': 'application/json' } });
@@ -647,6 +778,7 @@ const Store = (() => {
    * @returns {Promise<object>} meta del archivo
    */
   async function putFile(blob, name, path) {
+    soloLectura();
     const base = { name, size: blob.size, mime: blob.type || guessMime(name), uploadedAt: new Date().toISOString(), path };
     if (mode === 'drive') {
       const f = await multipart({ name, parents: [await ensurePath(path)] }, blob);
@@ -661,6 +793,7 @@ const Store = (() => {
   /** Descarga el contenido de un archivo guardado. */
   async function getFile(meta) {
     if (cache.has(meta.id)) return cache.get(meta.id);
+    if (readOnly() && meta.id.startsWith('loc_')) throw new Error('Este archivo sólo existe en el dispositivo del dueño.');
     let blob = meta.id.startsWith('loc_') ? await local.files.getItem(meta.id) : await (await api(`${API}/files/${meta.id}?alt=media`)).blob();
     if (!blob) throw new Error('No se encontró el archivo');
     if (!blob.type && meta.mime) blob = new Blob([blob], { type: meta.mime });
@@ -669,6 +802,7 @@ const Store = (() => {
   }
   /** Borra un archivo. En Drive va a la papelera (recuperable 30 días). */
   async function deleteFile(meta) {
+    soloLectura();
     if (!meta) return;
     cache.delete(meta.id);
     if (meta.id.startsWith('loc_')) return local.files.removeItem(meta.id);
@@ -677,6 +811,7 @@ const Store = (() => {
   /** Cambia el nombre de un archivo (en Drive cambia el nombre real). */
   async function renameFile(meta, name) {
     if (!meta || meta.name === name) return;
+    soloLectura();
     if (!meta.id.startsWith('loc_')) await api(`${API}/files/${meta.id}?fields=id`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
     meta.name = name;
   }
@@ -705,10 +840,11 @@ const Store = (() => {
   function disconnect() {
     if (D.token && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(D.token, () => {});
     Object.assign(D, { token: null, rootId: null, dbId: null, folders: {} });
-    sessionStorage.removeItem('cf_tok');
+    sessionStorage.removeItem(tokKey());
   }
   return {
-    get mode() { return mode; }, setMode, driveAvailable, tokenValid, connect, disconnect,
+    get mode() { return readOnly() ? 'drive' : mode; }, setMode, setRole, get role() { return role; }, get readOnly() { return readOnly(); },
+    compartidas, usarCarpeta, compartir, lectores, quitarLector, driveAvailable, tokenValid, connect, disconnect,
     loadDB, loadLocalDB, saveDB, putFile, getFile, deleteFile, renameFile, migrateLocalFiles,
     folderLink: () => (D.rootId ? `https://drive.google.com/drive/folders/${D.rootId}` : '')
   };
@@ -723,7 +859,7 @@ const Store = (() => {
    armar texto HTML, igual que escribirlo a mano en JS.
    ========================================================================= */
 const T = {};
-jsrender.views.helpers({ money, fecha: fmtDate, periodo: fmtPeriodo, icon: n => ICONS[n] || '' });
+jsrender.views.helpers({ money, fecha: fmtDate, periodo: fmtPeriodo, icon: n => ICONS[n] || '', enc: encodeURIComponent });
 const templatesReady = fetch(`templates.html?v=${C.VERSION}`)
   .then(r => { if (!r.ok) throw new Error('No se pudo cargar templates.html'); return r.text(); })
   .then(text => {
@@ -802,7 +938,7 @@ const TIPOS_ANUAL = ['Declaración anual', 'Acuse de recibo', 'Línea de captura
 const RES_ANUAL = { cargo: 'A cargo (pagar)', favor: 'A favor (devolución)', cero: 'En ceros' };
 
 /** Nombre base de los archivos de una factura: 053_NEMP920226AU6_03124 */
-const baseName = f => [pad(f.seq, C.SEQ_DIGITS || 3), cleanPart((f.rfcEmisor || C.RFC_EMISOR || '').toUpperCase()), cleanPart(f.referencia) || 'SIN-REF'].filter(Boolean).join('_');
+const baseName = f => [pad(f.seq, C.SEQ_DIGITS || 3), cleanPart((f.rfcEmisor || (prefill() ? C.EMISOR?.rfc || C.RFC_EMISOR : '') || '').toUpperCase()), cleanPart(f.referencia) || 'SIN-REF'].filter(Boolean).join('_');
 /** Nombre completo de un documento de factura */
 const docName = (f, key, ext) => baseName(f) + (SUFIJO[key] ?? '_' + key) + '.' + ext;
 /** Carpeta de Drive de una factura */
@@ -878,8 +1014,9 @@ const nuevoMes = p => ({ periodo: p, estado: 'pendiente', fechaPresentacion: '',
 function nuevaFactura() {
   return {
     id: uid(), seq: Math.max(0, ...db.facturas.map(f => f.seq)) + 1, createdAt: null, updatedAt: null,
-    referencia: '', rfcEmisor: C.EMISOR?.rfc || C.RFC_EMISOR || '', descripcion: '', sede: '',
-    cliente: C.RECEPTOR?.nombre || '', rfcCliente: C.RECEPTOR?.rfc || '', folio: '', uuid: '', fechaEmision: '',
+    // Con prellenado: tus datos de CONFIG; sin prellenado: vacíos (los llenan los PDF)
+    referencia: '', rfcEmisor: prefill() ? (C.EMISOR?.rfc || C.RFC_EMISOR || '') : '', descripcion: '', sede: '',
+    cliente: prefill() ? (C.RECEPTOR?.nombre || '') : '', rfcCliente: prefill() ? (C.RECEPTOR?.rfc || '') : '', folio: '', uuid: '', fechaEmision: '',
     contrato: '', parcialidad: 0, parcialidades: 0, timbrado: false,
     complemento: { uuid: '', parcialidad: 0, saldoInsoluto: null },
     metodoPago: 'PPD', total: 0, ivaRate: C.IVA_DEFAULT, retIsrRate: C.RET_ISR_DEFAULT, retIvaRate: C.RET_IVA_DEFAULT,
@@ -964,6 +1101,8 @@ function openModal({ title, body, footer = '', size = '' }) {
   document.body.style.overflow = 'hidden';
   const close = () => { bg.remove(); if (!$('.modal-bg')) document.body.style.overflow = ''; bg.dispatchEvent(new Event('closed')); };
   bg.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
+  // Solo lectura: los campos se ven pero no se pueden editar
+  if (Store.readOnly) $$('input, select, textarea', bg).forEach(el => { el.disabled = true; });
   return { el: bg, close, body: $('.modal-b', bg) };
 }
 /**
@@ -1054,7 +1193,9 @@ function initLock() {
     const err = $('#lockErr');
     if (Date.now() < lockedUntil) { err.textContent = `Demasiados intentos. Espera ${Math.ceil((lockedUntil - Date.now()) / 1000)} s.`; return; }
     if (!window.crypto?.subtle) { err.textContent = 'Abre la página con https:// (GitHub Pages) para poder desbloquear.'; return; }
-    if (await sha256($('#lockPw').value) === C.PASSWORD_SHA256) return unlock();
+    const pw = $('#lockPw').value;
+    if (await sha256(pw) === C.PASSWORD_SHA256) { Store.setRole('owner'); return unlock(); }
+    if (C.READONLY_PASSWORD && pw === C.READONLY_PASSWORD) { Store.setRole('lector'); return unlock(); }
     if (++fails >= 5) { lockedUntil = Date.now() + 30000; fails = 0; }
     err.textContent = 'Contraseña incorrecta';
     const fm = $('#lockForm'); fm.classList.remove('shake'); void fm.offsetWidth; fm.classList.add('shake');
@@ -1076,6 +1217,18 @@ function unlock() {
 /** Después de desbloquear: elige almacenamiento, carga datos y dibuja. */
 async function start() {
   await templatesReady;
+  document.body.classList.toggle('ro', Store.readOnly);
+  if (Store.readOnly) {
+    // Solo lectura: siempre con Google Drive, en la carpeta que le compartieron
+    if (!Store.driveAvailable()) return renderAviso('Falta configurar Google Drive', 'El dueño debe escribir GOOGLE_CLIENT_ID en CONFIG para poder compartir el panel.');
+    if (!Store.tokenValid()) return renderConnect();
+    const b = busy('Buscando el panel compartido…');
+    try { await Store.connect(false); await loadData(); }
+    catch (e) { b.done(); return conexionLector(e); }
+    b.done();
+    window.addEventListener('hashchange', route);
+    return route();
+  }
   if (!Store.driveAvailable() && Store.mode !== 'local') Store.setMode('local');
   if (!Store.mode) return renderSetup();
   if (Store.mode === 'drive') {
@@ -1092,6 +1245,7 @@ async function start() {
 async function loadData() {
   const data = await Store.loadDB();
   db = migrar(Object.assign(emptyDB(), data || {}));
+  if (Store.readOnly) return;                // el lector no guarda nada
   if (data && data.version !== 3) persist(); // guarda la migración
   if (!data && Store.mode === 'drive') {
     const loc = await Store.loadLocalDB();
@@ -1108,30 +1262,53 @@ function renderSetup() {
   $$('[data-m]').forEach(b => b.onclick = () => { Store.setMode(b.dataset.m); start(); });
 }
 function renderConnect() {
-  $('#app').innerHTML = R('connect', { folder: C.DRIVE_ROOT_FOLDER });
+  $('#app').innerHTML = R('connect', { folder: C.DRIVE_ROOT_FOLDER, ro: Store.readOnly });
   $('#cnx').onclick = async () => {
     try {
       await Store.connect(true);
       const b = busy('Cargando…'); try { await loadData(); } finally { b.done(); }
       window.addEventListener('hashchange', route); route();
-    } catch (e) { handleErr(e); }
+    } catch (e) { Store.readOnly ? conexionLector(e) : handleErr(e); }
   };
-  $('#loc').onclick = () => { Store.setMode('local'); start(); };
+  $('#loc') && ($('#loc').onclick = () => { Store.setMode('local'); start(); });
+  $('#salir') && ($('#salir').onclick = lock);
+}
+/** Lector: sin panel compartido, varios paneles o error al conectar */
+function conexionLector(e) {
+  if (e?.choose) {
+    $('#app').innerHTML = R('elegir-panel', { lista: e.choose });
+    $$('[data-panel]').forEach(b => b.onclick = async () => {
+      Store.usarCarpeta(b.dataset.panel);
+      const bz = busy('Cargando…');
+      try { await loadData(); window.addEventListener('hashchange', route); route(); } catch (er) { conexionLector(er); } finally { bz.done(); }
+    });
+    return;
+  }
+  if (e?.auth) return renderConnect();
+  renderAviso(e?.noShared ? 'Aún no hay un panel compartido contigo' : 'No se pudo abrir el panel', e?.message || String(e), true);
+}
+/** Pantalla de aviso simple con "Reintentar" y "Salir" */
+function renderAviso(titulo, texto, reintentar) {
+  $('#app').innerHTML = R('aviso', { titulo, texto, reintentar });
+  $('#reint') && ($('#reint').onclick = () => start().catch(handleErr));
+  $('#salir').onclick = lock;
 }
 
 let saveChain = Promise.resolve();
 /** Guarda db. Los guardados se encadenan para que nunca se pisen entre sí. */
 function persist() {
+  if (Store.readOnly) return Promise.resolve();   // solo lectura: nunca guarda
   db.updatedAt = new Date().toISOString();
   setSync('saving');
   saveChain = saveChain.then(() => Store.saveDB(db)).then(() => setSync('ok')).catch(e => { setSync('error'); handleErr(e); });
   return saveChain;
 }
-/** Indicador de la barra superior: En Drive / Local / Guardando… / Sin guardar */
+const syncLabel = () => Store.readOnly ? 'Solo lectura' : Store.mode === 'drive' ? 'En Drive' : 'Local';
+/** Indicador de la barra superior: En Drive / Local / Solo lectura / Guardando… / Sin guardar */
 function setSync(s) {
   const el = $('#sync'); if (!el) return;
   el.className = 'sync ' + s;
-  $('.lbl', el).textContent = s === 'saving' ? 'Guardando…' : s === 'error' ? 'Sin guardar' : (Store.mode === 'drive' ? 'En Drive' : 'Local');
+  $('.lbl', el).textContent = s === 'saving' ? 'Guardando…' : s === 'error' ? 'Sin guardar' : syncLabel();
 }
 /** Aviso con botón "Reconectar" cuando expira la sesión de Google. */
 function showAuthBanner() {
@@ -1163,14 +1340,25 @@ function route() {
 function renderShell() {
   const V = VIEWS[ui.view];
   $('#app').innerHTML = R('shell', {
-    title: V.title, icon: V.icon, fab: ui.view === 'facturas',
-    syncLabel: Store.mode === 'drive' ? 'En Drive' : 'Local',
+    title: V.title, icon: V.icon, fab: ui.view === 'facturas' && !Store.readOnly,
+    syncLabel: syncLabel(), ro: Store.readOnly, prefill: prefill(),
     nav: Object.entries(VIEWS).map(([key, v]) => ({ key, icon: v.icon, label: v.short || v.title, active: key === ui.view }))
   });
   $('#menuBtn').onclick = openDrawer;
   $('#lockBtn').onclick = lock;
   $('#datosBtn').onclick = () => openDatosFacturar();
   $('#fab') && ($('#fab').onclick = openFabSheet);
+  $('#shareBtn') && ($('#shareBtn').onclick = openCompartir);
+  // Interruptor de prellenado (sólo dueño)
+  $('#prefillTg') && ($('#prefillTg').onchange = e => {
+    setPrefill(e.target.checked);
+    toast(e.target.checked ? 'Prellenado activo: se usan tus datos de CONFIG' : 'Prellenado desactivado: tus datos no se precargan (los PDF sí llenan campos)', 'ok');
+  });
+  // Lector: volver a leer los datos del dueño
+  $('#reloadBtn') && ($('#reloadBtn').onclick = async () => {
+    const b = busy('Actualizando…');
+    try { await loadData(); renderShell(); toast('Panel actualizado', 'ok'); } catch (e) { handleErr(e); } finally { b.done(); }
+  });
   V.render();
 }
 /** Vuelve a dibujar sólo la vista actual (después de guardar algo). */
@@ -1476,7 +1664,9 @@ function openFactura(orig, preload = {}) {
     const desc = [r.actividad, r.periodoTexto].filter(Boolean).join(' ');
     if (poner(llenos, 'descripcion', desc)) campos.push(r.periodoTexto ? `Descripción con ${r.periodoTexto.toLowerCase()}` : 'Descripción (actividad)');
     if (poner(llenos, 'sede', r.dependencia, false)) campos.push(`Sede ${r.dependencia}`);
-    if (r.rfc && C.EMISOR?.rfc && r.rfc !== C.EMISOR.rfc) avisos.push(`El RFC del PDF (${r.rfc}) no es el tuyo (${C.EMISOR.rfc}).`);
+    poner(llenos, 'rfcEmisor', r.rfc, false);   // el RFC del prestador sale del PDF
+    if (r.esUnam) poner(llenos, 'cliente', 'UNIVERSIDAD NACIONAL AUTONOMA DE MEXICO', false);
+    if (prefill() && r.rfc && C.EMISOR?.rfc && r.rfc !== C.EMISOR.rfc) avisos.push(`El RFC del PDF (${r.rfc}) no es el tuyo (${C.EMISOR.rfc}).`);
     if (r.cantidad != null) {
       f.timbrado = false;
       poner(llenos, 'subtotal', r.cantidad);
@@ -1517,7 +1707,8 @@ function openFactura(orig, preload = {}) {
         campos.push(`Total timbrado ${money(x.total)}`);
         if (antes && Math.abs(antes - x.total) > 0.005) avisos.push(`Esperabas ${money(antes)} y la factura dice ${money(x.total)}.`);
       }
-      if (x.rfcEmisor && C.EMISOR?.rfc && x.rfcEmisor !== C.EMISOR.rfc) avisos.push(`El RFC emisor (${x.rfcEmisor}) no es el tuyo.`);
+      poner(llenos, 'rfcEmisor', x.rfcEmisor, false);
+      if (prefill() && x.rfcEmisor && C.EMISOR?.rfc && x.rfcEmisor !== C.EMISOR.rfc) avisos.push(`El RFC emisor (${x.rfcEmisor}) no es el tuyo.`);
       if (ocr) avisos.push('Se leyó con OCR: verifica los datos.');
       $('#readbox', m.el).innerHTML = R('readbox', { ok: campos.length > 0, ocr, campos, avisos, titulo: 'Datos leídos de la factura' });
       marcar(llenos); refresh();
@@ -1816,12 +2007,30 @@ function renderMensuales() {
     presentadas: meses.filter(x => x.est && db.mensuales[x.p].estado !== 'pendiente').length,
     pagado: meses.reduce((s, x) => s + x.pagado, 0)
   });
+  // Cargar un acuse sin elegir el mes: se detecta del PDF
+  $('#cargarAcuse') && ($('#cargarAcuse').onclick = async () => {
+    const file = await pickFile('application/pdf,.pdf'); if (!file) return;
+    const b = busy('Leyendo la declaración…');
+    let d;
+    try { d = Solicitud.parseDeclaracion((await Solicitud.leerTexto(file, msg => b.set(msg))).texto); }
+    catch (e) { return handleErr(e); } finally { b.done(); }
+    if (!d.periodo) return toast('No encontré el periodo en el PDF; ábrelo desde el mes correspondiente.', 'err');
+    ui.year = +d.periodo.slice(0, 4); renderMensuales();
+    openMensual(d.periodo, { declaracion: file });
+  });
   $('#yPrev').onclick = () => { ui.year--; renderMensuales(); };
   $('#yNext').onclick = () => { ui.year++; renderMensuales(); };
   $$('.month').forEach(el => el.onclick = () => openMensual(el.dataset.p));
 }
 /** Formulario de un mes: PDFs, importes, saldo generado y saldos usados. */
-function openMensual(p) {
+/**
+ * Formulario de un mes. Al subir el acuse o la vista previa (PDF del SAT) se
+ * llenan solos: estado, fecha de presentación, ISR e IVA a cargo, total a
+ * pagar, saldo a favor y número de operación.
+ * @param {string} p periodo "AAAA-MM"
+ * @param {Object<string,File>} [preload] archivos a cargar al abrir ({ declaracion: File })
+ */
+function openMensual(p, preload = {}) {
   const orig = db.mensuales[p];
   const r = orig ? structuredClone(orig) : nuevoMes(p);
   const pending = {};
@@ -1842,13 +2051,56 @@ function openMensual(p) {
   $('#mslots', m.el).onclick = async e => {
     const btn = e.target.closest('[data-act]'); if (!btn) return;
     const key = btn.closest('[data-slot]').dataset.slot, act = btn.dataset.act;
-    if (act === 'pick') { const f = await pickFile('application/pdf,.pdf'); if (f) pending[key] = f; }
+    if (act === 'pick') { const f = await pickFile('application/pdf,.pdf'); if (f) { pending[key] = f; drawSlots(); return leerDeclaracion(f); } }
     if (act === 'view') return openViewer(pending[key] instanceof File ? pending[key] : r.docs[key]);
     if (act === 'remove') { if (r.docs[key]) pending[key] = 'REMOVE'; else delete pending[key]; }
     if (act === 'undo') delete pending[key];
     drawSlots();
   };
+  const MF = n => $('#mf', m.el).elements[n];
+  /** Resalta en dorado los campos llenados automáticamente */
+  const marcar = names => names.forEach(n => {
+    const el = MF(n); if (!el) return;
+    el.classList.remove('autofill'); void el.offsetWidth; el.classList.add('autofill');
+    el.addEventListener('input', () => el.classList.remove('autofill'), { once: true });
+  });
+  /** Lee el PDF de la declaración (acuse o vista previa) y precarga el formulario */
+  async function leerDeclaracion(file) {
+    const b = busy('Leyendo la declaración…');
+    try {
+      const { texto, ocr } = await Solicitud.leerTexto(file, msg => b.set(msg));
+      const d = Solicitud.parseDeclaracion(texto);
+      const campos = [], avisos = [], llenos = [];
+      const set = (n, v, label) => { if (v == null || v === '') return; MF(n).value = v; llenos.push(n); if (label) campos.push(label); };
+      if (!d.esDeclaracion) {
+        $('#mreadbox', m.el).innerHTML = R('readbox', { ok: false, campos: [], avisos: ['No parece una declaración del SAT; sólo se guardará el archivo.'] });
+        return;
+      }
+      if (d.periodo && d.periodo !== p) avisos.push(`El PDF es de ${fmtPeriodo(d.periodo)} y estás en ${fmtPeriodo(p)}.`);
+      if (prefill() && d.rfc && C.EMISOR?.rfc && d.rfc !== C.EMISOR.rfc) avisos.push(`El RFC del PDF (${d.rfc}) no es el tuyo.`);
+      if (d.esAcuse) {
+        set('fechaPresentacion', d.fechaPresentacion, d.fechaPresentacion && `Presentada el ${fmtDate(d.fechaPresentacion)}${d.tipo ? ' · ' + d.tipo : ''}`);
+        // Sin cantidad a pagar = "en ceros"; con cantidad, queda presentada (pendiente de pago)
+        set('estado', d.totalPagar > 0 ? 'presentada' : 'pagada', d.totalPagar > 0 ? 'Estado: presentada (con pago)' : 'Estado: en ceros');
+      }
+      const isr = d.isr ? (d.isr.cantidadACargo ?? d.isr.aCargo) : null, iva = d.iva ? (d.iva.cantidadACargo ?? d.iva.aCargo) : null;
+      set('isr', isr, isr != null && `ISR a cargo ${money(isr)}`);
+      set('iva', iva, iva != null && `IVA a cargo ${money(iva)}`);
+      set('totalPagado', d.totalPagar, `Cantidad a pagar ${money(d.totalPagar)}`);
+      if (d.aFavor) {
+        set('saldoMonto', d.aFavor.monto, `Saldo a favor ${d.aFavor.concepto} ${money(d.aFavor.monto)}`);
+        set('saldoConcepto', d.aFavor.concepto);
+      }
+      const extra = [d.operacion && `No. operación ${d.operacion}`, d.lineaCaptura && `Línea de captura ${d.lineaCaptura}`, d.vencimiento && `Vencimiento ${fmtDate(d.vencimiento)}`].filter(Boolean).join(' · ');
+      if (extra && !MF('notas').value.includes(d.operacion || extra)) set('notas', [MF('notas').value.trim(), extra].filter(Boolean).join('\n'));
+      if (!d.esAcuse) avisos.push('Es una vista previa: la fecha y el estado se llenan al subir el acuse.');
+      if (ocr) avisos.push('Se leyó con OCR: verifica los montos.');
+      $('#mreadbox', m.el).innerHTML = R('readbox', { ok: campos.length > 0, ocr, campos, avisos, titulo: d.esAcuse ? 'Datos leídos del acuse' : 'Datos leídos de la vista previa' });
+      marcar(llenos);
+    } catch (e) { console.warn(e); } finally { b.done(); }
+  }
   $$('[data-origen]', m.el).forEach(b => b.onclick = () => verDeclaracion(b.dataset.origen));
+  Object.entries(preload).forEach(([k, file]) => { pending[k] = file; drawSlots(); leerDeclaracion(file); });
   $('#mUsar', m.el) && ($('#mUsar', m.el).onclick = () => openUsarSaldo(p, () => { m.close(); openMensual(p); }));
   $('#msave', m.el).onclick = async () => {
     const fd = new FormData($('#mf', m.el));
@@ -2028,7 +2280,9 @@ function openDatosFacturar(pre = {}) {
     const c = calcDesdeCantidad(cantidad, C.IVA_DEFAULT, C.RET_ISR_DEFAULT, C.RET_IVA_DEFAULT);
     const v = (label, valor, nota) => ({ label, valor: String(valor ?? ''), nota });
     const secciones = [
-      { titulo: 'Emisor (tú)', icon: 'file', filas: [v('RFC', E.rfc), v('Nombre', E.nombre), v('Régimen fiscal', E.regimen), v('Lugar de expedición (C.P.)', E.cp)] },
+      prefill()
+        ? { titulo: 'Emisor (tú)', icon: 'file', filas: [v('RFC', E.rfc), v('Nombre', E.nombre), v('Régimen fiscal', E.regimen), v('Lugar de expedición (C.P.)', E.cp)] }
+        : { titulo: 'Emisor', icon: 'file', filas: [v('RFC', '', 'Prellenado desactivado: usa tus propios datos'), v('Nombre', ''), v('Régimen fiscal', ''), v('Lugar de expedición (C.P.)', '')] },
       { titulo: 'Receptor (UNAM)', icon: 'file', filas: [v('RFC', Rc.rfc), v('Nombre / razón social', Rc.nombre), v('Código postal', Rc.cp), v('Régimen fiscal', Rc.regimen), v('Uso del CFDI', Rc.usoCfdi)] },
       { titulo: 'Comprobante', icon: 'file', filas: [v('Tipo de comprobante', Fa.tipo), v('Moneda', Fa.moneda), v('Forma de pago', Fa.formaPago), v('Método de pago', Fa.metodoPago), v('Exportación', Fa.exportacion)] },
       { titulo: 'Concepto', icon: 'layers', filas: [
@@ -2081,11 +2335,53 @@ function openDatosFacturar(pre = {}) {
 
 
 /* =========================================================================
+   15c. COMPARTIR SOLO LECTURA
+   Comparte tu carpeta de Drive como Lector con un correo (desde la app,
+   gracias a que la carpeta la creó la app) y prepara el mensaje con la
+   dirección y la contraseña de solo lectura.
+   ========================================================================= */
+function openCompartir() {
+  const url = location.origin + location.pathname;
+  const mensaje = `Hola, te comparto mi panel de facturas en solo lectura:\n1) Entra a ${url}\n2) Contraseña: ${C.READONLY_PASSWORD}\n3) Presiona "Conectar con Google" y entra con TU cuenta de Google\n4) Acepta el permiso y verás el panel (no se puede modificar nada).`;
+  const m = openModal({ title: 'Compartir solo lectura', size: 'wide', body: R('compartir', {
+    drive: Store.mode === 'drive', url, pass: C.READONLY_PASSWORD, mensaje, folder: C.DRIVE_ROOT_FOLDER,
+    folderLink: Store.folderLink(), consola: 'https://console.cloud.google.com/auth/audience', puedeCompartir: !!navigator.share
+  }) });
+  const copiar = async (t, ok = 'Copiado') => { try { await navigator.clipboard.writeText(t); toast(ok, 'ok'); } catch { toast('No se pudo copiar', 'err'); } };
+  const pintar = async () => {
+    const box = $('#lectores', m.el); if (!box) return;
+    box.innerHTML = '<div class="spin"></div>';
+    try { box.innerHTML = R('lectores', { lista: await Store.lectores() }); }
+    catch (e) { box.innerHTML = ''; handleErr(e); }
+  };
+  m.el.addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.copy) return copiar(b.dataset.copy);
+    if (b.id === 'cpMsg') return copiar(mensaje, 'Mensaje copiado');
+    if (b.id === 'shMsg') return navigator.share({ title: 'Panel de facturas', text: mensaje }).catch(() => {});
+    if (b.dataset.quitar) {
+      if (!await confirmar('¿Quitarle el acceso? Dejará de ver el panel de inmediato.', 'Quitar acceso', true)) return;
+      try { await Store.quitarLector(b.dataset.quitar); toast('Acceso quitado', 'ok'); pintar(); } catch (er) { handleErr(er); }
+    }
+  });
+  $('#shForm', m.el) && ($('#shForm', m.el).onsubmit = async e => {
+    e.preventDefault();
+    const email = $('#shEmail', m.el).value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast('Escribe un correo válido', 'err');
+    const bz = busy('Compartiendo la carpeta…');
+    try { await Store.compartir(email, mensaje); toast(`Carpeta compartida con ${email}`, 'ok'); $('#shEmail', m.el).value = ''; pintar(); }
+    catch (er) { handleErr(er); } finally { bz.done(); }
+  });
+  pintar();
+}
+
+
+/* =========================================================================
    16. AJUSTES, RESPALDO Y EXPORTACIÓN
    ========================================================================= */
 function openAjustes() {
   const ejemplo = baseName({ seq: 53, rfcEmisor: C.RFC_EMISOR, referencia: '03124' });
-  const m = openModal({ title: 'Ajustes y respaldos', body: R('ajustes', { drive: Store.mode === 'drive', driveAvailable: Store.driveAvailable(), minutos: C.AUTO_LOCK_MINUTES, ejemplo }) });
+  const m = openModal({ title: Store.readOnly ? 'Exportar' : 'Ajustes y respaldos', body: R('ajustes', { ro: Store.readOnly, drive: Store.mode === 'drive', driveAvailable: Store.driveAvailable(), minutos: C.AUTO_LOCK_MINUTES, ejemplo }) });
   $('#toDrive', m.el) && ($('#toDrive', m.el).onclick = async () => {
     Store.setMode('drive');
     try { await Store.connect(true); m.close(); const b = busy('Cargando…'); try { await loadData(); } finally { b.done(); } renderShell(); toast('Conectado a Drive', 'ok'); }
@@ -2096,14 +2392,14 @@ function openAjustes() {
     Store.disconnect(); localStorage.removeItem('cf_mode'); location.reload();
   });
   // Generador del código para CONFIG.PASSWORD_SHA256
-  $('#genHash', m.el).onclick = async () => {
+  $('#genHash', m.el) && ($('#genHash', m.el).onclick = async () => {
     const pw = $('#newPw', m.el).value;
     if (!pw) return toast('Escribe la nueva contraseña', 'err');
     $('#hashOut', m.el).textContent = await sha256(pw);
-  };
+  });
   $('#csv', m.el).onclick = exportCSV;
   $('#bk', m.el).onclick = () => download(new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' }), `respaldo-facturas-${today()}.json`);
-  $('#rs', m.el).onclick = async () => {
+  $('#rs', m.el) && ($('#rs', m.el).onclick = async () => {
     const f = await pickFile('.json,application/json'); if (!f) return;
     try {
       const data = JSON.parse(await f.text());
@@ -2111,7 +2407,7 @@ function openAjustes() {
       if (!await confirmar(`Se reemplazarán los datos actuales por el respaldo (${data.facturas.length} facturas).`, 'Restaurar', true)) return;
       db = migrar(Object.assign(emptyDB(), data)); await persist(); m.close(); renderShell(); toast('Respaldo restaurado', 'ok');
     } catch (e) { handleErr(e); }
-  };
+  });
 }
 /** Descarga un Blob como archivo. */
 function download(blob, name) {
