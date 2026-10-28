@@ -51,7 +51,7 @@ const CONFIG = {
    * Contraseña sugerida: Facturas#2026
    * Para cambiarla: Ajustes → "Cambiar contraseña" genera el código a pegar aquí.
    */
-  PASSWORD_SHA256: 'b250a672224013ae26c6c25ef43e835e571ce633732005fdd30b10694d901074',
+  PASSWORD_SHA256: '02878fa63eb2077d4d24512f69ed602c265c99eae0e8d187209a988bac567ca1',
 
   /**
    * Contraseña de SOLO LECTURA. Quien entra con ella se conecta con SU cuenta
