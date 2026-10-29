@@ -23,6 +23,11 @@
     15. Visor ............. vista previa de PDF/XML
     15b. Datos para facturar  guía con botón de copiar (factura y complemento)
     15c. Compartir ........ solo lectura: compartir carpeta y mensaje de acceso
+    17. Archivos .......... ZIP, Excel (.xlsx/.xlsm) y CSV
+    18. Gastos ............ facturas recibidas del SAT (TXT/XML/ZIP), sin duplicados
+    19. Banco ............. estado de cuenta y conciliación con facturas
+    20. Resumen del mes ... IVA cobrado/retenido/acreditable para declarar
+    21. Regímenes ......... consulta 612 / 626 RESICO / 605
     16. Ajustes ........... respaldo, CSV, cambio de contraseña
 
    Ciclo de una factura
@@ -44,11 +49,11 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '13',
+  VERSION: '14',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
-   * Contraseña sugerida: Facturas#2026
+   * Contraseña sugerida: 
    * Para cambiarla: Ajustes → "Cambiar contraseña" genera el código a pegar aquí.
    */
   PASSWORD_SHA256: '02878fa63eb2077d4d24512f69ed602c265c99eae0e8d187209a988bac567ca1',
@@ -61,6 +66,30 @@ const CONFIG = {
    * su correo; se muestra en el botón "Compartir solo lectura".
    */
   READONLY_PASSWORD: 'Bere2026',
+
+  /**
+   * GASTOS · tipos de factura (columna "Tipo Factura" de tu Excel).
+   *   iva: '16'      → subtotal = monto / 1.16 ; IVA = monto − subtotal
+   *   iva: 'exento'  → subtotal = monto ; IVA = 0 (honorarios médicos)
+   *   cuenta: false  → no suma (nómina, banco, no aplica)
+   * Puedes agregar tipos nuevos aquí.
+   */
+  TIPOS_GASTO: [
+    { tipo: 'GASTOS EN GENERAL', iva: '16' },
+    { tipo: 'EQUIPO DE OFICINA', iva: '16' },
+    { tipo: 'GASTOS MEDICOS', iva: 'exento' },
+    { tipo: 'NOMINA', cuenta: false },
+    { tipo: 'BANCO', cuenta: false },
+    { tipo: 'NO APLICA', cuenta: false }
+  ],
+  /** Reglas por nombre del emisor (de tu macro ResaltarCriterios) */
+  REGLAS_GASTO: [
+    { texto: 'universidad', tipo: 'NOMINA' },
+    { texto: 'gobernacion', tipo: 'NOMINA' },
+    { texto: 'impulso', tipo: 'NOMINA' }
+  ],
+  /** BANCO · diferencia máxima (pesos) para vincular un depósito con una factura */
+  TOLERANCIA_BANCO: 1.00,
 
   /** Minutos sin uso antes de bloquear la app. */
   AUTO_LOCK_MINUTES: 15,
@@ -203,7 +232,11 @@ const ICONS = {
   copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>',
   share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>',
   refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>',
-  layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>'
+  layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
+  receipt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>',
+  bank: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/></svg>',
+  filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16l-6 8v5l-4 2v-7z"/></svg>',
+  scale: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>'
 };
 
 
@@ -859,7 +892,7 @@ const Store = (() => {
    armar texto HTML, igual que escribirlo a mano en JS.
    ========================================================================= */
 const T = {};
-jsrender.views.helpers({ money, fecha: fmtDate, periodo: fmtPeriodo, icon: n => ICONS[n] || '', enc: encodeURIComponent });
+jsrender.views.helpers({ money, fecha: fmtDate, periodo: fmtPeriodo, icon: n => ICONS[n] || '', enc: encodeURIComponent, tol: () => money(C.TOLERANCIA_BANCO) });
 const templatesReady = fetch(`templates.html?v=${C.VERSION}`)
   .then(r => { if (!r.ok) throw new Error('No se pudo cargar templates.html'); return r.text(); })
   .then(text => {
@@ -900,11 +933,15 @@ const R = (name, data = {}) => {
        saldo: { monto, concepto (IVA|ISR|Otro), nota,
                 aplicaciones: [ { id, periodo (dónde se usó), monto, nota, fecha } ] }
      } },
+     gastos: [ { uuid, rfcEmisor, nombreEmisor, fechaEmision, monto, efecto (I/E/N/P),
+                 estatus (1 vigente / 0 cancelada), tipo, nota, cfdi:{subtotal, iva…}|null } ],
+     banco: [ { id, fecha, hora, concepto, retiro, deposito, facturaId } ],
+     reglasRfc: { RFC: tipo }   ← tipo aprendido por emisor
      anuales: { "2025": { year, estado, resultado, monto, fechaPresentacion,
                           notas, docs:[{ id, tipo, file }] } }
    }
    ========================================================================= */
-const emptyDB = () => ({ version: 3, seq: 0, facturas: [], mensuales: {}, anuales: {}, updatedAt: null });
+const emptyDB = () => ({ version: 4, seq: 0, facturas: [], mensuales: {}, anuales: {}, gastos: [], banco: [], reglasRfc: {}, updatedAt: null });
 /** Base de datos en memoria; se guarda con persist() */
 let db = emptyDB();
 /** Estado de la interfaz (filtros, año visible, etc.) */
@@ -954,6 +991,9 @@ function estadoFactura(f) {
 /** Texto "Siguiente: …" que guía qué falta subir. */
 function siguientePaso(f) {
   const e = estadoFactura(f);
+  // Si el banco ya muestra el depósito y aún no hay complemento, es lo primero que falta
+  const dep = e !== 'cobrado' && e !== 'cancelada' && db.banco && depositoDe(f);
+  if (dep) return `Te pagaron el ${fmtDate(dep.fecha)}: sube el complemento`;
   if (e === 'porfacturar') return f.docs.solicitud ? 'Subir factura PDF y XML' : 'Subir PDF a facturar';
   if (e === 'pendiente') {
     if (!f.docs.facturaPdf) return 'Falta el PDF de la factura';
@@ -1062,7 +1102,8 @@ function migrar(d) {
   });
   Object.values(d.mensuales).forEach(r => { r.saldo ||= nuevoSaldo(); r.saldo.aplicaciones ||= []; });
   d.seq = Math.max(d.seq || 0, ...d.facturas.map(f => f.seq), 0);
-  d.version = 3;
+  d.gastos ||= []; d.banco ||= []; d.reglasRfc ||= {};
+  d.version = 4;
   return d;
 }
 
@@ -1246,7 +1287,7 @@ async function loadData() {
   const data = await Store.loadDB();
   db = migrar(Object.assign(emptyDB(), data || {}));
   if (Store.readOnly) return;                // el lector no guarda nada
-  if (data && data.version !== 3) persist(); // guarda la migración
+  if (data && data.version !== 4) persist(); // guarda la migración
   if (!data && Store.mode === 'drive') {
     const loc = await Store.loadLocalDB();
     if (loc && loc.facturas?.length && await confirmar(`Hay ${loc.facturas.length} factura(s) guardadas sólo en este dispositivo. ¿Subirlas a Google Drive?`, 'Subir a Drive')) {
@@ -1328,7 +1369,9 @@ const VIEWS = {
   facturas: { title: 'Facturas', icon: 'file', render: renderFacturas },
   saldos: { title: 'Saldos a favor', short: 'Saldos', icon: 'coin', render: renderSaldos },
   mensuales: { title: 'Declaraciones mensuales', short: 'Mensuales', icon: 'cal', render: renderMensuales },
-  anuales: { title: 'Declaraciones anuales', short: 'Anuales', icon: 'archive', render: renderAnuales }
+  anuales: { title: 'Declaraciones anuales', short: 'Anuales', icon: 'archive', render: renderAnuales, nav: false },
+  gastos: { title: 'Control de gastos', short: 'Gastos', icon: 'receipt', render: renderGastos },
+  banco: { title: 'Banco', short: 'Banco', icon: 'bank', render: renderBanco }
 };
 function route() {
   const [v, arg] = (location.hash.replace('#/', '') || 'facturas').split('/');
@@ -1342,7 +1385,8 @@ function renderShell() {
   $('#app').innerHTML = R('shell', {
     title: V.title, icon: V.icon, fab: ui.view === 'facturas' && !Store.readOnly,
     syncLabel: syncLabel(), ro: Store.readOnly, prefill: prefill(),
-    nav: Object.entries(VIEWS).map(([key, v]) => ({ key, icon: v.icon, label: v.short || v.title, active: key === ui.view }))
+    // barra inferior: Facturas, Gastos, Banco, Mensuales, Saldos (Anuales va en el menú ☰)
+    nav: ['facturas', 'gastos', 'banco', 'mensuales', 'saldos'].map(key => ({ key, icon: VIEWS[key].icon, label: VIEWS[key].short || VIEWS[key].title, active: key === ui.view }))
   });
   $('#menuBtn').onclick = openDrawer;
   $('#lockBtn').onclick = lock;
@@ -1374,6 +1418,7 @@ function openDrawer() {
   $('.drawer-bg', wrap).onclick = close;
   $$('a', wrap).forEach(a => a.addEventListener('click', close));
   $('#dSet', wrap).onclick = () => { close(); openAjustes(); };
+  $('#dReg', wrap).onclick = () => { close(); openRegimenes(); };
   $('#dLock', wrap).onclick = lock;
 }
 
@@ -2007,6 +2052,7 @@ function renderMensuales() {
     presentadas: meses.filter(x => x.est && db.mensuales[x.p].estado !== 'pendiente').length,
     pagado: meses.reduce((s, x) => s + x.pagado, 0)
   });
+  $('#verRegimenes').onclick = openRegimenes;
   // Cargar un acuse sin elegir el mes: se detecta del PDF
   $('#cargarAcuse') && ($('#cargarAcuse').onclick = async () => {
     const file = await pickFile('application/pdf,.pdf'); if (!file) return;
@@ -2101,6 +2147,15 @@ function openMensual(p, preload = {}) {
   }
   $$('[data-origen]', m.el).forEach(b => b.onclick = () => verDeclaracion(b.dataset.origen));
   Object.entries(preload).forEach(([k, file]) => { pending[k] = file; drawSlots(); leerDeclaracion(file); });
+  // Cálculo sugerido con facturas cobradas y gastos del mes
+  const rs = resumenMes(p);
+  $('#mresumen', m.el).innerHTML = R('resumen-mes', rs);
+  $('#mUsarCalc', m.el).onclick = () => {
+    const llenos = ['iva'];
+    MF('iva').value = Math.max(0, rs.ivaCargo).toFixed(2);
+    if (rs.aFavor && !num(MF('saldoMonto').value)) { MF('saldoMonto').value = rs.aFavor.toFixed(2); MF('saldoConcepto').value = 'IVA'; llenos.push('saldoMonto'); }
+    marcar(llenos); toast('Cálculo copiado al formulario', 'ok');
+  };
   $('#mUsar', m.el) && ($('#mUsar', m.el).onclick = () => openUsarSaldo(p, () => { m.close(); openMensual(p); }));
   $('#msave', m.el).onclick = async () => {
     const fd = new FormData($('#mf', m.el));
@@ -2373,6 +2428,683 @@ function openCompartir() {
     catch (er) { handleErr(er); } finally { bz.done(); }
   });
   pintar();
+}
+
+
+/* =========================================================================
+   17. ARCHIVOS: ZIP, Excel (.xlsx/.xlsm) y CSV
+   Se usa JSZip (se descarga sólo la primera vez que importas algo).
+   El lector de Excel es propio: un .xlsx es un ZIP con XML adentro, así
+   que no hace falta otra librería. Los .xls viejos no se pueden leer:
+   guárdalos como .xlsx o .csv.
+   ========================================================================= */
+const JSZIP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+async function jszip() { await loadScript(JSZIP_URL); return window.JSZip; }
+
+/** Fecha serial de Excel (1 = 1900-01-01) → Date local */
+const excelDate = n => new Date(Math.round((n - 25569) * 86400000) + new Date().getTimezoneOffset() * 60000);
+
+/**
+ * Lee un libro .xlsx/.xlsm.
+ * @returns {Promise<Array<{name:string, rows:any[][]}>>} hojas con sus celdas (fechas como Date)
+ */
+async function leerExcel(blob) {
+  const zip = await (await jszip()).loadAsync(await blob.arrayBuffer());
+  const xml = async p => { const f = zip.file(p); return f ? new DOMParser().parseFromString(await f.async('string'), 'application/xml') : null; };
+  const tags = (d, t) => d ? Array.from(d.getElementsByTagNameNS('*', t)) : [];
+  // Textos compartidos
+  const ss = tags(await xml('xl/sharedStrings.xml'), 'si').map(si => tags(si, 't').map(t => t.textContent).join(''));
+  // Formatos de fecha (estilos)
+  const st = await xml('xl/styles.xml');
+  const fmts = {}; tags(st, 'numFmt').forEach(n => fmts[n.getAttribute('numFmtId')] = n.getAttribute('formatCode'));
+  const cellXfs = tags(st, 'cellXfs')[0];
+  const xfs = cellXfs ? Array.from(cellXfs.children).map(x => +x.getAttribute('numFmtId')) : [];
+  const esFecha = s => { const id = xfs[s]; if (id == null) return false; if ((id >= 14 && id <= 22) || (id >= 45 && id <= 47)) return true; const f = fmts[id]; return !!f && /[dmy]/i.test(f.replace(/"[^"]*"|\[[^\]]*\]/g, '')) && !/0\.0/.test(f); };
+  // Hojas
+  const wb = await xml('xl/workbook.xml'), rels = await xml('xl/_rels/workbook.xml.rels');
+  const relMap = {}; tags(rels, 'Relationship').forEach(r => relMap[r.getAttribute('Id')] = r.getAttribute('Target'));
+  const colIdx = ref => { let n = 0; for (const ch of ref.replace(/\d+/g, '')) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+  const hojas = [];
+  for (const s of tags(wb, 'sheet')) {
+    const rid = s.getAttribute('r:id') || s.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+    let target = relMap[rid] || ''; target = target.startsWith('/') ? target.slice(1) : 'xl/' + target.replace(/^\.\//, '');
+    const d = await xml(target); if (!d) continue;
+    const rows = [];
+    tags(d, 'row').forEach(r => {
+      const ri = +r.getAttribute('r') - 1, row = rows[ri] = [];
+      tags(r, 'c').forEach(c => {
+        const t = c.getAttribute('t'), v = tags(c, 'v')[0]?.textContent, s = +c.getAttribute('s') || 0;
+        let val = null;
+        if (t === 's') val = ss[+v];
+        else if (t === 'inlineStr') val = tags(c, 't').map(x => x.textContent).join('');
+        else if (t === 'str' || t === 'e') val = v ?? null;
+        else if (t === 'b') val = v === '1';
+        else if (v != null && v !== '') { const n = +v; val = esFecha(s) ? excelDate(n) : n; }
+        row[colIdx(c.getAttribute('r'))] = val;
+      });
+    });
+    hojas.push({ name: s.getAttribute('name'), rows: Array.from(rows, r => r || []) });
+  }
+  return hojas;
+}
+/** CSV simple (coma, punto y coma o tabulador; respeta comillas) */
+function leerCSV(texto) {
+  const sep = [',', ';', '\t'].map(s => [s, (texto.split('\n')[0].match(new RegExp('\\' + s, 'g')) || []).length]).sort((a, b) => b[1] - a[1])[0][0];
+  return texto.replace(/\r/g, '').split('\n').filter(l => l.trim()).map(l => {
+    const out = []; let cur = '', q = false;
+    for (let i = 0; i < l.length; i++) {
+      const ch = l[i];
+      if (ch === '"') { if (q && l[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+      else if (ch === sep && !q) { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur); return out.map(x => x.trim());
+  });
+}
+/** Lee la hoja (Excel o CSV) como filas */
+async function leerTabla(file) {
+  if (/\.xls$/i.test(file.name)) throw new Error('Los archivos .xls (Excel 97) no se pueden leer. Ábrelo y guárdalo como .xlsx o .csv.');
+  if (/\.(xlsx|xlsm)$/i.test(file.name)) return leerExcel(file);
+  return [{ name: file.name, rows: leerCSV(await file.text()) }];
+}
+/** Convierte texto/número/Date a "AAAA-MM-DD" */
+function aFecha(v) {
+  if (v instanceof Date && !isNaN(v)) return localISO(v).slice(0, 10);
+  if (typeof v === 'number' && v > 20000 && v < 80000) return localISO(excelDate(v)).slice(0, 10);
+  const s = String(v ?? '').trim();
+  let x = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); if (x) return `${x[1]}-${pad(x[2], 2)}-${pad(x[3], 2)}`;
+  x = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/); if (x) return `${x[3]}-${pad(x[2], 2)}-${pad(x[1], 2)}`;
+  return '';
+}
+/** "$-1,234.50" → -1234.5 ; vacío → 0 */
+const aMonto = v => typeof v === 'number' ? v : num(String(v ?? '').replace(/\s/g, ''));
+/** Fecha y hora del SAT en cualquiera de sus formatos → "AAAA-MM-DD HH:MM:SS" (sustituye la macro ConvertToDateTime) */
+function aFechaHora(v) {
+  if (v instanceof Date) return localISO(v).slice(0, 19).replace('T', ' ');
+  const s = String(v ?? '').trim();
+  let x = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T]?(\d{1,2})?:?(\d{2})?:?(\d{2})?/);
+  if (x) return `${x[1]}-${x[2]}-${x[3]} ${pad(x[4] || 0, 2)}:${x[5] || '00'}:${x[6] || '00'}`;
+  x = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2}):?(\d{2})?\s*([ap])?/i);
+  if (x) { let h = +x[4]; if (x[7]) { const pm = /p/i.test(x[7]); if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; } return `${x[3]}-${x[2]}-${x[1]} ${pad(h, 2)}:${x[5]}:${x[6] || '00'}`; }
+  return aFecha(s) ? aFecha(s) + ' 00:00:00' : '';
+}
+
+
+/* =========================================================================
+   18. GASTOS (facturas recibidas)
+   Fuentes que acepta (puedes subir varias a la vez):
+     • ZIP de la descarga masiva del SAT (se lee por dentro: TXT y XML)
+     • TXT de metadatos del SAT (columnas separadas por "~")
+     • XML de cada CFDI (trae subtotal e IVA exactos)
+     • Tu Excel anterior (.xlsm/.xlsx) con la hoja de gastos y "Tipo Factura"
+   Sin duplicados: se compara por UUID. Si llega otra vez el mismo UUID sólo
+   se actualiza lo nuevo (XML con importes exactos, o si se canceló).
+
+   Cálculo (mejora de las funciones FSUBTOTAL y FOBTENERIVA de tu macro):
+     • Tipos que no cuentan (NOMINA, BANCO, NO APLICA) → 0
+     • Exentos (GASTOS MEDICOS) → subtotal = monto, IVA = 0
+       (tu macro dividía entre 1.16 y el total no cuadraba con el monto)
+     • Resto → subtotal = monto / 1.16 ; IVA = monto − subtotal (cuadra al centavo)
+     • Si hay XML, se usan sus importes reales
+     • Egresos (notas de crédito, efecto E) restan; cancelados (estatus 0) no cuentan
+   ========================================================================= */
+const TIPOS_GASTO = () => C.TIPOS_GASTO;
+const tipoInfo = t => C.TIPOS_GASTO.find(x => x.tipo === t) || { tipo: t || '', iva: '16', cuenta: true };
+const EFECTOS = { I: 'Ingreso', E: 'Egreso (nota de crédito)', N: 'Nómina', P: 'Pago', T: 'Traslado' };
+const miRfc = () => (C.EMISOR?.rfc || C.RFC_EMISOR || '').toUpperCase();
+
+/**
+ * Importes de un gasto ya con las reglas aplicadas.
+ * @returns {{subtotal:number, iva:number, total:number, cuenta:boolean, motivo:string}}
+ */
+function calcGasto(g) {
+  const t = tipoInfo(g.tipo);
+  const fuera = motivo => ({ subtotal: 0, iva: 0, total: 0, cuenta: false, motivo });
+  if (g.estatus === 0) return fuera('Cancelada');
+  if (g.efecto === 'N') return fuera('Nómina');
+  if (g.efecto === 'P' || g.efecto === 'T') return fuera(EFECTOS[g.efecto]);
+  if (t.cuenta === false) return fuera(t.tipo);
+  const s = g.efecto === 'E' ? -1 : 1;
+  if (g.cfdi && g.cfdi.total != null) {
+    const sub = r2((g.cfdi.subtotal || 0) - (g.cfdi.descuento || 0));
+    return { subtotal: s * sub, iva: s * r2(g.cfdi.iva || 0), total: s * r2(g.cfdi.total), cuenta: true, motivo: 'XML' };
+  }
+  if (t.iva === 'exento') return { subtotal: s * r2(g.monto), iva: 0, total: s * r2(g.monto), cuenta: true, motivo: 'Exento' };
+  const sub = r2(g.monto / (1 + C.IVA_DEFAULT / 100));
+  return { subtotal: s * sub, iva: s * r2(g.monto - sub), total: s * r2(g.monto), cuenta: true, motivo: 'Estimado' };
+}
+
+/** Tipo sugerido: nómina por efecto, lo aprendido por RFC o las reglas por nombre (macro ResaltarCriterios) */
+function tipoSugerido(g) {
+  if (g.efecto === 'N') return 'NOMINA';
+  if (g.efecto === 'P' || g.efecto === 'T') return 'NO APLICA';
+  if (db.reglasRfc[g.rfcEmisor]) return db.reglasRfc[g.rfcEmisor];
+  const nombre = (g.nombreEmisor || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const regla = C.REGLAS_GASTO.find(r => nombre.includes(r.texto));
+  return regla ? regla.tipo : '';
+}
+
+/** TXT de metadatos del SAT → gastos */
+function gastosDeTxt(texto) {
+  const lineas = texto.replace(/^﻿/, '').replace(/\r/g, '').split('\n').filter(l => l.trim());
+  if (!lineas.length) return [];
+  const sep = lineas[0].includes('~') ? '~' : lineas[0].includes('|') ? '|' : '\t';
+  const head = lineas[0].split(sep).map(h => h.trim().toLowerCase());
+  const col = n => head.indexOf(n.toLowerCase());
+  if (col('uuid') < 0) throw new Error('El TXT no tiene la columna Uuid (¿es el archivo de metadatos del SAT?)');
+  return lineas.slice(1).map(l => {
+    const c = l.split(sep), v = n => (c[col(n)] ?? '').trim();
+    return {
+      uuid: v('Uuid').toUpperCase(), rfcEmisor: v('RfcEmisor').toUpperCase(), nombreEmisor: v('NombreEmisor'),
+      rfcReceptor: v('RfcReceptor').toUpperCase(), nombreReceptor: v('NombreReceptor'),
+      pac: v('PacCertifico') || v('RfcPac'), fechaEmision: aFechaHora(v('FechaEmision')), fechaCert: aFechaHora(v('FechaCertificacionSat')),
+      monto: num(v('Monto')), efecto: v('EfectoComprobante').toUpperCase(), estatus: v('Estatus') === '0' ? 0 : 1,
+      fechaCancelacion: aFechaHora(v('FechaCancelacion')), origen: 'txt'
+    };
+  }).filter(g => /^[0-9A-F-]{36}$/.test(g.uuid));
+}
+/** XML de un CFDI recibido → gasto con importes exactos */
+function gastoDeXml(texto) {
+  const x = CFDI.parse(texto);
+  const doc = new DOMParser().parseFromString(texto, 'application/xml');
+  const comp = doc.getElementsByTagNameNS('*', 'Comprobante')[0];
+  const timbre = doc.getElementsByTagNameNS('*', 'TimbreFiscalDigital')[0];
+  const conceptos = Array.from(doc.getElementsByTagNameNS('*', 'Concepto')).map(c => c.getAttribute('Descripcion')).filter(Boolean);
+  const tipo = (x.tipo || '').toUpperCase();
+  return {
+    uuid: x.uuid, rfcEmisor: x.emisorRfc.toUpperCase(), nombreEmisor: x.emisorNombre, rfcReceptor: x.receptorRfc.toUpperCase(), nombreReceptor: x.receptorNombre,
+    pac: timbre?.getAttribute('RfcProvCertif') || '', fechaEmision: aFechaHora(comp.getAttribute('Fecha')), fechaCert: aFechaHora(timbre?.getAttribute('FechaTimbrado')),
+    monto: x.total || 0, efecto: tipo, estatus: 1, fechaCancelacion: '', origen: 'xml',
+    cfdi: {
+      subtotal: x.subtotal || 0, descuento: num(comp.getAttribute('Descuento')), iva: x.iva || 0, ivaRet: x.retIva || 0, isrRet: x.retIsr || 0, total: x.total || 0,
+      usoCfdi: doc.getElementsByTagNameNS('*', 'Receptor')[0]?.getAttribute('UsoCFDI') || '', metodoPago: x.metodoPago, formaPago: x.formaPago || comp.getAttribute('FormaPago') || '',
+      serieFolio: [x.serie, x.folio].filter(Boolean).join('-'), conceptos: conceptos.slice(0, 5).join(' · ')
+    }
+  };
+}
+/** Tu Excel anterior: hoja con encabezado "Uuid" (conserva "Tipo Factura") */
+function gastosDeExcel(hojas) {
+  const out = [];
+  for (const h of hojas) {
+    const hi = h.rows.findIndex(r => r && r.some(c => String(c ?? '').trim().toLowerCase() === 'uuid'));
+    if (hi < 0) continue;
+    const head = h.rows[hi].map(c => String(c ?? '').trim().toLowerCase());
+    const col = n => head.indexOf(n.toLowerCase());
+    for (const r of h.rows.slice(hi + 1)) {
+      const v = n => col(n) >= 0 ? r[col(n)] : '';
+      const uuid = String(v('Uuid') || '').trim().toUpperCase();
+      if (!/^[0-9A-F-]{36}$/.test(uuid)) continue;
+      out.push({
+        uuid, rfcEmisor: String(v('RfcEmisor') || '').toUpperCase(), nombreEmisor: String(v('NombreEmisor') || ''),
+        rfcReceptor: String(v('RfcReceptor') || '').toUpperCase(), nombreReceptor: String(v('NombreReceptor') || ''),
+        pac: String(v('RfcPac') || v('PacCertifico') || ''), fechaEmision: aFechaHora(v('FechaEmision')), fechaCert: aFechaHora(v('FechaCertificacionSat')),
+        monto: aMonto(v('Monto')), efecto: String(v('EfectoComprobante') || '').toUpperCase(), estatus: String(v('Estatus')) === '0' ? 0 : 1,
+        fechaCancelacion: aFechaHora(v('FechaCancelacion')), tipo: String(v('Tipo Factura') || '').toUpperCase().trim(), origen: 'excel'
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Importa archivos de gastos. Devuelve el resumen para mostrar.
+ * Reglas de duplicados (por UUID):
+ *   - mismo UUID y mismos datos  → se ignora (duplicado)
+ *   - llega el XML de uno que vino del TXT → se agregan los importes exactos
+ *   - cambió el estatus (cancelada) → se actualiza
+ *   - nunca se pierde el tipo ni la nota que tú asignaste
+ */
+async function importarGastos(files, onProgress) {
+  const res = { nuevas: 0, duplicadas: 0, actualizadas: 0, emitidas: 0, canceladas: 0, errores: [], archivos: 0 };
+  const entrada = [];
+  const procesar = async (nombre, leerTexto, leerBlob) => {
+    res.archivos++;
+    try {
+      if (/\.zip$/i.test(nombre)) {
+        const zip = await (await jszip()).loadAsync(await leerBlob());
+        const files = Object.values(zip.files).filter(f => !f.dir);
+        for (const f of files) await procesar(f.name, () => f.async('string'), () => f.async('blob'));
+      } else if (/\.xml$/i.test(nombre)) entrada.push(gastoDeXml(await leerTexto()));
+      else if (/\.(xlsx|xlsm)$/i.test(nombre)) entrada.push(...gastosDeExcel(await leerExcel(await leerBlob())));
+      else if (/\.(txt|csv)$/i.test(nombre)) entrada.push(...gastosDeTxt(await leerTexto()));
+      else res.archivos--;
+    } catch (e) { res.errores.push(`${nombre}: ${e.message}`); }
+  };
+  let i = 0;
+  for (const f of files) { onProgress && onProgress(`Leyendo ${++i} de ${files.length}…`); await procesar(f.name, () => f.text(), async () => f); }
+
+  const yo = miRfc(), porUuid = new Map(db.gastos.map(g => [g.uuid, g]));
+  for (const n of entrada) {
+    if (yo && n.rfcEmisor === yo) { res.emitidas++; continue; }      // facturas que TÚ emitiste: no son gastos
+    const ex = porUuid.get(n.uuid);
+    if (!ex) {
+      const g = { ...n, tipo: n.tipo || '', nota: '', alta: new Date().toISOString() };
+      if (!g.tipo) g.tipo = tipoSugerido(g);
+      db.gastos.push(g); porUuid.set(g.uuid, g); res.nuevas++;
+      if (g.estatus === 0) res.canceladas++;
+      continue;
+    }
+    let cambio = false;
+    if (n.cfdi && !ex.cfdi) { ex.cfdi = n.cfdi; ex.origen = 'xml'; cambio = true; }
+    if (n.estatus === 0 && ex.estatus !== 0) { ex.estatus = 0; ex.fechaCancelacion = n.fechaCancelacion; res.canceladas++; cambio = true; }
+    if (!ex.tipo && n.tipo) { ex.tipo = n.tipo; cambio = true; }
+    if (!ex.fechaEmision && n.fechaEmision) { ex.fechaEmision = n.fechaEmision; cambio = true; }
+    cambio ? res.actualizadas++ : res.duplicadas++;
+  }
+  // Aprende el tipo por RFC de lo que venía clasificado (por ejemplo, tu Excel)
+  db.gastos.forEach(g => { if (g.tipo && g.efecto === 'I' && !db.reglasRfc[g.rfcEmisor]) db.reglasRfc[g.rfcEmisor] = g.tipo; });
+  db.gastos.sort((a, b) => (a.fechaEmision || '').localeCompare(b.fechaEmision || ''));
+  res.porClasificar = db.gastos.filter(g => !g.tipo && calcGasto(g).cuenta).length;
+  return res;
+}
+
+
+/* ---------- Filtros estilo Excel (sirven para Gastos y Banco) ----------
+   Cada columna filtrable tiene un botón con embudo. Al abrirlo muestra los
+   valores que existen (con cuántos hay), una búsqueda, "Seleccionar todo"
+   y ordenar ascendente/descendente. Los totales se calculan sólo con las
+   filas visibles, como SUBTOTAL(9, …) en Excel.                         */
+/**
+ * @param {HTMLElement} anchor botón del encabezado
+ * @param {{titulo:string, valores:Array<{v:string,label:string,n:number}>, sel:Set|null, onApply:Function, onSort:Function}} o
+ */
+function openFiltro(anchor, o) {
+  $$('.xf-pop').forEach(p => p.remove());
+  const pop = document.createElement('div');
+  pop.className = 'xf-pop';
+  pop.innerHTML = R('filtro-pop', { titulo: o.titulo, valores: o.valores.map(x => ({ ...x, on: !o.sel || o.sel.has(x.v) })) });
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  if (innerWidth >= 760) { pop.style.top = Math.min(r.bottom + 6, innerHeight - pop.offsetHeight - 10) + 'px'; pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8)) + 'px'; }
+  else pop.classList.add('sheet');
+  const items = () => $$('[data-xv]', pop);
+  const cerrar = () => { pop.remove(); document.removeEventListener('mousedown', fuera, true); };
+  const fuera = e => { if (!pop.contains(e.target) && e.target !== anchor) cerrar(); };
+  setTimeout(() => document.addEventListener('mousedown', fuera, true));
+  $('#xfQ', pop).oninput = e => { const q = e.target.value.toLowerCase(); items().forEach(i => i.closest('label').hidden = !i.dataset.l.toLowerCase().includes(q)); };
+  $('#xfAll', pop).onchange = e => items().forEach(i => { if (!i.closest('label').hidden) i.checked = e.target.checked; });
+  $('#xfOk', pop).onclick = () => {
+    const on = items().filter(i => i.checked).map(i => i.dataset.xv);
+    o.onApply(on.length === items().length ? null : new Set(on)); cerrar();
+  };
+  $('#xfCancel', pop).onclick = cerrar;
+  $('#xfAsc', pop).onclick = () => { o.onSort && o.onSort(1); cerrar(); };
+  $('#xfDesc', pop).onclick = () => { o.onSort && o.onSort(-1); cerrar(); };
+  $('#xfQ', pop).focus();
+}
+/** Valores distintos de una columna con su conteo (para el filtro) */
+function valoresDe(filas, fn, etiqueta = v => v || '(vacío)') {
+  const m = new Map(); filas.forEach(f => { const v = String(fn(f) ?? ''); m.set(v, (m.get(v) || 0) + 1); });
+  return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([v, n]) => ({ v, n, label: etiqueta(v) }));
+}
+const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const mesLabel = p => p ? `${MESES[+p.slice(5, 7) - 1]} ${p.slice(0, 4)}` : '(sin fecha)';
+
+/* ---------- Vista Gastos ---------- */
+// Columnas filtrables: clave → cómo obtener el valor de cada gasto
+const GCOLS = {
+  mes: { titulo: 'Mes', fn: g => (g.fechaEmision || '').slice(0, 7), label: mesLabel },
+  emisor: { titulo: 'Emisor', fn: g => g.nombreEmisor || g.rfcEmisor },
+  efecto: { titulo: 'Efecto', fn: g => g.efecto, label: v => `${v} · ${EFECTOS[v] || ''}` },
+  tipo: { titulo: 'Tipo', fn: g => g.tipo, label: v => v || 'Sin clasificar' },
+  estatus: { titulo: 'Estatus', fn: g => g.estatus === 0 ? 'Cancelada' : 'Vigente' }
+};
+ui.gf = { cols: {}, q: '', sort: { k: 'fecha', d: 1 } };
+
+function gastosFiltrados(excepto) {
+  const q = ui.gf.q.toLowerCase();
+  return db.gastos.filter(g => {
+    for (const [k, sel] of Object.entries(ui.gf.cols)) if (k !== excepto && sel && !sel.has(String(GCOLS[k].fn(g) ?? ''))) return false;
+    return !q || [g.uuid, g.rfcEmisor, g.nombreEmisor, g.tipo, g.nota, g.cfdi?.conceptos].join(' ').toLowerCase().includes(q);
+  });
+}
+function renderGastos() {
+  const filas = gastosFiltrados();
+  const { k, d } = ui.gf.sort;
+  const key = { fecha: g => g.fechaEmision || '', emisor: g => g.nombreEmisor || '', monto: g => g.monto, tipo: g => g.tipo || '', efecto: g => g.efecto, mes: g => g.fechaEmision || '', estatus: g => g.estatus }[k] || (g => g.fechaEmision);
+  filas.sort((a, b) => { const x = key(a), y = key(b); return (x > y ? 1 : x < y ? -1 : 0) * d; });
+  const calc = filas.map(g => ({ g, c: calcGasto(g) }));
+  const sum = f => r2(calc.reduce((s, x) => s + f(x.c), 0));
+  // chips rápidos de mes (del año elegido)
+  const anios = [...new Set(db.gastos.map(g => (g.fechaEmision || '').slice(0, 4)).filter(Boolean))].sort();
+  const anio = ui.gf.anio || anios[anios.length - 1] || String(new Date().getFullYear());
+  const selMes = ui.gf.cols.mes;
+  $('#view').innerHTML = R('vista-gastos', {
+    k: { subtotal: sum(c => c.subtotal), iva: sum(c => c.iva), total: sum(c => c.total), n: filas.length, cuentan: calc.filter(x => x.c.cuenta).length,
+      porClasificar: calc.filter(x => !x.g.tipo && x.c.cuenta).length, canceladas: filas.filter(g => g.estatus === 0).length },
+    hay: db.gastos.length > 0, q: ui.gf.q, anio, anios,
+    meses: MESES_CORTOS.map((m, i) => { const p = `${anio}-${pad(i + 1, 2)}`; return { p, m, on: !!selMes && selMes.has(p), n: db.gastos.filter(g => (g.fechaEmision || '').startsWith(p)).length }; }),
+    activosTxt: Object.entries(ui.gf.cols).filter(([, s]) => s).map(([key]) => GCOLS[key].titulo).join(', '),
+    cols: Object.fromEntries(Object.keys(GCOLS).map(c => [c, { on: !!ui.gf.cols[c], sort: ui.gf.sort.k === c ? (d > 0 ? '↑' : '↓') : '' }])),
+    tipos: C.TIPOS_GASTO.map(t => t.tipo), ro: Store.readOnly,
+    filas: calc.map(({ g, c }) => ({
+      uuid: g.uuid, fecha: fmtDate(g.fechaEmision), hora: (g.fechaEmision || '').slice(11, 16), emisor: g.nombreEmisor || g.rfcEmisor, rfc: g.rfcEmisor,
+      efecto: g.efecto, monto: (g.efecto === 'E' ? -1 : 1) * g.monto, tipo: g.tipo, sub: c.subtotal, iva: c.iva, total: c.total, cuenta: c.cuenta, motivo: c.motivo,
+      cancelada: g.estatus === 0, xml: !!g.cfdi, sinTipo: !g.tipo && c.cuenta
+    }))
+  });
+  // eventos
+  $('#gCargar') && ($('#gCargar').onclick = cargarGastos);
+  $('#gq').oninput = e => { ui.gf.q = e.target.value; const pos = e.target.selectionStart; renderGastos(); const n = $('#gq'); n.focus(); n.setSelectionRange(pos, pos); };
+  $('#gAnio') && ($('#gAnio').onchange = e => { ui.gf.anio = e.target.value; ui.gf.cols.mes = null; renderGastos(); });
+  $$('[data-mes]').forEach(b => b.onclick = () => {
+    const s = new Set(ui.gf.cols.mes || []); s.has(b.dataset.mes) ? s.delete(b.dataset.mes) : s.add(b.dataset.mes);
+    ui.gf.cols.mes = s.size ? s : null; renderGastos();
+  });
+  $('#gLimpiar') && ($('#gLimpiar').onclick = () => { ui.gf.cols = {}; ui.gf.q = ''; renderGastos(); });
+  $('#gCsv') && ($('#gCsv').onclick = () => exportGastosCSV(calc));
+  $('#gAsignar') && ($('#gAsignar').onclick = () => asignarTipoFiltradas(filas));
+  $$('[data-gf]').forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    const c = b.dataset.gf, def = GCOLS[c];
+    openFiltro(b, {
+      titulo: def.titulo, sel: ui.gf.cols[c],
+      valores: valoresDe(gastosFiltrados(c), def.fn, def.label || undefined),
+      onApply: s => { ui.gf.cols[c] = s; renderGastos(); },
+      onSort: dir => { ui.gf.sort = { k: c, d: dir }; renderGastos(); }
+    });
+  });
+  $$('[data-gsort]').forEach(b => b.onclick = () => { const kk = b.dataset.gsort; ui.gf.sort = { k: kk, d: ui.gf.sort.k === kk ? -ui.gf.sort.d : 1 }; renderGastos(); });
+  $$('select[data-gtipo]').forEach(s => {
+    s.onclick = e => e.stopPropagation();
+    s.onchange = () => setTipoGasto(s.dataset.gtipo, s.value);
+  });
+  $$('.grow-row').forEach(r => r.onclick = () => openGasto(r.dataset.uuid));
+}
+/** Cambia el tipo de un gasto y lo aprende para su RFC (aplica a los del mismo emisor sin clasificar) */
+async function setTipoGasto(uuid, tipo) {
+  const g = db.gastos.find(x => x.uuid === uuid); if (!g) return;
+  g.tipo = tipo;
+  let otros = 0;
+  if (tipo && g.efecto === 'I') {
+    db.reglasRfc[g.rfcEmisor] = tipo;
+    db.gastos.forEach(x => { if (x !== g && x.rfcEmisor === g.rfcEmisor && !x.tipo && x.efecto === 'I') { x.tipo = tipo; otros++; } });
+  }
+  await persist(); renderGastos();
+  toast(otros ? `Tipo aplicado también a ${otros} factura(s) de ${g.nombreEmisor}` : 'Tipo actualizado', 'ok');
+}
+/** Asigna un tipo a todas las filas visibles (después de filtrar) */
+function asignarTipoFiltradas(filas) {
+  if (!filas.length) return toast('No hay filas visibles', 'err');
+  const m = openModal({ title: `Asignar tipo a ${filas.length} factura(s)`, body: R('asignar-tipo', { tipos: C.TIPOS_GASTO.map(t => t.tipo), n: filas.length }), footer: R('footer-ok', { id: 'atOk', label: 'Asignar' }) });
+  $('#atOk', m.el).onclick = async () => {
+    const tipo = $('#atTipo', m.el).value;
+    filas.forEach(g => { g.tipo = tipo; if (tipo && g.efecto === 'I') db.reglasRfc[g.rfcEmisor] = tipo; });
+    await persist(); m.close(); renderGastos(); toast(`Tipo "${tipo || 'Sin clasificar'}" asignado a ${filas.length}`, 'ok');
+  };
+}
+/** Botón "Cargar del SAT" */
+async function cargarGastos() {
+  const files = await pickFiles('.zip,.txt,.xml,.xlsx,.xlsm,.csv');
+  if (!files.length) return;
+  const b = busy('Leyendo archivos…');
+  let res;
+  try { res = await importarGastos(files, msg => b.set(msg)); if (res.nuevas || res.actualizadas) await persist(); }
+  catch (e) { return handleErr(e); } finally { b.done(); }
+  renderGastos();
+  openModal({ title: 'Resultado de la carga', body: R('import-res', res), footer: '<span class="spacer"></span><button class="btn primary" data-close>Listo</button>' });
+}
+/** Detalle de un gasto */
+function openGasto(uuid) {
+  const g = db.gastos.find(x => x.uuid === uuid); if (!g) return;
+  const c = calcGasto(g);
+  const m = openModal({
+    title: g.nombreEmisor || g.rfcEmisor, size: 'wide',
+    body: R('gasto-detalle', { g, c, efecto: EFECTOS[g.efecto] || g.efecto, tipos: C.TIPOS_GASTO.map(t => ({ t: t.tipo, sel: t.tipo === g.tipo })), fecha: fmtDate(g.fechaEmision), hora: (g.fechaEmision || '').slice(11) }),
+    footer: R('gasto-footer', {})
+  });
+  $('#gdSave', m.el) && ($('#gdSave', m.el).onclick = async () => {
+    g.nota = $('#gdNota', m.el).value.trim();
+    const t = $('#gdTipo', m.el).value;
+    m.close();
+    if (t !== g.tipo) await setTipoGasto(g.uuid, t); else { await persist(); renderGastos(); }
+  });
+  $('#gdDel', m.el) && ($('#gdDel', m.el).onclick = async () => {
+    if (!await confirmar('¿Quitar este gasto de la lista? Si vuelves a cargar el mismo archivo, regresará.', 'Quitar', true)) return;
+    db.gastos = db.gastos.filter(x => x !== g); await persist(); m.close(); renderGastos();
+  });
+  $$('[data-copy]', m.el).forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); toast('Copiado', 'ok'); } catch { } });
+}
+function exportGastosCSV(calc) {
+  const head = ['Fecha', 'UUID', 'RFC emisor', 'Emisor', 'Efecto', 'Estatus', 'Tipo', 'Monto', 'Subtotal', 'IVA', 'Total', 'Cálculo', 'Nota'];
+  const rows = calc.map(({ g, c }) => [g.fechaEmision, g.uuid, g.rfcEmisor, g.nombreEmisor, g.efecto, g.estatus === 0 ? 'Cancelada' : 'Vigente', g.tipo, g.monto, c.subtotal, c.iva, c.total, c.motivo, g.nota]);
+  const csv = [head, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  download(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), `gastos-${today()}.csv`);
+}
+/** Selector de varios archivos */
+function pickFiles(accept) {
+  return new Promise(res => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = accept || ''; inp.multiple = true;
+    inp.onchange = () => res(Array.from(inp.files));
+    inp.click();
+  });
+}
+
+
+/* =========================================================================
+   19. BANCO (estado de cuenta, p. ej. Santander)
+   Acepta el Excel que descargas del banco (.xlsx) o .csv, y también tu hoja
+   anterior "Santander_2026". Busca sola la fila de encabezados (FECHA,
+   CONCEPTO/DESCRIPCIÓN, RETIRO/CARGO, DEPÓSITO/ABONO o IMPORTE).
+   Sin duplicados: misma fecha + hora + concepto + importe = mismo movimiento.
+   Conciliación automática: cada depósito se vincula a la factura cuyo total
+   coincide (±CONFIG.TOLERANCIA_BANCO, por los centavos de diferencia entre
+   la solicitud y la factura). Así sabes cuándo te pagaron y si falta subir
+   el complemento (lo que antes marcabas con ✅).
+   ========================================================================= */
+const claveMov = m => [m.fecha, m.hora || '', (m.concepto || '').replace(/\s+/g, ' ').trim().toUpperCase(), r2(m.retiro), r2(m.deposito)].join('|');
+/** Clasificación del movimiento por su concepto (para filtrar) */
+function tipoMov(m) {
+  const c = (m.concepto || '').toUpperCase();
+  if (/PAGO NOMINA|NOMINA/.test(c)) return 'Nómina';
+  if (/^CIE|CIE\d/.test(c)) return 'Depósito CIE (pago UNAM)';
+  if (/RETIRO/.test(c)) return 'Retiro';
+  if (/TARJETA|TDC/.test(c)) return 'Pago de tarjeta';
+  if (/DEVOLUCI/.test(c)) return 'Devolución';
+  if (/TRANSFER|SPEI/.test(c)) return m.deposito > 0 ? 'Transferencia recibida' : 'Transferencia enviada';
+  return m.deposito > 0 ? 'Otro depósito' : 'Otro cargo';
+}
+/** Filas de una hoja → movimientos */
+function movsDeHoja(rows) {
+  const norm = v => String(v ?? '').trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const hi = rows.findIndex(r => r && r.some(c => norm(c) === 'FECHA' || norm(c).startsWith('FECHA ')) && r.some(c => /CONCEPTO|DESCRIPCION/.test(norm(c))));
+  if (hi < 0) return { movs: [], cuenta: '' };
+  const head = rows[hi].map(norm);
+  const find = (...res) => head.findIndex(h => res.some(re => re.test(h)));
+  const cF = find(/^FECHA/), cH = find(/^HORA/), cC = find(/CONCEPTO|DESCRIPCION/),
+    cR = find(/RETIRO|CARGO/), cD = find(/DEPOSITO|ABONO/), cI = find(/^IMPORTE|^MONTO/), cS = find(/^SALDO/), cRef = find(/REFERENCIA/);
+  const titulo = rows.slice(0, hi).flat().map(x => String(x ?? '')).join(' ');
+  const cuenta = (titulo.match(/cuenta\s+(\d{6,})/i) || [])[1] || '';
+  const movs = [];
+  for (const r of rows.slice(hi + 1)) {
+    if (!r) continue;
+    const fecha = aFecha(r[cF]); if (!fecha) continue;
+    let ret = cR >= 0 ? Math.abs(aMonto(r[cR])) : 0, dep = cD >= 0 ? Math.abs(aMonto(r[cD])) : 0;
+    if (cI >= 0 && !ret && !dep) { const v = aMonto(r[cI]); v < 0 ? ret = -v : dep = v; }
+    if (!ret && !dep) continue;
+    const hora = r[cH] instanceof Date ? localISO(r[cH]).slice(11, 19) : typeof r[cH] === 'number' ? new Date(Math.round(r[cH] * 86400) * 1000).toISOString().slice(11, 19) : String(r[cH] ?? '').trim();
+    movs.push({ fecha, hora, concepto: String(r[cC] ?? '').replace(/\s+/g, ' ').trim(), retiro: r2(ret), deposito: r2(dep), saldo: cS >= 0 ? aMonto(r[cS]) : null, referencia: cRef >= 0 ? String(r[cRef] ?? '') : '' });
+  }
+  return { movs, cuenta };
+}
+/** Importa estados de cuenta; devuelve resumen */
+async function importarBanco(files) {
+  const res = { nuevas: 0, duplicadas: 0, conciliadas: 0, errores: [], archivos: files.length };
+  const existentes = new Set(db.banco.map(claveMov));
+  for (const f of files) {
+    try {
+      const hojas = await leerTabla(f);
+      let alguna = false;
+      for (const h of hojas) {
+        const { movs, cuenta } = movsDeHoja(h.rows);
+        if (!movs.length) continue;
+        alguna = true;
+        for (const mv of movs) {
+          const k = claveMov(mv);
+          if (existentes.has(k)) { res.duplicadas++; continue; }
+          existentes.add(k);
+          db.banco.push({ id: uid(), ...mv, cuenta, facturaId: null, manual: false, nota: '', alta: new Date().toISOString() });
+          res.nuevas++;
+        }
+      }
+      if (!alguna) res.errores.push(`${f.name}: no encontré la fila de encabezados (FECHA, CONCEPTO, RETIRO/DEPÓSITO).`);
+    } catch (e) { res.errores.push(`${f.name}: ${e.message}`); }
+  }
+  db.banco.sort((a, b) => (a.fecha + (a.hora || '')).localeCompare(b.fecha + (b.hora || '')));
+  res.conciliadas = conciliar();
+  return res;
+}
+/**
+ * Vincula depósitos con facturas por importe (±tolerancia) y fecha más cercana.
+ * No toca los vínculos que hiciste a mano.
+ * @returns {number} vínculos nuevos
+ */
+function conciliar() {
+  // 1) todas las parejas posibles depósito–factura con su "distancia"
+  //    (diferencia en pesos ×100 + días de diferencia); 2) se asignan de la mejor a la peor
+  const usadas = new Set(db.banco.filter(m => m.facturaId).map(m => m.facturaId));
+  const pares = [];
+  for (const m of db.banco) {
+    if (m.facturaId || m.manual || !m.deposito || /NOMINA/i.test(m.concepto)) continue;
+    for (const f of db.facturas) {
+      if (usadas.has(f.id) || f.cancelada || !f.total) continue;
+      const dif = Math.min(Math.abs(m.deposito - f.total), f.montoCobrado ? Math.abs(m.deposito - f.montoCobrado) : Infinity);
+      if (dif > C.TOLERANCIA_BANCO) continue;
+      const ref = f.fechaCobro || f.fechaEmision || (f.createdAt || '').slice(0, 10) || m.fecha;
+      const dias = Math.abs((new Date(m.fecha) - new Date(ref)) / 86400000) || 0;
+      pares.push({ m, f, score: dif * 100 + dias });
+    }
+  }
+  pares.sort((a, b) => a.score - b.score);
+  const movUsado = new Set();
+  let n = 0;
+  for (const { m, f } of pares) {
+    if (movUsado.has(m) || usadas.has(f.id)) continue;
+    m.facturaId = f.id; movUsado.add(m); usadas.add(f.id); n++;
+  }
+  return n;
+}
+/** Depósito del banco vinculado a una factura (o null) */
+const depositoDe = f => db.banco.find(m => m.facturaId === f.id) || null;
+
+const BCOLS = {
+  mes: { titulo: 'Mes', fn: m => m.fecha.slice(0, 7), label: mesLabel },
+  tipo: { titulo: 'Tipo', fn: m => tipoMov(m) },
+  mov: { titulo: 'Movimiento', fn: m => m.deposito ? 'Depósito' : 'Retiro' },
+  conc: { titulo: 'Complemento', fn: m => !m.deposito ? '—' : m.facturaId ? (tieneComplemento(m.facturaId) ? '✅ Con complemento' : '⚠ Falta complemento') : 'Sin factura' }
+};
+const tieneComplemento = id => { const f = db.facturas.find(x => x.id === id); return !!(f && (f.docs.complementoXml || f.docs.complementoPdf || f.pagadaSinComplemento)); };
+ui.bf = { cols: {}, q: '', sort: { k: 'fecha', d: -1 } };
+function bancoFiltrado(excepto) {
+  const q = ui.bf.q.toLowerCase();
+  return db.banco.filter(m => {
+    for (const [k, sel] of Object.entries(ui.bf.cols)) if (k !== excepto && sel && !sel.has(String(BCOLS[k].fn(m)))) return false;
+    return !q || [m.concepto, m.referencia, m.nota, m.deposito, m.retiro].join(' ').toLowerCase().includes(q);
+  });
+}
+function renderBanco() {
+  const filas = bancoFiltrado();
+  const { k, d } = ui.bf.sort;
+  const key = { fecha: m => m.fecha + (m.hora || ''), mes: m => m.fecha, tipo: m => tipoMov(m), mov: m => m.deposito - m.retiro, conc: m => String(BCOLS.conc.fn(m)), monto: m => m.deposito - m.retiro }[k];
+  filas.sort((a, b) => { const x = key(a), y = key(b); return (x > y ? 1 : x < y ? -1 : 0) * d; });
+  const anios = [...new Set(db.banco.map(m => m.fecha.slice(0, 4)))].sort();
+  const anio = ui.bf.anio || anios[anios.length - 1] || String(new Date().getFullYear());
+  const selMes = ui.bf.cols.mes;
+  const dep = r2(filas.reduce((s, m) => s + m.deposito, 0)), ret = r2(filas.reduce((s, m) => s + m.retiro, 0));
+  const vinc = filas.filter(m => m.facturaId);
+  $('#view').innerHTML = R('vista-banco', {
+    k: { dep, ret, neto: r2(dep - ret), n: filas.length, conc: vinc.length, concMonto: r2(vinc.reduce((s, m) => s + m.deposito, 0)), falta: vinc.filter(m => !tieneComplemento(m.facturaId)).length },
+    hay: db.banco.length > 0, q: ui.bf.q, anio, anios, ro: Store.readOnly,
+    meses: MESES_CORTOS.map((mm, i) => { const p = `${anio}-${pad(i + 1, 2)}`; return { p, m: mm, on: !!selMes && selMes.has(p), n: db.banco.filter(x => x.fecha.startsWith(p)).length }; }),
+    activosTxt: Object.entries(ui.bf.cols).filter(([, s]) => s).map(([kk]) => BCOLS[kk].titulo).join(', '),
+    cols: Object.fromEntries(Object.keys(BCOLS).map(c => [c, { on: !!ui.bf.cols[c], sort: ui.bf.sort.k === c ? (d > 0 ? '↑' : '↓') : '' }])),
+    filas: filas.map(m => {
+      const f = m.facturaId ? db.facturas.find(x => x.id === m.facturaId) : null;
+      return { id: m.id, fecha: fmtDate(m.fecha), hora: (m.hora || '').slice(0, 5), concepto: m.concepto, tipo: tipoMov(m), retiro: m.retiro, deposito: m.deposito,
+        fac: f ? { id: f.id, seq: f.seq, ref: f.referencia, ok: tieneComplemento(f.id), dif: r2(m.deposito - f.total) } : null, puedeVincular: m.deposito > 0 && !/NOMINA/i.test(m.concepto) };
+    })
+  });
+  $('#bCargar') && ($('#bCargar').onclick = async () => {
+    const files = await pickFiles('.xlsx,.xlsm,.csv,.xls'); if (!files.length) return;
+    const b = busy('Leyendo estado de cuenta…'); let res;
+    try { res = await importarBanco(files); if (res.nuevas || res.conciliadas) await persist(); } catch (e) { return handleErr(e); } finally { b.done(); }
+    renderBanco();
+    openModal({ title: 'Resultado de la carga', body: R('import-banco', res), footer: '<span class="spacer"></span><button class="btn primary" data-close>Listo</button>' });
+  });
+  $('#bConciliar') && ($('#bConciliar').onclick = async () => { const n = conciliar(); if (n) await persist(); renderBanco(); toast(n ? `${n} depósito(s) vinculados a facturas` : 'No hay depósitos nuevos que coincidan', n ? 'ok' : ''); });
+  $('#bq').oninput = e => { ui.bf.q = e.target.value; const pos = e.target.selectionStart; renderBanco(); const n = $('#bq'); n.focus(); n.setSelectionRange(pos, pos); };
+  $('#bAnio') && ($('#bAnio').onchange = e => { ui.bf.anio = e.target.value; ui.bf.cols.mes = null; renderBanco(); });
+  $$('[data-bmes]').forEach(b => b.onclick = () => { const s = new Set(ui.bf.cols.mes || []); s.has(b.dataset.bmes) ? s.delete(b.dataset.bmes) : s.add(b.dataset.bmes); ui.bf.cols.mes = s.size ? s : null; renderBanco(); });
+  $('#bLimpiar') && ($('#bLimpiar').onclick = () => { ui.bf.cols = {}; ui.bf.q = ''; renderBanco(); });
+  $$('[data-bf]').forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    const c = b.dataset.bf, def = BCOLS[c];
+    openFiltro(b, { titulo: def.titulo, sel: ui.bf.cols[c], valores: valoresDe(bancoFiltrado(c), def.fn, def.label || undefined),
+      onApply: s => { ui.bf.cols[c] = s; renderBanco(); }, onSort: dir => { ui.bf.sort = { k: c, d: dir }; renderBanco(); } });
+  });
+  $$('[data-bsort]').forEach(b => b.onclick = () => { const kk = b.dataset.bsort; ui.bf.sort = { k: kk, d: ui.bf.sort.k === kk ? -ui.bf.sort.d : 1 }; renderBanco(); });
+  $$('[data-vinc]').forEach(b => b.onclick = e => { e.stopPropagation(); vincularMov(b.dataset.vinc); });
+  $$('[data-fac]').forEach(b => b.onclick = e => { e.stopPropagation(); openFactura(db.facturas.find(f => f.id === b.dataset.fac)); });
+}
+/** Vincular / desvincular un depósito con una factura a mano */
+function vincularMov(id) {
+  const m = db.banco.find(x => x.id === id); if (!m) return;
+  const usadas = new Set(db.banco.filter(x => x.facturaId && x !== m).map(x => x.facturaId));
+  const opciones = db.facturas.filter(f => !f.cancelada && !usadas.has(f.id))
+    .map(f => ({ id: f.id, seq: f.seq, ref: f.referencia, total: f.total, dif: r2(m.deposito - f.total), sel: f.id === m.facturaId }))
+    .sort((a, b) => Math.abs(a.dif) - Math.abs(b.dif)).slice(0, 30);
+  const md = openModal({ title: `Depósito ${money(m.deposito)} · ${fmtDate(m.fecha)}`, body: R('vincular', { concepto: m.concepto, opciones, actual: !!m.facturaId }), footer: '<span class="spacer"></span><button class="btn" data-close>Cerrar</button>' });
+  $$('[data-pick]', md.el).forEach(b => b.onclick = async () => { m.facturaId = b.dataset.pick; m.manual = true; await persist(); md.close(); renderBanco(); toast('Vinculado', 'ok'); });
+  $('#desv', md.el) && ($('#desv', md.el).onclick = async () => { m.facturaId = null; m.manual = true; await persist(); md.close(); renderBanco(); });
+}
+
+
+/* =========================================================================
+   20. RESUMEN DEL MES PARA DECLARAR (equivale a tus columnas H–N)
+   Ingresos y IVA de las facturas COBRADAS en el mes (fecha del depósito en
+   el banco si está vinculado; si no, la fecha de cobro del complemento),
+   retenciones de la UNAM e IVA acreditable de tus gastos del mes.
+   IVA a cargo = IVA cobrado − IVA retenido − IVA acreditable
+   (si sale negativo, es saldo a favor). Es una estimación de apoyo.
+   ========================================================================= */
+function resumenMes(p) {
+  // Cobrada en el mes = depósito en el banco en ese mes (aunque falte el complemento)
+  // o, si no hay depósito vinculado, complemento con fecha de pago en ese mes
+  const cobradas = db.facturas.filter(f => {
+    if (f.cancelada) return false;
+    const dep = depositoDe(f);
+    if (dep) return dep.fecha.startsWith(p);
+    return estadoFactura(f) === 'cobrado' && (f.fechaCobro || '').startsWith(p);
+  });
+  const sinComplemento = cobradas.filter(f => estadoFactura(f) !== 'cobrado').length;
+  const d = cobradas.map(f => desglose(f));
+  const s = k => r2(d.reduce((a, x) => a + (x[k] || 0), 0));
+  const gastos = db.gastos.filter(g => (g.fechaEmision || '').startsWith(p)).map(calcGasto).filter(c => c.cuenta);
+  const ivaAcred = r2(gastos.reduce((a, c) => a + c.iva, 0)), gastosSub = r2(gastos.reduce((a, c) => a + c.subtotal, 0));
+  const ingresos = s('subtotal'), ivaCobrado = s('iva'), ivaRet = s('retIva'), isrRet = s('retIsr');
+  const ivaCargo = r2(ivaCobrado - ivaRet - ivaAcred);
+  return { p, n: cobradas.length, sinComplemento, facturasTxt: cobradas.map(f => `#${f.seq} ${f.referencia} (${money(f.total)})`).join(', '), ingresos, ivaCobrado, ivaRet, isrRet, ivaAcred, gastosSub, nGastos: gastos.length, ivaCargo, aFavor: ivaCargo < 0 ? -ivaCargo : 0 };
+}
+
+
+/* =========================================================================
+   21. REGÍMENES FISCALES (consulta)
+   ========================================================================= */
+function openRegimenes() {
+  const cobradas = db.facturas.filter(f => estadoFactura(f) === 'cobrado');
+  const meses = new Set(cobradas.map(f => (depositoDe(f)?.fecha || f.fechaCobro || '').slice(0, 7)).filter(Boolean)).size || 1;
+  const promedio = r2(cobradas.reduce((s, f) => s + desglose(f).subtotal, 0) / meses) || 11075;
+  const nomina = [...new Set(db.gastos.filter(g => g.efecto === 'N').map(g => g.nombreEmisor))];
+  const m = openModal({ title: 'Regímenes fiscales · consulta', size: 'wide', body: R('regimenes', { actual: C.EMISOR?.regimen || '612', nomina, promedio }) });
+  $('.modal-b', m.el).setAttribute('data-esc', '');
+  const calc = () => {
+    const ing = num($('#rgIng', m.el).value);
+    const tasa = ing <= 25000 ? 1 : ing <= 50000 ? 1.1 : ing <= 83333.33 ? 1.5 : ing <= 208333.33 ? 2 : 2.5;
+    const resico = r2(ing * tasa / 100), ret125 = r2(ing * 0.0125), ret10 = r2(ing * 0.10);
+    $('#rgOut', m.el).innerHTML = R('regimen-calc', { ing, tasa, resico, ret125, ret10, difResico: r2(resico - ret125), ivaRet: r2(ing * 0.16 * 2 / 3), anual: r2(ing * 12) });
+  };
+  $('#rgIng', m.el).oninput = calc; calc();
 }
 
 
