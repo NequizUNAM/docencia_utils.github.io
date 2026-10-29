@@ -994,7 +994,7 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
     </tr></thead>
     <tbody>
       {{for filas}}
-      <tr>
+      <tr{{if cie}} class="cie" title="Depósito CIE (pago UNAM)"{{/if}}>
         <td class="nowrap" data-l="Fecha">{{>fecha}} <small class="muted">{{>hora}}</small></td>
         <td class="x-main"><b>{{>concepto}}</b></td>
         <td data-l="Tipo"><span class="tag">{{>tipo}}</span></td>
@@ -1014,7 +1014,7 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
     <tfoot><tr><td colspan="3"><b>Total de lo visible ({{:filas.length}})</b></td><td class="r num"><b>-{{:~money(k.ret)}}</b></td><td class="r num"><b>{{:~money(k.dep)}}</b></td><td></td></tr></tfoot>
   </table>
 </div>
-<p class="hint">Los depósitos se vinculan solos con la factura del mismo total (±{{:~tol()}}). ✅ = ya subiste el complemento; ⚠ = te pagaron pero falta el complemento.</p>
+<p class="hint"><span class="cie-dot"></span> Fila amarilla = depósito CIE (pago UNAM). Los depósitos se vinculan solos con la factura del mismo total (±{{:~tol()}}). ✅ = ya subiste el complemento; ⚠ = te pagaron pero falta el complemento.</p>
 {{else}}
 <div class="empty"><h3>Sin movimientos</h3>
   <p><b>1.</b> Descarga la plantilla · <b>2.</b> Captura tus movimientos (fecha, concepto, retiro o depósito) · <b>3.</b> Súbela con “Cargar estado de cuenta”.</p>
