@@ -447,6 +447,11 @@
     .xtable tr.x-cancel td { text-decoration: line-through; color: var(--muted); }
     .xtable tr.x-cancel td .badge, .xtable tr.x-cancel td select { text-decoration: none; }
     .xtable tr.x-fuera td.num { color: var(--muted); }
+    /* Banco: depósitos CIE (pago UNAM) en amarillo pastel */
+    .xtable tbody tr.cie td, .xtable tbody tr.cie:nth-child(even) td { background: #FFF4C7; }
+    .xtable tbody tr.cie:hover td { background: #FFEBA3; }
+    .xtable tbody tr.cie td:first-child { box-shadow: inset 4px 0 0 var(--oro); }
+    .cie-dot { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #FFF4C7; border: 1px solid var(--oro); vertical-align: -1px; }
     .xtable tfoot td { background: var(--azul-soft); border-top: 2px solid var(--azul); padding: 10px; color: var(--azul-900); }
     .tsel { padding: 5px 6px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 12px; max-width: 170px; }
     .tsel.warn { border-color: var(--oro); background: var(--oro-soft); }
@@ -471,6 +476,8 @@
       .xtable tbody { display: flex; flex-direction: column; gap: 10px; }
       .xtable tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px; }
       .xtable td { display: block; padding: 0; border: 0; background: none !important; text-align: left !important; }
+      .xtable tbody tr.cie { background: #FFF4C7; border-color: #F1D27A; box-shadow: inset 4px 0 0 var(--oro), var(--shadow); }
+      .xtable tbody tr.cie td:first-child { box-shadow: none; }
       .xtable td.x-main { grid-column: 1 / -1; }
       .xtable td[data-l]::before { content: attr(data-l); display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
       .xtable tfoot tr { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; background: var(--azul-soft); border-radius: 12px; padding: 10px 12px; }
