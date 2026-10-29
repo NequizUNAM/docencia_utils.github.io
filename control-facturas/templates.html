@@ -972,6 +972,7 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
 </div>
 <div class="toolbar">
   {{if !ro}}<button class="btn primary" id="bCargar">{{:~icon('upload')}} Cargar estado de cuenta</button>
+  <button class="btn" data-bplant title="Machote de Excel para capturar tus movimientos">{{:~icon('download')}} Plantilla</button>
   <button class="btn" id="bConciliar">{{:~icon('refresh')}} Conciliar</button>{{/if}}
   <div class="search">{{:~icon('search')}}<input id="bq" type="search" placeholder="Buscar concepto, importe…" value="{{>q}}"></div>
 </div>
@@ -1015,7 +1016,11 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
 </div>
 <p class="hint">Los depósitos se vinculan solos con la factura del mismo total (±{{:~tol()}}). ✅ = ya subiste el complemento; ⚠ = te pagaron pero falta el complemento.</p>
 {{else}}
-<div class="empty"><h3>Sin movimientos</h3><p>Carga el Excel (.xlsx) o .csv de tu estado de cuenta, o tu hoja anterior "Santander". Los movimientos repetidos se ignoran.</p></div>
+<div class="empty"><h3>Sin movimientos</h3>
+  <p><b>1.</b> Descarga la plantilla · <b>2.</b> Captura tus movimientos (fecha, concepto, retiro o depósito) · <b>3.</b> Súbela con “Cargar estado de cuenta”.</p>
+  <p class="muted">También acepta la exportación .xlsx/.csv de Santander. No se permiten duplicados: misma fecha + concepto + monto.</p>
+  {{if !ro}}<button class="btn primary" data-bplant>{{:~icon('download')}} Descargar plantilla</button>{{/if}}
+</div>
 {{/if}}
 </script>
 
@@ -1025,7 +1030,19 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
   <div><small>Duplicados (ignorados)</small><b>{{:duplicadas}}</b></div>
   <div><small>Vinculados a facturas</small><b>{{:conciliadas}}</b></div>
 </div>
+{{if plantilla}}<p class="hint">✔ Archivo reconocido como <b>plantilla oficial</b>.</p>{{/if}}
 {{for errores}}<p class="hint" style="color:var(--red)">⚠ {{>#data}}</p>{{/for}}
+{{if filasError.length}}
+<details class="ib-det" open><summary style="color:var(--red)"><b>{{:filasError.length}} fila(s) con error — no se cargaron</b></summary>
+  <ul>{{for filasError}}<li>{{>#data}}</li>{{/for}}</ul>
+  <p class="hint">Corrígelas en el Excel y vuelve a subirlo: lo que ya entró se detecta como duplicado y no se repite.</p>
+</details>
+{{/if}}
+{{if dupDetalle.length}}
+<details class="ib-det"><summary><b>{{:dupDetalle.length}} duplicado(s) ignorado(s)</b> <small class="muted">misma fecha + concepto + monto</small></summary>
+  <ul>{{for dupDetalle}}<li>{{>#data}}</li>{{/for}}</ul>
+</details>
+{{/if}}
 </script>
 
 <script type="text/x-jsrender" id="vincular">
