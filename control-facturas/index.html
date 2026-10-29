@@ -425,6 +425,83 @@
     .sub-acc[open] summary .chev { transform: rotate(90deg); }
     .sub-acc > .form-grid { padding: 0 12px 12px; }
 
+
+    /* ---------- Tablas con filtros estilo Excel (Gastos, Banco) ---------- */
+    .xtable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+    .xtable thead th { background: var(--azul); color: #fff; font-weight: 700; font-size: 12px; text-align: left; padding: 0; white-space: nowrap; border-bottom: 3px solid var(--oro); position: sticky; top: 0; z-index: 1; }
+    .xtable thead th:not(:has(.th)) { padding: 10px; }
+    .xtable .th { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 6px; width: 100%; padding: 10px; }
+    .xtable th.r .th, .xtable th.r { justify-content: flex-end; text-align: right; }
+    .xtable .th:hover { background: rgba(255,255,255,.1); }
+    .xtable .fx { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; background: rgba(255,255,255,.14); font-style: normal; }
+    .xtable .fx svg { width: 12px; height: 12px; }
+    .xtable .fx.on { background: var(--oro); color: var(--azul-900); }
+    .xtable td { padding: 9px 10px; border-top: 1px solid var(--line-2); vertical-align: middle; background: #fff; }
+    .xtable td.r { text-align: right; }
+    .xtable td.nowrap, .xtable td.num { white-space: nowrap; }
+    .xtable td.x-main small { display: block; font-size: 11px; color: var(--muted); }
+    .xtable td.x-main b { color: var(--azul-900); font-weight: 600; }
+    .xtable tbody tr:nth-child(even) td { background: #fafbfd; }
+    .xtable tbody tr.grow-row { cursor: pointer; }
+    .xtable tbody tr:hover td { background: var(--azul-soft); }
+    .xtable tr.x-cancel td { text-decoration: line-through; color: var(--muted); }
+    .xtable tr.x-cancel td .badge, .xtable tr.x-cancel td select { text-decoration: none; }
+    .xtable tr.x-fuera td.num { color: var(--muted); }
+    .xtable tfoot td { background: var(--azul-soft); border-top: 2px solid var(--azul); padding: 10px; color: var(--azul-900); }
+    .tsel { padding: 5px 6px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 12px; max-width: 170px; }
+    .tsel.warn { border-color: var(--oro); background: var(--oro-soft); }
+    .toolbar.small { margin: -2px 0 10px; }
+    .mes-chips { display: flex; gap: 6px; align-items: center; overflow-x: auto; padding: 2px 2px 8px; margin-bottom: 4px; scrollbar-width: none; }
+    .mes-chips::-webkit-scrollbar { display: none; }
+    .mchip { border: 1px solid var(--line); background: #fff; padding: 6px 11px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--azul); cursor: pointer; box-shadow: var(--shadow-sm); }
+    .mchip.on { background: var(--azul); color: #fff; border-color: var(--azul); }
+    .mchip.vacio { opacity: .45; }
+    .anio-sel, .anio-lbl { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--azul-line); background: var(--azul-soft); color: var(--azul); font-weight: 800; }
+    @media (max-width: 759px) {
+      .xtable, .xtable tbody, .xtable tfoot { display: block; }
+      .xtable thead { display: block; position: static; }
+      .xtable thead tr { display: flex; gap: 6px; overflow-x: auto; padding: 0 0 8px; scrollbar-width: none; background: none; }
+      .xtable thead th { border: 0; border-radius: 999px; background: var(--azul); flex: none; }
+      .xtable thead th:not(:has(.th)) { display: none; }
+      .xtable .th { padding: 6px 10px; }
+      .xtable tbody { display: flex; flex-direction: column; gap: 10px; }
+      .xtable tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px; }
+      .xtable td { display: block; padding: 0; border: 0; background: none !important; text-align: left !important; }
+      .xtable td.x-main { grid-column: 1 / -1; }
+      .xtable td[data-l]::before { content: attr(data-l); display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
+      .xtable tfoot tr { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; background: var(--azul-soft); border-radius: 12px; padding: 10px 12px; }
+      .xtable tfoot td { border: 0; padding: 0; background: none; }
+      .table-wrap:has(.xtable) { background: none; border: 0; box-shadow: none; overflow: visible; }
+    }
+    /* Ventana de filtro (estilo Excel) */
+    .xf-pop { position: fixed; z-index: 80; width: 280px; max-height: 70vh; display: flex; flex-direction: column; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 12px; }
+    .xf-pop.sheet { left: 8px; right: 8px; bottom: calc(var(--nav-h) + 8px); width: auto; }
+    .xf-h b { color: var(--azul); }
+    .xf-sort { display: flex; gap: 6px; }
+    .xf-q { padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-2); }
+    .xf-list { overflow-y: auto; max-height: 40vh; display: flex; flex-direction: column; border: 1px solid var(--line-2); border-radius: 9px; padding: 4px; }
+    .xf-i { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+    .xf-i:hover { background: var(--azul-soft); }
+    .xf-i span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .xf-i em { font-style: normal; color: var(--muted); font-size: 11px; }
+    .xf-i.all { font-weight: 700; }
+    .xf-i input { accent-color: var(--azul); }
+    .xf-f { display: flex; justify-content: flex-end; gap: 6px; }
+    /* Regímenes */
+    .reg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 14px 0; }
+    .reg-card { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: #fff; box-shadow: var(--shadow-sm); border-top: 4px solid var(--azul); }
+    .reg-card header { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+    .reg-card .code { background: var(--azul); color: var(--oro-2); font-weight: 800; padding: 4px 8px; border-radius: 8px; font-size: 13px; }
+    .reg-card h3 { margin: 0; font-size: 14px; color: var(--azul-900); }
+    .reg-card ul { margin: 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+    .reg-sub { font-size: 14px; color: var(--azul); margin: 6px 0 8px; }
+    .reg-cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+    .reg-cmp > div { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+    .reg-cmp small { display: block; font-size: 11px; color: var(--muted); font-weight: 700; }
+    .reg-cmp b { font-size: 18px; color: var(--azul); display: block; }
+    .reg-cmp span { font-size: 12px; color: var(--muted); }
+    body.ro :is(#gCargar, #bCargar, #bConciliar, #gAsignar, [data-vinc], #gdSave, #gdDel, #mUsarCalc) { display: none !important; }
+
     /* Datos para el SAT */
     .cfdi { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
     .cfdi-row { display: grid; grid-template-columns: 38% 1fr auto; gap: 8px; align-items: center; padding: 7px 6px 7px 12px; font-size: 13px; border-top: 1px solid var(--line-2); }
