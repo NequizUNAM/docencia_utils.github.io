@@ -66,6 +66,8 @@
   <h2>{{>appName}}</h2>
   <a href="#/facturas" class="{{if view=='facturas'}}active{{/if}}">{{:~icon('file')}} Facturas</a>
   <a href="#/saldos" class="{{if view=='saldos'}}active{{/if}}">{{:~icon('coin')}} Saldos a favor</a>
+  <a href="#/gastos" class="{{if view=='gastos'}}active{{/if}}">{{:~icon('receipt')}} Control de gastos</a>
+  <a href="#/banco" class="{{if view=='banco'}}active{{/if}}">{{:~icon('bank')}} Banco</a>
   <a href="#/mensuales" class="{{if view=='mensuales'}}active{{/if}}">{{:~icon('cal')}} Declaraciones mensuales</a>
   <details {{if view=='anuales'}}open{{/if}}>
     <summary>{{:~icon('archive')}} Declaraciones anuales {{:~icon('chev')}}</summary>
@@ -73,6 +75,7 @@
     <a href="#/anuales/nuevo">+ Agregar ejercicio</a>
   </details>
   <hr>
+  <button class="d-item" id="dReg">{{:~icon('scale')}} Regímenes fiscales (consulta)</button>
   <button class="d-item" id="dSet">{{:~icon('gear')}} Ajustes y respaldos</button>
   {{if driveLink}}<a href="{{>driveLink}}" target="_blank" rel="noopener">{{:~icon('drive')}} Abrir carpeta en Drive</a>{{/if}}
   <button class="d-item" id="dLock">{{:~icon('lock')}} Bloquear</button>
@@ -646,7 +649,10 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
 
 <!-- Calendario de 12 meses. Datos: { year, presentadas, pagado, saldoDisp, meses:[...] } -->
 <script type="text/x-jsrender" id="vista-mensuales">
-<button class="btn primary block w" id="cargarAcuse" style="margin-bottom:12px">{{:~icon('upload')}} Cargar acuse de declaración (detecta el mes)</button>
+<div class="toolbar">
+  <button class="btn primary w" id="cargarAcuse" style="flex:1">{{:~icon('upload')}} Cargar acuse de declaración (detecta el mes)</button>
+  <button class="btn" id="verRegimenes">{{:~icon('scale')}} Regímenes</button>
+</div>
 <div class="yearbar">
   <button class="icon-btn" id="yPrev" aria-label="Año anterior">{{:~icon('left')}}</button>
   <b>{{:year}}</b>
@@ -690,6 +696,11 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
     <label class="f full">Cantidad a pagar / pagado<input name="totalPagado" type="number" step="0.01" inputmode="decimal" value="{{:r.totalPagado || ''}}"></label>
     <label class="f full">Notas<textarea name="notas" rows="2">{{>r.notas}}</textarea></label>
   </div></fieldset>
+
+  <fieldset><legend>Cálculo sugerido del mes</legend>
+    <div id="mresumen"></div>
+    <button type="button" class="btn sm w" id="mUsarCalc">Usar en el formulario</button>
+  </fieldset>
 
   <fieldset><legend>Saldo a favor de esta declaración</legend><div class="form-grid">
     <label class="f">Monto a favor<input name="saldoMonto" type="number" step="0.01" inputmode="decimal" value="{{:r.saldo.monto || ''}}" placeholder="0.00"></label>
@@ -803,4 +814,305 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
 <span class="spacer"></span>
 <button class="btn" data-close>Cancelar</button>
 <button class="btn primary" id="asave">Guardar</button>
+</script>
+
+
+<!-- =================================================================
+     6. GASTOS (facturas recibidas)
+     ================================================================= -->
+
+<!-- Página de gastos. Datos: ver renderGastos() en app.js -->
+<script type="text/x-jsrender" id="vista-gastos">
+<div class="kpis">
+  <div class="kpi"><small>Subtotal</small><b>{{:~money(k.subtotal)}}</b><span class="sub">{{:k.cuentan}} de {{:k.n}} factura(s) cuentan</span></div>
+  <div class="kpi navy"><small>IVA acreditable</small><b>{{:~money(k.iva)}}</b><span class="sub">de lo filtrado</span></div>
+  <div class="kpi green"><small>Total</small><b>{{:~money(k.total)}}</b><span class="sub">{{if k.canceladas}}{{:k.canceladas}} cancelada(s) excluidas{{else}}sin canceladas{{/if}}</span></div>
+  <div class="kpi amber"><small>Por clasificar</small><b>{{:k.porClasificar}}</b><span class="sub">se calculan como gasto general</span></div>
+</div>
+<div class="toolbar">
+  {{if !ro}}<button class="btn primary" id="gCargar">{{:~icon('upload')}} Cargar del SAT</button>{{/if}}
+  <div class="search">{{:~icon('search')}}<input id="gq" type="search" placeholder="Buscar emisor, RFC, UUID, concepto…" value="{{>q}}"></div>
+</div>
+{{if hay}}
+<div class="mes-chips">
+  {{if anios.length > 1}}<select id="gAnio" class="anio-sel">{{for anios}}<option {{if #data==~root.anio}}selected{{/if}}>{{:#data}}</option>{{/for}}</select>{{else}}<b class="anio-lbl">{{:anio}}</b>{{/if}}
+  {{for meses}}<button class="mchip {{if on}}on{{/if}} {{if !n}}vacio{{/if}}" data-mes="{{:p}}" title="{{:n}} factura(s)">{{:m}}</button>{{/for}}
+</div>
+<div class="toolbar small">
+  {{if activosTxt}}<span class="badge st-violet">Filtros: {{>activosTxt}}</span><button class="btn sm" id="gLimpiar">Quitar filtros</button>{{/if}}
+  <span style="flex:1"></span>
+  {{if !ro}}<button class="btn sm" id="gAsignar">Asignar tipo a las visibles</button>{{/if}}
+  <button class="btn sm" id="gCsv">Exportar CSV</button>
+</div>
+<div class="table-wrap">
+  <table class="xtable">
+    <thead><tr>
+      <th><button class="th" data-gf="mes">Fecha {{:cols.mes.sort}}<i class="fx {{if cols.mes.on}}on{{/if}}">{{:~icon('filter')}}</i></button></th>
+      <th><button class="th" data-gf="emisor">Emisor {{:cols.emisor.sort}}<i class="fx {{if cols.emisor.on}}on{{/if}}">{{:~icon('filter')}}</i></button></th>
+      <th><button class="th" data-gf="efecto">Efecto<i class="fx {{if cols.efecto.on}}on{{/if}}">{{:~icon('filter')}}</i></button></th>
+      <th><button class="th" data-gf="tipo">Tipo factura {{:cols.tipo.sort}}<i class="fx {{if cols.tipo.on}}on{{/if}}">{{:~icon('filter')}}</i></button></th>
+      <th class="r"><button class="th" data-gsort="monto">Monto</button></th>
+      <th class="r">Subtotal</th><th class="r">IVA</th><th class="r">Total</th>
+      <th><button class="th" data-gf="estatus">Estatus<i class="fx {{if cols.estatus.on}}on{{/if}}">{{:~icon('filter')}}</i></button></th>
+    </tr></thead>
+    <tbody>
+      {{for filas}}
+      <tr class="grow-row {{if cancelada}}x-cancel{{/if}} {{if !cuenta}}x-fuera{{/if}}" data-uuid="{{:uuid}}">
+        <td class="nowrap" data-l="Fecha">{{>fecha}} <small class="muted">{{>hora}}</small></td>
+        <td class="x-main"><b>{{>emisor}}</b><small>{{>rfc}}{{if xml}} · <span class="tag">XML</span>{{/if}}</small></td>
+        <td data-l="Efecto"><span class="tag">{{>efecto}}</span></td>
+        <td data-l="Tipo">
+          {{if ~root.ro}}{{>tipo || 'Sin clasificar'}}{{else}}
+          <select class="tsel {{if sinTipo}}warn{{/if}}" data-gtipo="{{:uuid}}">
+            <option value="">Sin clasificar</option>
+            {{for ~root.tipos ~t=tipo}}<option {{if #data==~t}}selected{{/if}}>{{:#data}}</option>{{/for}}
+          </select>{{/if}}
+        </td>
+        <td class="r num" data-l="Monto">{{:~money(monto)}}</td>
+        <td class="r num" data-l="Subtotal">{{if cuenta}}{{:~money(sub)}}{{else}}<span class="muted">—</span>{{/if}}</td>
+        <td class="r num" data-l="IVA">{{if cuenta}}{{:~money(iva)}}{{else}}<span class="muted">—</span>{{/if}}</td>
+        <td class="r num" data-l="Total">{{if cuenta}}<b>{{:~money(total)}}</b>{{else}}<span class="muted" title="{{>motivo}}">no cuenta</span>{{/if}}</td>
+        <td data-l="Estatus">{{if cancelada}}<span class="badge st-red">Cancelada</span>{{else}}<span class="badge {{if cuenta}}st-green{{else}}st-gray{{/if}}" title="{{>motivo}}">{{if cuenta}}{{>motivo}}{{else}}{{>motivo}}{{/if}}</span>{{/if}}</td>
+      </tr>
+      {{/for}}
+    </tbody>
+    <tfoot><tr><td colspan="5"><b>Total de lo visible ({{:filas.length}})</b></td><td class="r num"><b>{{:~money(k.subtotal)}}</b></td><td class="r num"><b>{{:~money(k.iva)}}</b></td><td class="r num"><b>{{:~money(k.total)}}</b></td><td></td></tr></tfoot>
+  </table>
+</div>
+<p class="hint">Toca una fila para ver el detalle. Al cambiar el tipo de un emisor se aplica también a sus otras facturas sin clasificar y se recuerda para próximas cargas.</p>
+{{else}}
+<div class="empty"><h3>Aún no hay gastos</h3><p>Carga el <b>ZIP</b> o el <b>TXT</b> de la descarga masiva del SAT, los <b>XML</b> de tus facturas recibidas o tu <b>Excel anterior</b>. Puedes subir varios a la vez; los repetidos (mismo UUID) se ignoran.</p></div>
+{{/if}}
+</script>
+
+<!-- Ventana de filtro estilo Excel. Datos: { titulo, valores:[{v,label,n,on}] } -->
+<script type="text/x-jsrender" id="filtro-pop">
+<div class="xf-h"><b>{{>titulo}}</b></div>
+<div class="xf-sort"><button type="button" class="btn sm" id="xfAsc">Ordenar A→Z ↑</button><button type="button" class="btn sm" id="xfDesc">Z→A ↓</button></div>
+<input id="xfQ" type="search" placeholder="Buscar…" class="xf-q">
+<label class="xf-i all"><input type="checkbox" id="xfAll" checked> (Seleccionar todo)</label>
+<div class="xf-list">
+  {{for valores}}<label class="xf-i"><input type="checkbox" data-xv="{{>v}}" data-l="{{>label}}" {{if on}}checked{{/if}}> <span>{{>label}}</span><em>{{:n}}</em></label>{{/for}}
+</div>
+<div class="xf-f"><button type="button" class="btn sm" id="xfCancel">Cancelar</button><button type="button" class="btn sm primary" id="xfOk">Aceptar</button></div>
+</script>
+
+<!-- Asignar tipo masivo. Datos: { tipos, n } -->
+<script type="text/x-jsrender" id="asignar-tipo">
+<label class="f">Tipo de factura<select id="atTipo"><option value="">Sin clasificar</option>{{for tipos}}<option>{{:#data}}</option>{{/for}}</select></label>
+<p class="hint">Se aplicará a las {{:n}} facturas que están visibles con los filtros actuales.</p>
+</script>
+
+<!-- Resumen de importación de gastos -->
+<script type="text/x-jsrender" id="import-res">
+<div class="kv" style="grid-template-columns:repeat(2,1fr)">
+  <div><small>Nuevas</small><b>{{:nuevas}}</b></div>
+  <div><small>Duplicadas (mismo UUID, ignoradas)</small><b>{{:duplicadas}}</b></div>
+  <div><small>Actualizadas</small><b>{{:actualizadas}}</b></div>
+  <div><small>Emitidas por ti (no son gastos)</small><b>{{:emitidas}}</b></div>
+</div>
+<ul class="hint" style="margin-top:12px">
+  <li>Archivos leídos: {{:archivos}}.</li>
+  {{if canceladas}}<li>{{:canceladas}} factura(s) cancelada(s): se muestran pero no suman.</li>{{/if}}
+  {{if porClasificar}}<li><b>{{:porClasificar}}</b> sin tipo: revísalas (se calculan como gasto general).</li>{{/if}}
+  <li>"Actualizadas" = ya existían y llegó su XML (importes exactos) o cambiaron a canceladas.</li>
+</ul>
+{{for errores}}<p class="hint" style="color:var(--red)">⚠ {{>#data}}</p>{{/for}}
+</script>
+
+<!-- Detalle de un gasto. Datos: { g, c, efecto, tipos, fecha, hora } -->
+<script type="text/x-jsrender" id="gasto-detalle">
+<div class="kv">
+  <div><small>Fecha</small><b>{{>fecha}}</b> <small>{{>hora}}</small></div>
+  <div><small>Monto</small><b>{{:~money(g.monto)}}</b></div>
+  <div><small>Efecto</small><b>{{>g.efecto}}</b> <small>{{>efecto}}</small></div>
+  <div><small>Estatus</small><b>{{if g.estatus===0}}Cancelada{{else}}Vigente{{/if}}</b></div>
+</div>
+<div class="calc">
+  <div class="row"><span>Subtotal</span><span>{{:~money(c.subtotal)}}</span></div>
+  <div class="row"><span>IVA</span><span>{{:~money(c.iva)}}</span></div>
+  <div class="row total"><span>Total</span><span>{{:~money(c.total)}}</span></div>
+  <p class="hint" style="margin:6px 0 0">Cálculo: {{>c.motivo}}{{if c.motivo=='Estimado'}} (monto ÷ 1.16; carga el XML para importes exactos){{/if}}.</p>
+</div>
+<div class="form-grid" style="margin-top:14px">
+  <label class="f">Tipo de factura<select id="gdTipo"><option value="">Sin clasificar</option>{{for tipos}}<option {{if sel}}selected{{/if}}>{{:t}}</option>{{/for}}</select></label>
+  <label class="f">Nota<input id="gdNota" value="{{>g.nota}}"></label>
+</div>
+<div class="cfdi" style="margin-top:14px">
+  <div class="cfdi-row"><span class="k">UUID</span><span class="v">{{>g.uuid}}</span><button type="button" class="icon-btn mini" data-copy="{{>g.uuid}}">{{:~icon('copy')}}</button></div>
+  <div class="cfdi-row"><span class="k">Emisor</span><span class="v">{{>g.rfcEmisor}} · {{>g.nombreEmisor}}</span><span></span></div>
+  <div class="cfdi-row"><span class="k">Receptor</span><span class="v">{{>g.rfcReceptor}} · {{>g.nombreReceptor}}</span><span></span></div>
+  <div class="cfdi-row"><span class="k">PAC · Certificación</span><span class="v">{{>g.pac}} · {{>g.fechaCert}}</span><span></span></div>
+  {{if g.fechaCancelacion}}<div class="cfdi-row"><span class="k">Cancelación</span><span class="v">{{>g.fechaCancelacion}}</span><span></span></div>{{/if}}
+  {{if g.cfdi}}
+  <div class="cfdi-row"><span class="k">Conceptos</span><span class="v">{{>g.cfdi.conceptos}}</span><span></span></div>
+  <div class="cfdi-row"><span class="k">Uso CFDI · Método · Forma</span><span class="v">{{>g.cfdi.usoCfdi}} · {{>g.cfdi.metodoPago}} · {{>g.cfdi.formaPago}}</span><span></span></div>
+  {{if g.cfdi.ivaRet || g.cfdi.isrRet}}<div class="cfdi-row"><span class="k">Retenciones</span><span class="v">IVA {{:~money(g.cfdi.ivaRet)}} · ISR {{:~money(g.cfdi.isrRet)}}</span><span></span></div>{{/if}}
+  {{/if}}
+  <div class="cfdi-row"><span class="k">Origen</span><span class="v">{{>g.origen}}</span><span></span></div>
+</div>
+</script>
+<script type="text/x-jsrender" id="gasto-footer">
+<button class="btn danger" id="gdDel">Quitar</button>
+<span class="spacer"></span>
+<button class="btn" data-close>Cerrar</button>
+<button class="btn primary" id="gdSave">Guardar</button>
+</script>
+
+
+<!-- =================================================================
+     7. BANCO
+     ================================================================= -->
+<script type="text/x-jsrender" id="vista-banco">
+<div class="kpis">
+  <div class="kpi green"><small>Depósitos</small><b>{{:~money(k.dep)}}</b><span class="sub">{{:k.n}} movimiento(s) visibles</span></div>
+  <div class="kpi amber"><small>Retiros</small><b>{{:~money(k.ret)}}</b><span class="sub">Neto {{:~money(k.neto)}}</span></div>
+  <div class="kpi navy"><small>Pagos de facturas</small><b>{{:~money(k.concMonto)}}</b><span class="sub">{{:k.conc}} depósito(s) vinculados</span></div>
+  <div class="kpi {{if k.falta}}violet{{/if}}"><small>Falta complemento</small><b>{{:k.falta}}</b><span class="sub">te pagaron y no lo has subido</span></div>
+</div>
+<div class="toolbar">
+  {{if !ro}}<button class="btn primary" id="bCargar">{{:~icon('upload')}} Cargar estado de cuenta</button>
+  <button class="btn" id="bConciliar">{{:~icon('refresh')}} Conciliar</button>{{/if}}
+  <div class="search">{{:~icon('search')}}<input id="bq" type="search" placeholder="Buscar concepto, importe…" value="{{>q}}"></div>
+</div>
+{{if hay}}
+<div class="mes-chips">
+  {{if anios.length > 1}}<select id="bAnio" class="anio-sel">{{for anios}}<option {{if #data==~root.anio}}selected{{/if}}>{{:#data}}</option>{{/for}}</select>{{else}}<b class="anio-lbl">{{:anio}}</b>{{/if}}
+  {{for meses}}<button class="mchip {{if on}}on{{/if}} {{if !n}}vacio{{/if}}" data-bmes="{{:p}}">{{:m}}</button>{{/for}}
+</div>
+{{if activosTxt}}<div class="toolbar small"><span class="badge st-violet">Filtros: {{>activosTxt}}</span><button class="btn sm" id="bLimpiar">Quitar filtros</button></div>{{/if}}
+<div class="table-wrap">
+  <table class="xtable">
+    <thead><tr>
+      <th><button class="th" data-bf="mes">Fecha {{:cols.mes.sort}}<i class="fx {{if cols.mes.on}}on{{/if}}">{{:~icon('filter')}}</i></button></th>
+      <th>Concepto</th>
+      <th><button class="th" data-bf="tipo">Tipo<i class="fx {{if cols.tipo.on}}on{{/if}}">{{:~icon('filter')}}</i></button></th>
+      <th class="r"><button class="th" data-bf="mov">Retiro<i class="fx {{if cols.mov.on}}on{{/if}}">{{:~icon('filter')}}</i></button></th>
+      <th class="r">Depósito</th>
+      <th><button class="th" data-bf="conc">Complemento<i class="fx {{if cols.conc.on}}on{{/if}}">{{:~icon('filter')}}</i></button></th>
+    </tr></thead>
+    <tbody>
+      {{for filas}}
+      <tr>
+        <td class="nowrap" data-l="Fecha">{{>fecha}} <small class="muted">{{>hora}}</small></td>
+        <td class="x-main"><b>{{>concepto}}</b></td>
+        <td data-l="Tipo"><span class="tag">{{>tipo}}</span></td>
+        <td class="r num" data-l="Retiro">{{if retiro}}<span style="color:var(--red)">-{{:~money(retiro)}}</span>{{else}}<span class="muted">—</span>{{/if}}</td>
+        <td class="r num" data-l="Depósito">{{if deposito}}<b style="color:var(--green)">{{:~money(deposito)}}</b>{{else}}<span class="muted">—</span>{{/if}}</td>
+        <td data-l="Complemento">
+          {{if fac}}
+            <button class="btn sm" data-fac="{{:fac.id}}">{{if fac.ok}}✅{{else}}⚠{{/if}} #{{:fac.seq}} {{>fac.ref}}</button>
+            {{if fac.dif}}<small class="muted">dif. {{:~money(fac.dif)}}</small>{{/if}}
+            {{if !~root.ro}}<button class="icon-btn mini" data-vinc="{{:id}}" title="Cambiar vínculo">{{:~icon('layers')}}</button>{{/if}}
+          {{else puedeVincular && !~root.ro}}<button class="btn sm" data-vinc="{{:id}}">Vincular factura</button>
+          {{/if}}
+        </td>
+      </tr>
+      {{/for}}
+    </tbody>
+    <tfoot><tr><td colspan="3"><b>Total de lo visible ({{:filas.length}})</b></td><td class="r num"><b>-{{:~money(k.ret)}}</b></td><td class="r num"><b>{{:~money(k.dep)}}</b></td><td></td></tr></tfoot>
+  </table>
+</div>
+<p class="hint">Los depósitos se vinculan solos con la factura del mismo total (±{{:~tol()}}). ✅ = ya subiste el complemento; ⚠ = te pagaron pero falta el complemento.</p>
+{{else}}
+<div class="empty"><h3>Sin movimientos</h3><p>Carga el Excel (.xlsx) o .csv de tu estado de cuenta, o tu hoja anterior "Santander". Los movimientos repetidos se ignoran.</p></div>
+{{/if}}
+</script>
+
+<script type="text/x-jsrender" id="import-banco">
+<div class="kv" style="grid-template-columns:repeat(3,1fr)">
+  <div><small>Nuevos</small><b>{{:nuevas}}</b></div>
+  <div><small>Duplicados (ignorados)</small><b>{{:duplicadas}}</b></div>
+  <div><small>Vinculados a facturas</small><b>{{:conciliadas}}</b></div>
+</div>
+{{for errores}}<p class="hint" style="color:var(--red)">⚠ {{>#data}}</p>{{/for}}
+</script>
+
+<script type="text/x-jsrender" id="vincular">
+<p class="hint" style="margin-top:0">{{>concepto}}</p>
+<div class="list">
+  {{for opciones}}<div class="li"><div class="grow"><b>#{{:seq}} {{>ref}}</b><small>Total {{:~money(total)}} · diferencia {{:~money(dif)}}</small></div>
+    <button class="btn sm {{if sel}}primary{{/if}}" data-pick="{{:id}}">{{if sel}}Vinculada{{else}}Elegir{{/if}}</button></div>
+  {{else}}<p class="muted">No hay facturas disponibles.</p>{{/for}}
+</div>
+{{if actual}}<button class="btn danger" id="desv" style="margin-top:12px">Desvincular</button>{{/if}}
+</script>
+
+
+<!-- =================================================================
+     8. RESUMEN DEL MES Y REGÍMENES
+     ================================================================= -->
+<!-- Datos: resumenMes(p) -->
+<script type="text/x-jsrender" id="resumen-mes">
+<div class="calc">
+  <div class="row"><span class="lbl">Ingresos cobrados <small>({{:n}} factura(s), sin IVA{{if sinComplemento}}; {{:sinComplemento}} sin complemento{{/if}})</small></span><span>{{:~money(ingresos)}}</span></div>
+  <div class="row"><span class="lbl">ISR retenido por clientes</span><span>{{:~money(isrRet)}}</span></div>
+  <div class="row sep"><span class="lbl">IVA cobrado (16%)</span><span>{{:~money(ivaCobrado)}}</span></div>
+  <div class="row"><span class="lbl">− IVA retenido</span><span>{{:~money(ivaRet)}}</span></div>
+  <div class="row"><span class="lbl">− IVA acreditable <small>({{:nGastos}} gasto(s), subtotal {{:~money(gastosSub)}})</small></span><span>{{:~money(ivaAcred)}}</span></div>
+  <div class="row total"><span>{{if aFavor}}IVA a favor{{else}}IVA a cargo{{/if}}</span><span>{{:~money(aFavor || ivaCargo)}}</span></div>
+</div>
+{{if facturasTxt}}<p class="hint">Facturas: {{>facturasTxt}}</p>{{/if}}
+<p class="hint">Estimación de apoyo con tus facturas cobradas en el mes (fecha del depósito o del complemento) y tus gastos del mes. Confírmala antes de presentar.</p>
+</script>
+
+<!-- Modal de regímenes. Datos: { actual, nomina:[], promedio } -->
+<script type="text/x-jsrender" id="regimenes">
+<div class="readbox">
+  <div class="ic">{{:~icon('scale')}}</div>
+  <div><b>Tu situación según tus documentos</b>
+    <ul>
+      <li>Facturas con el régimen <b>{{>actual}}</b>.</li>
+      <li>La UNAM te paga honorarios <b>NO ASIMILADOS</b>: es servicio profesional independiente, no salario.</li>
+      {{if nomina.length}}<li>También recibes <b>nómina</b> de: {{>nomina.join(', ')}} → régimen <b>605 Sueldos y salarios</b>.</li>{{/if}}
+    </ul>
+  </div>
+</div>
+
+<div class="reg-grid">
+  <section class="reg-card">
+    <header><span class="code">612</span><h3>Actividades Empresariales y Profesionales</h3></header>
+    <ul>
+      <li><b>Para:</b> servicios profesionales independientes (honorarios), sin límite de ingresos.</li>
+      <li><b>ISR mensual:</b> ingresos cobrados − gastos deducibles, con la tarifa progresiva (hasta 35%).</li>
+      <li><b>Retención de la UNAM:</b> ISR 10% e IVA 2/3 (10.67%).</li>
+      <li><b>Deducciones:</b> sí, gastos estrictamente indispensables con CFDI y pagados (equipo, internet, etc.).</li>
+      <li><b>Mensual:</b> ISR, IVA y DIOT; contabilidad electrónica.</li>
+      <li><b>Anual:</b> obligatoria; permite deducciones personales (médicos, colegiaturas…).</li>
+    </ul>
+  </section>
+  <section class="reg-card">
+    <header><span class="code">626</span><h3>RESICO (Régimen Simplificado de Confianza)</h3></header>
+    <ul>
+      <li><b>Para:</b> ingresos del año hasta <b>$3.5 millones</b>; puede convivir con sueldos y salarios e intereses (sumados dentro del límite).</li>
+      <li><b>ISR mensual:</b> 1% a 2.5% sobre lo cobrado sin IVA, <b>sin deducciones</b>; los pagos son definitivos.</li>
+      <li><b>Retención de la UNAM:</b> ISR 1.25% e IVA 2/3.</li>
+      <li><b>No pueden:</b> socios o accionistas de personas morales, entre otros casos.</li>
+      <li><b>IVA:</b> igual que en 612 (mensual, con acreditamiento).</li>
+      <li><b>Gastos:</b> no reducen el ISR; sí sirven para el IVA acreditable.</li>
+    </ul>
+  </section>
+  <section class="reg-card">
+    <header><span class="code">605</span><h3>Sueldos y Salarios</h3></header>
+    <ul>
+      <li><b>Para:</b> lo que te pagan por nómina (UNAM, SEGOB…).</li>
+      <li><b>ISR:</b> lo retiene el patrón cada pago.</li>
+      <li><b>Anual:</b> obligatoria si tuviste dos o más patrones a la vez, si ganaste más de $400,000, o si tienes otros ingresos (como tus honorarios).</li>
+      <li>Se declara junto con 612 en la anual; en RESICO, el RESICO va aparte.</li>
+    </ul>
+  </section>
+</div>
+
+<h3 class="reg-sub">Comparador rápido (mensual)</h3>
+<label class="f">Ingreso mensual por honorarios, sin IVA<input id="rgIng" type="number" step="0.01" inputmode="decimal" value="{{:promedio}}"></label>
+<div id="rgOut"></div>
+<p class="hint">Es una guía para platicarlo con tu contador; no sustituye asesoría fiscal. Fuentes: <a href="https://blog.alegra.com/mexico/resico-personas-fisicas/" target="_blank" rel="noopener">RESICO personas físicas</a> · <a href="https://blog.alegra.com/mexico/regimen-de-personas-fisicas-con-actividades-empresariales-y-profesionales/" target="_blank" rel="noopener">Régimen 612</a> · <a href="https://www.sat.gob.mx" target="_blank" rel="noopener">SAT</a>.</p>
+</script>
+<script type="text/x-jsrender" id="regimen-calc">
+<div class="reg-cmp">
+  <div><small>612 · retención ISR 10%</small><b>{{:~money(ret10)}}</b><span>El ISR real sale de tu cálculo mensual con deducciones; la retención se acredita.</span></div>
+  <div><small>RESICO · ISR {{:tasa}}%</small><b>{{:~money(resico)}}</b><span>Retención 1.25% = {{:~money(ret125)}} → {{if difResico > 0}}pagarías {{:~money(difResico)}} más al mes{{else}}la retención ya cubre el ISR del mes{{/if}}.</span></div>
+  <div><small>IVA retenido (ambos)</small><b>{{:~money(ivaRet)}}</b><span>2/3 del IVA.</span></div>
+</div>
+<p class="hint">Ingreso anual estimado: {{:~money(anual)}} {{if anual > 3500000}}· <b style="color:var(--red)">rebasa el límite de RESICO</b>{{/if}}</p>
 </script>
