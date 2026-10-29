@@ -49,11 +49,11 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '14',
+  VERSION: '15',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
-   * Contraseña sugerida: 
+   * Contraseña sugerida: Facturas#2026
    * Para cambiarla: Ajustes → "Cambiar contraseña" genera el código a pegar aquí.
    */
   PASSWORD_SHA256: '02878fa63eb2077d4d24512f69ed602c265c99eae0e8d187209a988bac567ca1',
@@ -236,6 +236,7 @@ const ICONS = {
   receipt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>',
   bank: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/></svg>',
   filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16l-6 8v5l-4 2v-7z"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg>',
   scale: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>'
 };
 
@@ -2512,8 +2513,10 @@ function aFecha(v) {
   if (v instanceof Date && !isNaN(v)) return localISO(v).slice(0, 10);
   if (typeof v === 'number' && v > 20000 && v < 80000) return localISO(excelDate(v)).slice(0, 10);
   const s = String(v ?? '').trim();
-  let x = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); if (x) return `${x[1]}-${pad(x[2], 2)}-${pad(x[3], 2)}`;
-  x = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/); if (x) return `${x[3]}-${pad(x[2], 2)}-${pad(x[1], 2)}`;
+  // Sólo fechas que existen (31/02 o 15/13 se rechazan)
+  const ok = (y, m, d) => { const dt = new Date(+y, +m - 1, +d); return dt.getFullYear() === +y && dt.getMonth() === +m - 1 && dt.getDate() === +d ? `${y}-${pad(m, 2)}-${pad(d, 2)}` : ''; };
+  let x = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); if (x) return ok(x[1], x[2], x[3]);
+  x = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/); if (x) return ok(x[3], x[2], x[1]);
   return '';
 }
 /** "$-1,234.50" → -1234.5 ; vacío → 0 */
@@ -2887,13 +2890,127 @@ function pickFiles(accept) {
    Acepta el Excel que descargas del banco (.xlsx) o .csv, y también tu hoja
    anterior "Santander_2026". Busca sola la fila de encabezados (FECHA,
    CONCEPTO/DESCRIPCIÓN, RETIRO/CARGO, DEPÓSITO/ABONO o IMPORTE).
-   Sin duplicados: misma fecha + hora + concepto + importe = mismo movimiento.
+   Plantilla: botón "Plantilla" descarga un machote .xlsx estandarizado.
+   Sin duplicados: misma fecha + concepto + importe = mismo movimiento.
    Conciliación automática: cada depósito se vincula a la factura cuyo total
    coincide (±CONFIG.TOLERANCIA_BANCO, por los centavos de diferencia entre
    la solicitud y la factura). Así sabes cuándo te pagaron y si falta subir
    el complemento (lo que antes marcabas con ✅).
    ========================================================================= */
-const claveMov = m => [m.fecha, m.hora || '', (m.concepto || '').replace(/\s+/g, ' ').trim().toUpperCase(), r2(m.retiro), r2(m.deposito)].join('|');
+/** Texto normalizado para comparar (mayúsculas, sin acentos ni espacios dobles) */
+const normTxt = v => String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+/**
+ * Llave anti-duplicados: MISMA FECHA + MISMO CONCEPTO + MISMO MONTO = mismo movimiento.
+ * (La hora no cuenta: si el mismo movimiento viene con otra hora o sin hora, igual es duplicado.)
+ */
+const claveMov = m => [m.fecha, normTxt(m.concepto), r2(m.retiro).toFixed(2), r2(m.deposito).toFixed(2)].join('|');
+/** Marca que identifica la plantilla oficial (celda A1 de la hoja Movimientos) */
+const PLANTILLA_BANCO = 'PLANTILLA ESTADO DE CUENTA';
+const PLANTILLA_COLS = ['FECHA', 'HORA', 'CONCEPTO', 'REFERENCIA', 'RETIRO', 'DEPOSITO', 'SALDO'];
+const PLANTILLA_FILAS = 1000; // filas con formato listas para llenar
+
+/**
+ * Genera y descarga la plantilla (machote) .xlsx para cargar movimientos.
+ * Se arma a mano con JSZip (un .xlsx es un ZIP de XML): hoja "Movimientos"
+ * con encabezados, formatos (fecha dd/mm/aaaa, importes 0.00), validaciones de
+ * datos, filtros y paneles inmovilizados; y una hoja "Instrucciones".
+ */
+async function descargarPlantillaBanco() {
+  const JSZip = await jszip();
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const t = (ref, txt, s = 0) => `<c r="${ref}" t="inlineStr"${s ? ` s="${s}"` : ''}><is><t xml:space="preserve">${esc(txt)}</t></is></c>`;
+  const L = 'ABCDEFG';
+  // Estilos: 1 título, 2 encabezado, 3 fecha, 4 hora, 5 texto, 6 importe, 7 nota gris, 8 texto ajustado
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="3"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/><numFmt numFmtId="165" formatCode="hh:mm"/><numFmt numFmtId="166" formatCode="#,##0.00"/></numFmts>
+<fonts count="5"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="14"/><color rgb="FF003D79"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><i/><sz val="10"/><color rgb="FF6B7280"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF003D79"/><name val="Calibri"/></font></fonts>
+<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF003D79"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF7E0"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="2"><border/><border><left style="thin"><color rgb="FFD9DEE7"/></left><right style="thin"><color rgb="FFD9DEE7"/></right><top style="thin"><color rgb="FFD9DEE7"/></top><bottom style="thin"><color rgb="FFD9DEE7"/></bottom></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="10">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>
+<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>
+<xf numFmtId="49" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>
+<xf numFmtId="166" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>
+<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
+<xf numFmtId="49" fontId="4" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+  // ---- Hoja 1: Movimientos ----
+  const est = [3, 4, 5, 5, 6, 6, 6]; // estilo por columna
+  let filas = `<row r="1">${t('A1', PLANTILLA_BANCO + ' · Control Facturas', 1)}</row>`
+    + `<row r="2">${t('A2', 'Una fila por movimiento desde la fila 5. No cambies ni muevas los encabezados. El importe va en RETIRO o en DEPOSITO (nunca en ambos). Ver hoja "Instrucciones".', 7)}</row>`
+    + `<row r="3">${t('A3', 'Cuenta:', 7)}<c r="B3" s="9"/>${t('C3', '← (opcional) número de cuenta', 7)}</row>`
+    + `<row r="4">${PLANTILLA_COLS.map((h, i) => t(L[i] + 4, h, 2)).join('')}</row>`;
+  for (let r = 5; r < 5 + PLANTILLA_FILAS; r++) filas += `<row r="${r}">${est.map((s, i) => `<c r="${L[i]}${r}" s="${s}"/>`).join('')}</row>`;
+  const fin = 4 + PLANTILLA_FILAS;
+  const dv = (sq, tipo, op, f1, f2, titulo, msg) => `<dataValidation type="${tipo}" ${op ? `operator="${op}"` : ''} allowBlank="1" showInputMessage="1" showErrorMessage="1" errorTitle="${esc(titulo)}" error="${esc(msg)}" promptTitle="${esc(titulo)}" prompt="${esc(msg)}" sqref="${sq}"><formula1>${f1}</formula1>${f2 ? `<formula2>${f2}</formula2>` : ''}</dataValidation>`;
+  const hoja1 = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetViews><sheetView workbookViewId="0" tabSelected="1"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A5" sqref="A5"/></sheetView></sheetViews>
+<sheetFormatPr defaultRowHeight="15"/>
+<cols><col min="1" max="1" width="13" customWidth="1"/><col min="2" max="2" width="8" customWidth="1"/><col min="3" max="3" width="48" customWidth="1"/><col min="4" max="4" width="20" customWidth="1"/><col min="5" max="7" width="15" customWidth="1"/></cols>
+<sheetData>${filas}</sheetData>
+<autoFilter ref="A4:G${fin}"/>
+<dataValidations count="4">
+${dv(`A5:A${fin}`, 'date', 'between', '36526', '73051', 'FECHA', 'Fecha del movimiento en formato dd/mm/aaaa (ej. 25/06/2026).')}
+${dv(`B5:B${fin}`, 'time', 'between', '0', '0.999988', 'HORA', 'Opcional. Formato hh:mm (ej. 14:30).')}
+${dv(`C5:C${fin}`, 'textLength', 'between', '1', '200', 'CONCEPTO', 'Obligatorio. Copia el concepto tal como aparece en el estado de cuenta.')}
+${dv(`E5:G${fin}`, 'decimal', 'greaterThanOrEqual', '0', '', 'IMPORTE', 'Número sin signo y sin $ (ej. 1500.50). RETIRO o DEPOSITO, no ambos.')}
+</dataValidations>
+<pageMargins left="0.5" right="0.5" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>
+</worksheet>`;
+  // ---- Hoja 2: Instrucciones ----
+  const ins = [
+    ['CÓMO LLENAR LA PLANTILLA', ''],
+    ['', ''],
+    ['Columna', 'Qué poner'],
+    ['FECHA *', 'Fecha del movimiento, dd/mm/aaaa. Ej. 25/06/2026'],
+    ['HORA', 'Opcional, hh:mm. Ej. 14:30'],
+    ['CONCEPTO *', 'Tal como viene en el estado de cuenta. Ej. CIE0402940250136351 T06'],
+    ['REFERENCIA', 'Opcional (referencia / folio del banco)'],
+    ['RETIRO', 'Cargo o salida de dinero, sin signo. Ej. 3700'],
+    ['DEPOSITO', 'Abono o entrada de dinero, sin signo. Ej. 10557.80'],
+    ['SALDO', 'Opcional, saldo después del movimiento'],
+    ['', ''],
+    ['REGLAS', ''],
+    ['1', '* = obligatorio. Cada fila necesita FECHA, CONCEPTO y un importe en RETIRO o en DEPOSITO (no en ambos).'],
+    ['2', 'NO se permiten duplicados: misma FECHA + mismo CONCEPTO + mismo IMPORTE se consideran el mismo movimiento y se ignoran (también dentro del mismo archivo).'],
+    ['3', 'Si de verdad hubo dos movimientos iguales el mismo día, distínguelos en el concepto, ej. "RETIRO CAJERO (2)".'],
+    ['4', 'Puedes volver a subir el mismo archivo con filas nuevas al final: sólo se agregan las nuevas.'],
+    ['5', 'Las filas con error no se cargan; la app te dice el número de fila y el motivo.'],
+    ['6', 'Guarda como .xlsx (o .csv). No cambies el nombre de la hoja ni la fila de encabezados (fila 4).'],
+    ['', ''],
+    ['EJEMPLO', ''],
+    ['25/06/2026 07:41', 'CARGO PAGO TARJETA CREDITO · RETIRO 18995.58'],
+    ['24/06/2026 03:32', 'CIE0402940250136351 T06 · DEPOSITO 6864.00  → se vincula solo con tu factura']
+  ];
+  const hoja2 = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<cols><col min="1" max="1" width="20" customWidth="1"/><col min="2" max="2" width="100" customWidth="1"/></cols>
+<sheetData>${ins.map((r, i) => `<row r="${i + 1}">${r[0] ? t('A' + (i + 1), r[0], [0, 2, 11, 19].includes(i) ? (i === 2 ? 2 : 1) : 0) : ''}${r[1] ? t('B' + (i + 1), r[1], i === 2 ? 2 : 8) : ''}</row>`).join('')}</sheetData>
+</worksheet>`;
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`);
+  zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+  zip.file('xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Movimientos" sheetId="1" r:id="rId1"/><sheet name="Instrucciones" sheetId="2" r:id="rId2"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">Movimientos!$A$4:$G$${fin}</definedName></definedNames></workbook>`);
+  zip.file('xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
+  zip.file('xl/styles.xml', styles);
+  zip.file('xl/worksheets/sheet1.xml', hoja1);
+  zip.file('xl/worksheets/sheet2.xml', hoja2);
+  const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', compression: 'DEFLATE' });
+  download(blob, 'plantilla-estado-de-cuenta.xlsx');
+}
 /** Clasificación del movimiento por su concepto (para filtrar) */
 function tipoMov(m) {
   const c = (m.concepto || '').toUpperCase();
@@ -2905,50 +3022,78 @@ function tipoMov(m) {
   if (/TRANSFER|SPEI/.test(c)) return m.deposito > 0 ? 'Transferencia recibida' : 'Transferencia enviada';
   return m.deposito > 0 ? 'Otro depósito' : 'Otro cargo';
 }
-/** Filas de una hoja → movimientos */
+/**
+ * Filas de una hoja → movimientos.
+ * Acepta la plantilla oficial (validación estricta, reporta cada fila con error)
+ * y, por compatibilidad, la exportación de Santander u hojas anteriores.
+ * @returns {{movs:object[], cuenta:string, plantilla:boolean, errores:string[]}} cada mov trae `fila` (nº de fila en Excel)
+ */
 function movsDeHoja(rows) {
-  const norm = v => String(v ?? '').trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const norm = v => normTxt(v);
   const hi = rows.findIndex(r => r && r.some(c => norm(c) === 'FECHA' || norm(c).startsWith('FECHA ')) && r.some(c => /CONCEPTO|DESCRIPCION/.test(norm(c))));
-  if (hi < 0) return { movs: [], cuenta: '' };
+  if (hi < 0) return { movs: [], cuenta: '', plantilla: false, errores: [] };
   const head = rows[hi].map(norm);
   const find = (...res) => head.findIndex(h => res.some(re => re.test(h)));
   const cF = find(/^FECHA/), cH = find(/^HORA/), cC = find(/CONCEPTO|DESCRIPCION/),
     cR = find(/RETIRO|CARGO/), cD = find(/DEPOSITO|ABONO/), cI = find(/^IMPORTE|^MONTO/), cS = find(/^SALDO/), cRef = find(/REFERENCIA/);
-  const titulo = rows.slice(0, hi).flat().map(x => String(x ?? '')).join(' ');
-  const cuenta = (titulo.match(/cuenta\s+(\d{6,})/i) || [])[1] || '';
-  const movs = [];
-  for (const r of rows.slice(hi + 1)) {
-    if (!r) continue;
-    const fecha = aFecha(r[cF]); if (!fecha) continue;
-    let ret = cR >= 0 ? Math.abs(aMonto(r[cR])) : 0, dep = cD >= 0 ? Math.abs(aMonto(r[cD])) : 0;
+  const previas = rows.slice(0, hi);
+  const titulo = previas.flat().map(x => String(x ?? '')).join(' ');
+  const plantilla = normTxt(titulo).includes(PLANTILLA_BANCO);
+  const cuenta = (titulo.match(/cuenta:?\s*(\d{6,})/i) || [])[1] || '';
+  const movs = [], errores = [];
+  const vacio = v => v == null || String(v).trim() === '';
+  rows.slice(hi + 1).forEach((r, i) => {
+    const fila = hi + 2 + i; // número de fila como lo ves en Excel
+    if (!r || r.every(vacio)) return;
+    const fecha = aFecha(r[cF]);
+    const vR = cR >= 0 ? aMonto(r[cR]) : 0, vD = cD >= 0 ? aMonto(r[cD]) : 0;
+    let ret = Math.abs(vR || 0), dep = Math.abs(vD || 0);
     if (cI >= 0 && !ret && !dep) { const v = aMonto(r[cI]); v < 0 ? ret = -v : dep = v; }
-    if (!ret && !dep) continue;
-    const hora = r[cH] instanceof Date ? localISO(r[cH]).slice(11, 19) : typeof r[cH] === 'number' ? new Date(Math.round(r[cH] * 86400) * 1000).toISOString().slice(11, 19) : String(r[cH] ?? '').trim();
-    movs.push({ fecha, hora, concepto: String(r[cC] ?? '').replace(/\s+/g, ' ').trim(), retiro: r2(ret), deposito: r2(dep), saldo: cS >= 0 ? aMonto(r[cS]) : null, referencia: cRef >= 0 ? String(r[cRef] ?? '') : '' });
-  }
-  return { movs, cuenta };
+    const concepto = String(r[cC] ?? '').replace(/\s+/g, ' ').trim();
+    if (plantilla) {
+      // Validación estricta de la plantilla: se reporta el motivo de cada fila rechazada
+      const mal = [];
+      if (!fecha) mal.push(vacio(r[cF]) ? 'falta la FECHA' : `FECHA inválida (“${r[cF]}”), usa dd/mm/aaaa`);
+      if (!concepto) mal.push('falta el CONCEPTO');
+      const noNum = v => !vacio(v) && typeof v !== 'number' && !/^\s*[-$]*\s*[\d,]+(\.\d+)?\s*$/.test(String(v));
+      if ((cR >= 0 && noNum(r[cR])) || (cD >= 0 && noNum(r[cD]))) mal.push('el importe no es un número (escribe sólo cifras, ej. 1500.50)');
+      else if (ret && dep) mal.push('tiene importe en RETIRO y en DEPOSITO; usa sólo uno');
+      else if (!ret && !dep) mal.push('falta el importe (RETIRO o DEPOSITO)');
+      if (mal.length) { errores.push(`Fila ${fila}: ${mal.join('; ')}.`); return; }
+    } else if (!fecha || (!ret && !dep)) return; // exportación del banco: se saltan totales/títulos
+    const h = r[cH];
+    const hora = h instanceof Date ? localISO(h).slice(11, 19) : typeof h === 'number' ? new Date(Math.round((h % 1) * 86400) * 1000).toISOString().slice(11, 19) : String(h ?? '').trim();
+    movs.push({ fila, fecha, hora, concepto, retiro: r2(ret), deposito: r2(dep), saldo: cS >= 0 && !vacio(r[cS]) ? aMonto(r[cS]) : null, referencia: cRef >= 0 ? String(r[cRef] ?? '').trim() : '' });
+  });
+  return { movs, cuenta, plantilla, errores };
 }
-/** Importa estados de cuenta; devuelve resumen */
+/** Importa estados de cuenta; devuelve resumen (con el detalle de duplicados y filas con error) */
 async function importarBanco(files) {
-  const res = { nuevas: 0, duplicadas: 0, conciliadas: 0, errores: [], archivos: files.length };
-  const existentes = new Set(db.banco.map(claveMov));
+  const res = { nuevas: 0, duplicadas: 0, conciliadas: 0, errores: [], filasError: [], dupDetalle: [], plantilla: false, archivos: files.length };
+  const existentes = new Map(db.banco.map(m => [claveMov(m), 'ya cargado']));
   for (const f of files) {
     try {
       const hojas = await leerTabla(f);
       let alguna = false;
       for (const h of hojas) {
-        const { movs, cuenta } = movsDeHoja(h.rows);
+        const { movs, cuenta, plantilla, errores } = movsDeHoja(h.rows);
+        if (plantilla) { res.plantilla = true; alguna = true; }
+        res.filasError.push(...errores.map(e => (files.length > 1 ? f.name + ' · ' : '') + e));
         if (!movs.length) continue;
         alguna = true;
-        for (const mv of movs) {
+        for (const { fila, ...mv } of movs) {
           const k = claveMov(mv);
-          if (existentes.has(k)) { res.duplicadas++; continue; }
-          existentes.add(k);
+          if (existentes.has(k)) {
+            res.duplicadas++;
+            res.dupDetalle.push(`Fila ${fila}: ${fmtDate(mv.fecha)} · ${mv.concepto} · ${money(mv.deposito || mv.retiro)} (${existentes.get(k)})`);
+            continue;
+          }
+          existentes.set(k, `repetido en la fila ${fila}`);
           db.banco.push({ id: uid(), ...mv, cuenta, facturaId: null, manual: false, nota: '', alta: new Date().toISOString() });
           res.nuevas++;
         }
       }
-      if (!alguna) res.errores.push(`${f.name}: no encontré la fila de encabezados (FECHA, CONCEPTO, RETIRO/DEPÓSITO).`);
+      if (!alguna) res.errores.push(`${f.name}: no encontré la fila de encabezados (FECHA, CONCEPTO, RETIRO, DEPOSITO). Usa la plantilla.`);
     } catch (e) { res.errores.push(`${f.name}: ${e.message}`); }
   }
   db.banco.sort((a, b) => (a.fecha + (a.hora || '')).localeCompare(b.fecha + (b.hora || '')));
@@ -3030,8 +3175,10 @@ function renderBanco() {
     const b = busy('Leyendo estado de cuenta…'); let res;
     try { res = await importarBanco(files); if (res.nuevas || res.conciliadas) await persist(); } catch (e) { return handleErr(e); } finally { b.done(); }
     renderBanco();
-    openModal({ title: 'Resultado de la carga', body: R('import-banco', res), footer: '<span class="spacer"></span><button class="btn primary" data-close>Listo</button>' });
+    const m = openModal({ title: 'Resultado de la carga', body: R('import-banco', res), footer: '<button class="btn" id="ibPlant">' + ICONS.download + ' Plantilla</button><span class="spacer"></span><button class="btn primary" data-close>Listo</button>' });
+    $('#ibPlant', m.el).onclick = () => descargarPlantillaBanco().catch(handleErr);
   });
+  $$('[data-bplant]').forEach(b => b.onclick = () => descargarPlantillaBanco().then(() => toast('Plantilla descargada: llénala y súbela con “Cargar estado de cuenta”', 'ok')).catch(handleErr));
   $('#bConciliar') && ($('#bConciliar').onclick = async () => { const n = conciliar(); if (n) await persist(); renderBanco(); toast(n ? `${n} depósito(s) vinculados a facturas` : 'No hay depósitos nuevos que coincidan', n ? 'ok' : ''); });
   $('#bq').oninput = e => { ui.bf.q = e.target.value; const pos = e.target.selectionStart; renderBanco(); const n = $('#bq'); n.focus(); n.setSelectionRange(pos, pos); };
   $('#bAnio') && ($('#bAnio').onchange = e => { ui.bf.anio = e.target.value; ui.bf.cols.mes = null; renderBanco(); });
