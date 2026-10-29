@@ -49,14 +49,14 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '15',
+  VERSION: '16',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
    * Contraseña sugerida: Facturas#2026
    * Para cambiarla: Ajustes → "Cambiar contraseña" genera el código a pegar aquí.
    */
-  PASSWORD_SHA256: '02878fa63eb2077d4d24512f69ed602c265c99eae0e8d187209a988bac567ca1',
+  GOOGLE_CLIENT_ID: '283041748014-l5okmhe1f1ff8o0b19klfu90035napjj.apps.googleusercontent.com',
 
   /**
    * Contraseña de SOLO LECTURA. Quien entra con ella se conecta con SU cuenta
@@ -102,7 +102,7 @@ const CONFIG = {
    * Credenciales → ID de cliente OAuth → Aplicación web → en "Orígenes de
    * JavaScript autorizados" pon https://TU-USUARIO.github.io
    */
-  GOOGLE_CLIENT_ID: '283041748014-l5okmhe1f1ff8o0b19klfu90035napjj.apps.googleusercontent.com',
+  GOOGLE_CLIENT_ID: '',
 
   /** Carpeta que se crea en tu Drive. */
   DRIVE_ROOT_FOLDER: 'Control Facturas',
@@ -2508,15 +2508,21 @@ async function leerTabla(file) {
   if (/\.(xlsx|xlsm)$/i.test(file.name)) return leerExcel(file);
   return [{ name: file.name, rows: leerCSV(await file.text()) }];
 }
-/** Convierte texto/número/Date a "AAAA-MM-DD" */
+/** Abreviaturas de mes (español e inglés) → número */
+const MES_TXT = { ENE: 1, JAN: 1, FEB: 2, MAR: 3, ABR: 4, APR: 4, MAY: 5, JUN: 6, JUL: 7, AGO: 8, AUG: 8, SEP: 9, SET: 9, OCT: 10, NOV: 11, DIC: 12, DEC: 12 };
+/** Convierte texto/número/Date a "AAAA-MM-DD" (acepta 26/10/2026, 26/10/26, 2026-10-26 y 26/oct/26) */
 function aFecha(v) {
   if (v instanceof Date && !isNaN(v)) return localISO(v).slice(0, 10);
   if (typeof v === 'number' && v > 20000 && v < 80000) return localISO(excelDate(v)).slice(0, 10);
   const s = String(v ?? '').trim();
   // Sólo fechas que existen (31/02 o 15/13 se rechazan)
   const ok = (y, m, d) => { const dt = new Date(+y, +m - 1, +d); return dt.getFullYear() === +y && dt.getMonth() === +m - 1 && dt.getDate() === +d ? `${y}-${pad(m, 2)}-${pad(d, 2)}` : ''; };
+  const anio = y => y.length === 2 ? '20' + y : y; // "26" → 2026
   let x = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); if (x) return ok(x[1], x[2], x[3]);
-  x = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/); if (x) return ok(x[3], x[2], x[1]);
+  x = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}|\d{2})\b/); if (x) return ok(anio(x[3]), x[2], x[1]);
+  // Mes con letra, como lo exporta el banco: "26/oct/26", "26-OCT-2026", "26 oct. 2026"
+  x = s.match(/^(\d{1,2})[\s\-/.]*([a-zA-ZáéíóúÁÉÍÓÚ]{3,})\.?[\s\-/.]*(\d{4}|\d{2})\b/);
+  if (x) { const m = MES_TXT[normTxt(x[2]).slice(0, 3)]; if (m) return ok(anio(x[3]), m, x[1]); }
   return '';
 }
 /** "$-1,234.50" → -1234.5 ; vacío → 0 */
@@ -3140,7 +3146,8 @@ const BCOLS = {
   conc: { titulo: 'Complemento', fn: m => !m.deposito ? '—' : m.facturaId ? (tieneComplemento(m.facturaId) ? '✅ Con complemento' : '⚠ Falta complemento') : 'Sin factura' }
 };
 const tieneComplemento = id => { const f = db.facturas.find(x => x.id === id); return !!(f && (f.docs.complementoXml || f.docs.complementoPdf || f.pagadaSinComplemento)); };
-ui.bf = { cols: {}, q: '', sort: { k: 'fecha', d: -1 } };
+/** Orden por defecto: fecha, de la más antigua a la más reciente */
+ui.bf = { cols: {}, q: '', sort: { k: 'fecha', d: 1 } };
 function bancoFiltrado(excepto) {
   const q = ui.bf.q.toLowerCase();
   return db.banco.filter(m => {
@@ -3166,7 +3173,8 @@ function renderBanco() {
     cols: Object.fromEntries(Object.keys(BCOLS).map(c => [c, { on: !!ui.bf.cols[c], sort: ui.bf.sort.k === c ? (d > 0 ? '↑' : '↓') : '' }])),
     filas: filas.map(m => {
       const f = m.facturaId ? db.facturas.find(x => x.id === m.facturaId) : null;
-      return { id: m.id, fecha: fmtDate(m.fecha), hora: (m.hora || '').slice(0, 5), concepto: m.concepto, tipo: tipoMov(m), retiro: m.retiro, deposito: m.deposito,
+      const tipo = tipoMov(m);
+      return { id: m.id, fecha: fmtDate(m.fecha), hora: (m.hora || '').slice(0, 5), concepto: m.concepto, tipo, cie: /^Depósito CIE/.test(tipo), retiro: m.retiro, deposito: m.deposito,
         fac: f ? { id: f.id, seq: f.seq, ref: f.referencia, ok: tieneComplemento(f.id), dif: r2(m.deposito - f.total) } : null, puedeVincular: m.deposito > 0 && !/NOMINA/i.test(m.concepto) };
     })
   });
