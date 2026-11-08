@@ -56,7 +56,7 @@ const CONFIG = {
    * Contraseña sugerida: Facturas#2026
    * Para cambiarla: Ajustes → "Cambiar contraseña" genera el código a pegar aquí.
    */
-   GOOGLE_CLIENT_ID: '283041748014-l5okmhe1f1ff8o0b19klfu90035napjj.apps.googleusercontent.com',
+  PASSWORD_SHA256: 'b250a672224013ae26c6c25ef43e835e571ce633732005fdd30b10694d901074',
 
   /**
    * Contraseña de SOLO LECTURA. Quien entra con ella se conecta con SU cuenta
@@ -102,7 +102,7 @@ const CONFIG = {
    * Credenciales → ID de cliente OAuth → Aplicación web → en "Orígenes de
    * JavaScript autorizados" pon https://TU-USUARIO.github.io
    */
-  GOOGLE_CLIENT_ID: '',
+  GOOGLE_CLIENT_ID: '283041748014-l5okmhe1f1ff8o0b19klfu90035napjj.apps.googleusercontent.com',
 
   /** Carpeta que se crea en tu Drive. */
   DRIVE_ROOT_FOLDER: 'Control Facturas',
