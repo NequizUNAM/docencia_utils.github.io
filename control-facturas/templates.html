@@ -456,6 +456,7 @@
 <script type="text/x-jsrender" id="factura-footer">
 {{if !isNew}}<button class="btn danger" id="del">Eliminar</button>{{/if}}
 <button class="btn" id="datosFac" title="Datos para facturar con esta cantidad y descripción">{{:~icon('copy')}} Datos para facturar</button>
+{{if !isNew}}<button class="btn" id="asSat" title="Script que llena el complemento de pago en el portal del SAT">{{:~icon('coin')}} Complemento SAT (JS)</button>{{/if}}
 <span class="spacer"></span>
 <button class="btn" data-close>Cancelar</button>
 <button class="btn primary" id="save">Guardar</button>
@@ -485,6 +486,53 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
 
 <!-- Modal "Datos para facturar": calculadora + secciones con botón de copiar.
      Datos: { cantidad, secciones:[{titulo, icon, filas:[{label, valor, nota}]}] } -->
+<!-- Asistente del complemento de pago para el portal del SAT. Datos: datosAsistenteSAT(f) -->
+<script type="text/x-jsrender" id="asistente-sat">
+<ol class="as-pasos">
+  <li>Revisa o completa los datos (vienen de la factura y del depósito del banco).</li>
+  <li>Presiona <b>Copiar script</b>.</li>
+  <li>En el portal del SAT abre tu complemento (tipo <b>P · Pago</b>), presiona <b>F12</b> → pestaña <b>Console</b>, pega con Ctrl+V y Enter. <small class="muted">Si Chrome no deja pegar, escribe <code>allow pasting</code> y Enter.</small></li>
+  <li>Aparece un panel abajo a la derecha: usa un botón por sección y presiona <b>Guardar</b> del SAT después de cada una. <b>Sellar</b> lo haces tú.</li>
+</ol>
+<fieldset><legend>Cliente (receptor)</legend><div class="form-grid">
+  <label class="f">RFC<input data-as="rfc" value="{{>rfc}}" maxlength="13"></label>
+  <label class="f">Código postal<input data-as="cp" value="{{>cp}}" maxlength="5" inputmode="numeric"></label>
+  <label class="f full">Nombre o razón social<input data-as="nombre" value="{{>nombre}}"></label>
+  <label class="f">Régimen fiscal (clave)<input data-as="regimen" value="{{>regimen}}" maxlength="3"></label>
+</div></fieldset>
+<fieldset><legend>Recepción de pago</legend><div class="form-grid">
+  <label class="f">Fecha y hora de pago<input data-as="fecha" value="{{>fecha}}" placeholder="aaaa-mm-dd hh:mm:ss"></label>
+  <label class="f">Forma de pago<select data-as="forma">
+    <option value="03" {{if forma=='03'}}selected{{/if}}>03 · Transferencia electrónica</option>
+    <option value="02" {{if forma=='02'}}selected{{/if}}>02 · Cheque nominativo</option>
+    <option value="01" {{if forma=='01'}}selected{{/if}}>01 · Efectivo</option></select></label>
+  <label class="f">Monto<input data-as="monto" inputmode="decimal" readonly title="Igual al importe pagado"></label>
+  <label class="f">Número de operación <small class="muted">(opcional)</small><input data-as="numOperacion" value="{{>numOperacion}}"></label>
+</div></fieldset>
+<fieldset><legend>Documento relacionado (la factura que te pagaron)</legend><div class="form-grid">
+  <label class="f full">UUID (folio fiscal)<input data-as="uuid" value="{{>uuid}}" style="font-family:ui-monospace,monospace"></label>
+  <label class="f">Serie<input data-as="serie" value="{{>serie}}"></label>
+  <label class="f">Folio<input data-as="folio" value="{{>folio}}"></label>
+  <label class="f">Núm. de parcialidad<input data-as="parcialidad" value="{{>parcialidad}}" inputmode="numeric"></label>
+  <label class="f">Saldo anterior<input data-as="saldoAnt" value="{{>saldoAnt}}" inputmode="decimal"></label>
+  <label class="f">Importe pagado<input data-as="pagado" value="{{>pagado}}" inputmode="decimal"></label>
+  <label class="f">Saldo insoluto<input data-as="insoluto" readonly></label>
+</div></fieldset>
+<fieldset><legend>Impuestos del documento <small class="muted">(base = cantidad × pagado / total)</small></legend>
+  <div class="as-imp">
+    <span></span><b>Base DR</b><b>Tasa</b><b>Importe DR</b>
+    <label class="chk"><input type="checkbox" data-as="usaIva" {{if conIva}}checked{{/if}}> IVA trasladado (002)</label>
+    <input data-as="base" readonly><input data-as="tasaIva" value="{{>tasaIva}}"><input data-as="iva" readonly>
+    <label class="chk"><input type="checkbox" data-as="usaRetIva" {{if conRetIva}}checked{{/if}}> IVA retenido (002)</label>
+    <span class="muted">misma base</span><input data-as="tasaRetIva" value="{{>tasaRetIva}}"><input data-as="retIva" readonly>
+    <label class="chk"><input type="checkbox" data-as="usaRetIsr" {{if conRetIsr}}checked{{/if}}> ISR retenido (001)</label>
+    <span class="muted">misma base</span><input data-as="tasaRetIsr" value="{{>tasaRetIsr}}"><input data-as="retIsr" readonly>
+  </div>
+  <p class="hint">Compara con lo que muestra el SAT al buscar la factura; si el portal ya trae los impuestos, sólo revisa.</p>
+</fieldset>
+<div id="asOut" hidden><label class="f full">Script<textarea rows="5" readonly></textarea></label></div>
+</script>
+
 <script type="text/x-jsrender" id="datos-facturar">
 <div class="df-calc">
   <label class="f">Cantidad de la solicitud (sin IVA)<input id="dfCant" type="number" step="0.01" inputmode="decimal" value="{{:cantidad}}" placeholder="11075.00"></label>
@@ -994,10 +1042,11 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
     </tr></thead>
     <tbody>
       {{for filas}}
-      <tr{{if cie}} class="cie" title="Depósito CIE (pago UNAM)"{{/if}}>
+      <tr{{if cieFila}} class="cie" title="Depósito CIE (pago UNAM) sin vincular"{{/if}}>
         <td class="nowrap" data-l="Fecha">{{>fecha}} <small class="muted">{{>hora}}</small></td>
         <td class="x-main"><b>{{>concepto}}</b></td>
-        <td data-l="Tipo"><span class="tag">{{>tipo}}</span></td>
+        <td data-l="Tipo"><span class="tag{{if cie}} cie-tag{{/if}}">{{>tipo}}</span>
+          {{if cie && !fac && !~root.ro}}<button class="icon-btn mini res-btn{{if sinResaltar}} off{{/if}}" data-resaltar="{{:id}}" title="{{if sinResaltar}}Volver a resaltar la fila{{else}}Quitar el amarillo de la fila{{/if}}">{{:~icon('marker')}}</button>{{/if}}</td>
         <td class="r num" data-l="Retiro">{{if retiro}}<span style="color:var(--red)">-{{:~money(retiro)}}</span>{{else}}<span class="muted">—</span>{{/if}}</td>
         <td class="r num" data-l="Depósito">{{if deposito}}<b style="color:var(--green)">{{:~money(deposito)}}</b>{{else}}<span class="muted">—</span>{{/if}}</td>
         <td data-l="Complemento">
@@ -1014,7 +1063,7 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
     <tfoot><tr><td colspan="3"><b>Total de lo visible ({{:filas.length}})</b></td><td class="r num"><b>-{{:~money(k.ret)}}</b></td><td class="r num"><b>{{:~money(k.dep)}}</b></td><td></td></tr></tfoot>
   </table>
 </div>
-<p class="hint"><span class="cie-dot"></span> Fila amarilla = depósito CIE (pago UNAM). Los depósitos se vinculan solos con la factura del mismo total (±{{:~tol()}}). ✅ = ya subiste el complemento; ⚠ = te pagaron pero falta el complemento.</p>
+<p class="hint"><span class="cie-dot"></span> Fila amarilla = pago UNAM (CIE) <b>sin vincular</b>; al vincularse sólo queda resaltada la etiqueta. Con {{:~icon('marker')}} quitas o vuelves a poner el amarillo. Los depósitos se vinculan solos con la factura del mismo total (±{{:~tol()}}). ✅ = ya subiste el complemento; ⚠ = te pagaron pero falta el complemento.</p>
 {{else}}
 <div class="empty"><h3>Sin movimientos</h3>
   <p><b>1.</b> Descarga la plantilla · <b>2.</b> Captura tus movimientos (fecha, concepto, retiro o depósito) · <b>3.</b> Súbela con “Cargar estado de cuenta”.</p>
