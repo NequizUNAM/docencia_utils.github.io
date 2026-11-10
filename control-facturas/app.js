@@ -49,7 +49,7 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '18',
+  VERSION: '19',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
@@ -1908,8 +1908,10 @@ function openFactura(orig, preload = {}) {
   $('#asSat', m.el) && ($('#asSat', m.el).onclick = () => {
     readForm();
     if (!f.uuid) return toast('Primero sube la factura timbrada (PDF/XML) para tener el UUID', 'err');
-    openAsistenteSAT(f);
+    openGuiaSAT(f, 'complemento');
   });
+  // Guía para generar la FACTURA en el portal del SAT (con la cantidad y descripción de la solicitud)
+  $('#guiaFac', m.el) && ($('#guiaFac', m.el).onclick = () => { readForm(); openGuiaSAT(f, 'factura'); });
   $('#del', m.el) && ($('#del', m.el).onclick = async () => {
     if (!await confirmar(`¿Eliminar la factura #${f.seq} y sus documentos? En Drive van a la papelera.`, 'Eliminar', true)) return;
     const b = busy('Eliminando…');
@@ -2398,210 +2400,326 @@ function openDatosFacturar(pre = {}) {
 
 
 /* =========================================================================
-   15b2. ASISTENTE SAT · COMPLEMENTO DE PAGO (script para el portal)
-   El portal "Genera tu factura" del SAT bloquea pegar (onpaste) y tiene
-   muchos campos. Aquí se arma un script con los datos de la factura que
-   se pega UNA vez en la consola (F12) del portal: muestra un panel flotante
-   con un botón por paso (Cliente · Pago · Documento · Impuestos) que llena
-   esos campos. Nunca presiona Guardar ni Sellar: eso lo haces tú.
+   15b2. GUÍAS PARA EL PORTAL DEL SAT (factura y complemento de pago)
+   El portal "Genera tu factura" bloquea pegar y tiene muchos campos. Aquí se
+   arma un script con los datos de la factura que pegas UNA vez en la consola
+   (F12) del portal. El script:
+     · permite pegar (Ctrl+V) en todos los campos;
+     · pinta de AMARILLO los campos que debes llenar y de VERDE los ya llenos;
+     · pone junto a cada campo amarillo un botón azul con el valor sugerido:
+       un clic y se llena (vas campo por campo);
+     · muestra un panel con la lista y el avance.
+   Nunca presiona Guardar ni Sellar: eso lo haces tú.
    ========================================================================= */
 
 /**
- * Código que corre DENTRO del portal del SAT (no en esta app).
- * Se serializa con toString(), así que debe ser autocontenido.
- * Los campos se localizan por el nombre de su observable de Knockout
- * (data-bind="value: E1560001P7MONTO"), que es estable aunque cambien los id.
- * @param {object} D datos armados por datosAsistenteSAT()
+ * Código que corre DENTRO del portal del SAT (no en esta app). Se serializa con
+ * toString(), así que debe ser autocontenido. Los campos se localizan por el
+ * observable de Knockout de su data-bind (p. ej. "value: E1560001P7MONTO").
+ * @param {{titulo:string, tipo:string, grupos:{titulo:string, campos:object[]}[]}} D
+ *   campo normal: {obs, label, val, modo:'texto'|'lista'|'check', nota}
+ *   campo buscador: {folio:true, label, val}  (caja "Búsqueda por folio" + botón Buscar)
+ *   campo conjunto: {set:true, label, ancla, obs:[...], opciones:[{label, vals:{obs:val}}]}
  */
-function satAsistente(D) {
-  const jq = window.jQuery, ko = window.ko;
-  // 1) Permitir pegar (Ctrl+V) en todos los campos del portal
+function satGuia(D) {
+  const W = window, jq = W.jQuery, ko = W.ko;
+  if (W.__cfGuia) W.__cfGuia.cerrar();
+  // 1) Permitir pegar
   document.querySelectorAll('[onpaste]').forEach(e => { e.onpaste = null; e.removeAttribute('onpaste'); });
-  if (!window.__cfPegar) { window.__cfPegar = 1; document.addEventListener('paste', e => e.stopImmediatePropagation(), true); }
+  if (!W.__cfPegar) { W.__cfPegar = 1; document.addEventListener('paste', e => e.stopImmediatePropagation(), true); }
+  // 2) Estilos
+  const css = document.createElement('style');
+  css.textContent = `.cfg-pend{background:#FFF4C7!important;outline:2px solid #D59F0F!important;outline-offset:1px}
+.cfg-ok{background:#EAF7EF!important;outline:2px solid #3BA56A!important;outline-offset:1px}
+.cfg-chip{position:fixed;z-index:2147483646;display:flex;gap:4px;justify-content:flex-end;pointer-events:none}
+.cfg-chip button{pointer-events:auto;all:unset;pointer-events:auto;cursor:pointer;font:600 11px/1.25 Segoe UI,Arial,sans-serif;padding:3px 8px;border-radius:999px;background:#003D79;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.cfg-chip button:hover{background:#D59F0F;color:#0b2447}.cfg-chip button.ok{background:#3BA56A}
+#cfgPanel{position:fixed;right:16px;bottom:16px;z-index:2147483647;width:330px;max-height:75vh;display:flex;flex-direction:column;background:#fff;border:1px solid #d9dee7;border-top:4px solid #D59F0F;border-radius:12px;box-shadow:0 12px 32px rgba(0,30,80,.25);font:12.5px/1.4 Segoe UI,Arial,sans-serif;color:#0b2447}
+#cfgPanel header{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#003D79;color:#fff;border-radius:8px 8px 0 0}
+#cfgPanel header b{flex:1}#cfgPanel header button{all:unset;cursor:pointer;font-size:16px;padding:0 4px}
+#cfgPanel .cfg-body{overflow:auto;padding:8px 12px}#cfgPanel.min .cfg-body,#cfgPanel.min .cfg-foot{display:none}
+#cfgPanel h4{margin:10px 0 4px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#5b6b84}
+#cfgPanel .it{display:flex;gap:6px;align-items:baseline;padding:3px 4px;border-radius:6px;cursor:pointer}#cfgPanel .it:hover{background:#f2f5fa}
+#cfgPanel .it i{font-style:normal;width:12px}#cfgPanel .it span{flex:1}#cfgPanel .it small{color:#5b6b84;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#cfgPanel .cfg-foot{display:flex;gap:6px;padding:8px 12px;border-top:1px solid #eef1f6}
+#cfgPanel .cfg-foot button{all:unset;cursor:pointer;flex:1;text-align:center;padding:6px;border-radius:8px;border:1px solid #d9dee7;background:#f5f7fb;font-weight:600}
+#cfgPanel .cfg-msg{color:#5b6b84;margin:0 0 4px}`;
+  document.head.appendChild(css);
 
-  const campos = [...document.querySelectorAll('[data-bind]')];
-  const buscar = obs => campos.find(el => new RegExp('(?:value|checked):\\s*' + obs + '(?![A-Za-z0-9])').test(el.getAttribute('data-bind')));
+  const todos = () => [...document.querySelectorAll('[data-bind]')];
+  const buscar = obs => todos().filter(el => new RegExp('(?:value|checked):\\s*' + obs + '(?![A-Za-z0-9])').test(el.getAttribute('data-bind')));
+  /** el primero visible y editable (algunos campos existen duplicados/ocultos) */
+  const campo = obs => buscar(obs).find(usable) || null;
   const visible = el => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  const usable = el => visible(el) && !el.disabled && !el.readOnly;
+  const vacio = el => el.type === 'checkbox' ? !el.checked : el.tagName === 'SELECT' ? (el.value === '' || el.value === '-1') : !String(el.value || '').trim();
   const dispara = (el, tipos) => tipos.forEach(t => jq ? jq(el).trigger(t) : el.dispatchEvent(new Event(t, { bubbles: true })));
-  let log = [];
-  /** Escribe un valor en el campo ligado al observable `obs` */
-  function poner(obs, val, etiqueta, opc = {}) {
-    if (val === '' || val == null) return null;
-    const el = buscar(obs);
-    if (!el) { log.push(['✗', etiqueta, 'no está en esta pantalla']); return null; }
-    if (!visible(el) && !opc.oculto) { log.push(['·', etiqueta, 'oculto (abre su sección o usa el botón Agregar)']); return null; }
-    if (el.disabled || el.readOnly) { log.push(['·', etiqueta, 'lo calcula el SAT: ' + (el.value || '—')]); return null; }
-    let v = String(val);
-    if (el.tagName === 'SELECT') {
-      const o = [...el.options].find(o => o.value === v) || [...el.options].find(o => o.text.trim().toUpperCase().startsWith(v.toUpperCase()));
-      if (!o) { log.push(['✗', etiqueta, 'opción "' + v + '" no existe']); return null; }
-      v = o.value;
-    }
-    el.value = v;
-    try { const vm = ko && ko.dataFor(el); if (vm && typeof vm[obs] === 'function') vm[obs](v); } catch (e) { }
-    dispara(el, ['input', 'change', 'blur']);
-    el.style.outline = '2px solid #D59F0F'; el.style.background = '#FFF7E0';
-    log.push(['✓', etiqueta, el.tagName === 'SELECT' ? el.options[el.selectedIndex].text : v]);
-    return el;
-  }
-  /** Campo con lista del SAT (autocomplete): escribe y abre las sugerencias para que elijas */
-  function lista(obs, texto, etiqueta) {
-    const el = poner(obs, texto, etiqueta);
-    if (el && jq && jq.fn.autocomplete) { try { el.focus(); jq(el).autocomplete('search', texto); log[log.length - 1][2] += '  ← elige de la lista'; } catch (e) { } }
-  }
-  const PASOS = {
-    cliente() {
-      lista('E1350003PFAC085Descrip', D.cliente.buscar, 'Cliente frecuente');
-      poner('E1350003PFAC007', D.cliente.rfc, 'RFC');
-      poner('E1350003PFAC008', D.cliente.nombre, 'Nombre o razón social');
-      poner('E1350003PFAC101', D.cliente.cp, 'Código postal');
-      lista('E1350003PFAC103', D.cliente.regimen, 'Régimen fiscal');
-    },
-    pago() {
-      poner('E1560001P7FECHAPAGO', D.pago.fecha, 'Fecha de pago');
-      poner('E1560001P7FORMAPAGO', D.pago.forma, 'Forma de pago');
-      const mon = buscar('E1560001P7MONEDADescrip');
-      if (mon && !mon.value) lista('E1560001P7MONEDADescrip', 'MXN', 'Moneda');
-      poner('E1560001P7MONTO', D.pago.monto, 'Monto');
-      poner('E1560001P7NUMEROOPERACION', D.pago.numOperacion, 'Número de operación');
-    },
-    buscarDoc() {
-      // Caja "Búsqueda por folio" + botón Buscar (el SAT trae la factura y sus saldos)
-      const lab = [...document.querySelectorAll('label')].find(l => /B[uú]squeda por folio/i.test(l.textContent));
-      let caja = lab && lab.closest('div');
-      for (let i = 0; caja && i < 4 && !caja.querySelector('input[type=text]:not([disabled])'); i++) caja = caja.parentElement;
-      const inp = caja && caja.querySelector('input[type=text]:not([disabled])');
-      if (!inp) { log.push(['✗', 'Búsqueda por folio', 'no la encontré; escribe el UUID a mano']); return; }
-      inp.value = D.doc.uuid; dispara(inp, ['input', 'change', 'keyup', 'blur']);
-      inp.style.outline = '2px solid #D59F0F';
-      log.push(['✓', 'Búsqueda por folio', D.doc.uuid]);
-      let zona = caja;
-      for (let i = 0; zona && i < 5; i++, zona = zona.parentElement) {
-        const b = [...zona.querySelectorAll('button')].find(b => /^\s*Buscar\s*$/i.test(b.textContent));
-        if (b) { b.click(); log.push(['✓', 'Buscar', 'presionado: selecciona la factura en la tabla']); return; }
-      }
-      log.push(['·', 'Buscar', 'presiona tú el botón Buscar']);
-    },
-    documento() {
-      poner('E1560003P7IDDOCUMENTO', D.doc.uuid, 'ID del documento (UUID)');
-      poner('E1560003P7OBJETOIMPDR', D.doc.objetoImp, 'Objeto de impuesto');
-      poner('E1560003P7SERIE', D.doc.serie, 'Serie');
-      poner('E1560003P7FOLIO', D.doc.folio, 'Folio');
-      poner('E1560003P7MONEDADR', 'MXN', 'Moneda');
-      poner('E1560003P7TIPOCAMBIODR', '1', 'Equivalencia');
-      poner('E1560003P7NUMPARCIALIDAD', D.doc.parcialidad, 'Número de parcialidad');
-      poner('E1560003P7IMPORTESALDOANT', D.doc.saldoAnt, 'Saldo anterior');
-      poner('E1560003P7IMPORTEPAGADO', D.doc.pagado, 'Importe pagado');
-      poner('E1560003P7IMPORTESALDOINSOL', D.doc.insoluto, 'Saldo insoluto');
-    }
-  };
-  D.impuestos.forEach((t, i) => PASOS['imp' + i] = () => {
-    poner('E1560004P7BASEDRR', t.base, 'Base DR');
-    poner('E1560004P7IMPUESTODRR', t.impuesto, 'Impuesto DR');
-    poner('E1560004P7TIPOFACTORDRR', 'Tasa', 'Tipo factor DR');
-    poner('E1560004P7TASAOCUOTADRR', t.tasa, 'Tasa o cuota DR');
-    poner('E1560004P7TIPOIMPORTEDRR', t.tipo, 'Tipo impuesto DR');
-    poner('E1560004P7IMPORTEDRR', t.importe, 'Importe DR');
-  });
+  const plano = v => String(v ?? '').replace(/[,\s$]/g, '').toUpperCase();
+  const igual = (el, v) => el.type === 'checkbox' ? el.checked === !!v : el.tagName === 'SELECT' ? el.value === String(v) || el.options[el.selectedIndex]?.text.toUpperCase().startsWith(String(v).toUpperCase())
+    : (plano(el.value) === plano(v) || (!isNaN(+plano(v)) && +plano(el.value) === +plano(v)) || plano(el.value).startsWith(plano(v)));
+  let aviso = '';
 
-  // 2) Panel flotante
-  document.getElementById('cfSatPanel')?.remove();
-  const P = document.createElement('div');
-  P.id = 'cfSatPanel';
-  P.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483647;width:340px;max-height:80vh;overflow:auto;background:#fff;border:1px solid #d9dee7;border-top:4px solid #D59F0F;border-radius:12px;box-shadow:0 12px 32px rgba(0,30,80,.25);font:13px/1.4 Segoe UI,Arial,sans-serif;color:#0b2447';
-  const btn = (k, n, t, s) => `<button data-k="${k}" style="display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;margin:0 0 6px;padding:8px 10px;border:1px solid #d9dee7;border-radius:8px;background:#f5f7fb;cursor:pointer;font:inherit;color:inherit"><b style="min-width:20px;height:20px;border-radius:50%;background:#003D79;color:#fff;display:grid;place-items:center;font-size:11px">${n}</b><span><b>${t}</b><br><small style="color:#5b6b84">${s}</small></span></button>`;
-  P.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#003D79;color:#fff"><b>Complemento de pago · ${D.titulo}</b><button data-x style="all:unset;cursor:pointer;font-size:18px">×</button></div>
-  <div style="padding:10px 12px">
-  <p style="margin:0 0 8px;color:#5b6b84">Pegar (Ctrl+V) ya está permitido. Cada botón llena su sección; revisa y presiona <b>Guardar</b> del SAT. <b>Sellar</b> siempre lo haces tú.</p>
-  ${btn('cliente', 1, 'Datos del cliente', D.cliente.rfc + ' · C.P. ' + D.cliente.cp)}
-  ${btn('pago', 2, 'Recepción de pago', D.pago.fecha + ' · $' + D.pago.monto)}
-  ${btn('buscarDoc', 3, 'Buscar la factura por folio', 'UUID …' + D.doc.uuid.slice(-12))}
-  ${btn('documento', 4, 'Documento relacionado', 'Parc. ' + D.doc.parcialidad + ' · pagado $' + D.doc.pagado + ' · insoluto $' + D.doc.insoluto)}
-  ${D.impuestos.map((t, i) => btn('imp' + i, 5 + i, 'Impuesto: ' + t.nombre, 'Base ' + t.base + ' × ' + t.tasa + ' = ' + t.importe + '  (antes presiona Agregar)')).join('')}
-  <div id="cfSatLog" style="margin-top:8px;font-size:12px"></div></div>`;
+  /** Escribe el valor en el campo (texto, lista del SAT, select o casilla) */
+  function poner(el, obs, val, modo) {
+    if (el.type === 'checkbox') { if (el.checked !== !!val) el.click(); }
+    else {
+      let v = String(val);
+      if (el.tagName === 'SELECT') {
+        const o = [...el.options].find(o => o.value === v) || [...el.options].find(o => o.text.trim().toUpperCase().startsWith(v.toUpperCase()));
+        if (!o) { aviso = 'La opción "' + v + '" no existe en ' + obs; return; }
+        v = o.value;
+      }
+      el.value = v;
+      try { const vm = ko && ko.dataFor(el); if (obs && vm && typeof vm[obs] === 'function') vm[obs](v); } catch (e) { }
+      dispara(el, ['input', 'change', 'blur']);
+      if (modo === 'lista' && jq && jq.fn.autocomplete) { try { el.focus(); jq(el).autocomplete('search', v); aviso = 'Elige la opción correcta en la lista del SAT'; } catch (e) { } }
+    }
+  }
+  /** Caja "Búsqueda por folio" (no tiene observable propio) */
+  function cajaFolio() {
+    const lab = [...document.querySelectorAll('label')].find(l => /B[uú]squeda por folio/i.test(l.textContent));
+    let c = lab && lab.closest('div');
+    for (let i = 0; c && i < 4 && !c.querySelector('input[type=text]:not([disabled])'); i++) c = c.parentElement;
+    return c && c.querySelector('input[type=text]:not([disabled])');
+  }
+  function buscarFolio(inp, val) {
+    inp.value = val; dispara(inp, ['input', 'change', 'keyup', 'blur']);
+    for (let z = inp.parentElement, i = 0; z && i < 6; i++, z = z.parentElement) {
+      const b = [...z.querySelectorAll('button')].find(b => /^\s*Buscar\s*$/i.test(b.textContent));
+      if (b) { b.click(); aviso = 'Selecciona la factura en la tabla de resultados'; return; }
+    }
+    aviso = 'Presiona el botón Buscar';
+  }
+
+  // 3) Lista de campos con su estado
+  const items = [];
+  D.grupos.forEach((g, gi) => g.campos.forEach((c, ci) => items.push({ ...c, id: 'cfg' + gi + '_' + ci, grupo: g.titulo })));
+  const capa = document.createElement('div'); document.body.appendChild(capa);
+  const P = document.createElement('div'); P.id = 'cfgPanel';
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  P.innerHTML = `<header><b>${esc(D.tipo)} · ${esc(D.titulo)}</b><button data-min title="Minimizar">–</button><button data-x title="Cerrar y quitar colores">×</button></header>
+  <div class="cfg-body"><p class="cfg-msg">🟡 por llenar · 🟢 lleno · ⚪ aún no aparece en pantalla. Da clic en el <b style="color:#003D79">botón azul</b> junto a cada campo amarillo (o en la lista). Ctrl+V ya funciona. <b>Guardar</b> y <b>Sellar</b> los presionas tú.</p>
+  <div id="cfgAviso" class="cfg-msg" style="color:#b25e00"></div>
+  ${D.grupos.map((g, gi) => `<h4>${esc(g.titulo)}</h4>` + g.campos.map((c, ci) => `<div class="it" data-it="cfg${gi}_${ci}"><i>⚪</i><span>${esc(c.label)}</span><small>${esc(c.set ? c.opciones.map(o => o.label).join(' / ') : c.modo === 'check' ? (c.val ? 'marcar' : 'no') : c.val)}</small></div>`).join('')).join('')}
+  </div><div class="cfg-foot"><button data-todo>Llenar lo visible</button><button data-chips>Ocultar botones</button></div>`;
   document.body.appendChild(P);
-  P.querySelector('[data-x]').onclick = () => P.remove();
-  P.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
-    log = [];
-    try { PASOS[b.dataset.k](); } catch (e) { log.push(['✗', 'Error', e.message]); }
-    b.style.background = '#e8f5ee'; b.style.borderColor = '#9fd5b5';
-    P.querySelector('#cfSatLog').innerHTML = log.map(([s, e, v]) => `<div style="padding:3px 0;border-top:1px solid #eef1f6;color:${s === '✓' ? '#1d7a46' : s === '✗' ? '#b42318' : '#5b6b84'}">${s} <b>${e}</b>: ${String(v).replace(/</g, '&lt;')}</div>`).join('');
-    console.table(log.map(([s, e, v]) => ({ ' ': s, campo: e, valor: v })));
-  });
-  console.log('%cAsistente de complemento listo (panel abajo a la derecha)', 'color:#003D79;font-weight:bold');
+  let chipsOn = true;
+
+  /** Llena un campo (o un conjunto) y vuelve a pintar */
+  function llenar(it, opcion) {
+    aviso = '';
+    if (it.folio) { const inp = cajaFolio(); if (inp) buscarFolio(inp, it.val); else aviso = 'Abre la sección del documento relacionado'; }
+    else if (it.set) { const o = it.opciones[opcion || 0]; Object.entries(o.vals).forEach(([obs, v]) => { const el = campo(obs); if (el) poner(el, obs, v, 'texto'); }); it.hecho = opcion; }
+    else { const el = campo(it.obs); if (el) poner(el, it.obs, it.val, it.modo); else { navigator.clipboard?.writeText(String(it.val)).catch(() => { }); aviso = '"' + it.label + '" no está en pantalla: copié el valor, pégalo con Ctrl+V.'; } }
+    pintar();
+  }
+
+  /** Pinta campos, coloca botones y actualiza el panel (corre cada 0.7 s) */
+  function pintar() {
+    capa.innerHTML = '';
+    let pend = 0, ok = 0;
+    for (const it of items) {
+      let els = [], ancla = null, estado = '⚪';
+      if (it.folio) { const inp = cajaFolio(); if (inp && usable(inp)) { els = [inp]; ancla = inp; } }
+      else if (it.set) { els = it.obs.map(campo).filter(Boolean); ancla = campo(it.ancla); }
+      else { const el = campo(it.obs); if (el) { els = [el]; ancla = el; } }
+      els.forEach(el => {
+        const lleno = !vacio(el) && (it.modo !== 'check' || !it.val || el.checked);
+        el.classList.toggle('cfg-pend', !lleno); el.classList.toggle('cfg-ok', lleno);
+      });
+      if (els.length) {
+        const llenos = els.filter(el => !vacio(el)).length;
+        estado = llenos === els.length && (!it.set || it.hecho != null) ? '🟢' : '🟡';
+        estado === '🟢' ? ok++ : pend++;
+      }
+      const li = P.querySelector(`[data-it="${it.id}"] i`); if (li) li.textContent = estado;
+      if (!chipsOn || !ancla) continue;
+      const r = ancla.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight) continue;
+      const chip = document.createElement('div'); chip.className = 'cfg-chip';
+      chip.style.top = Math.max(2, r.top - 19) + 'px'; chip.style.right = Math.max(2, innerWidth - r.right) + 'px';
+      const ops = it.set ? it.opciones.map((o, i) => ({ t: (it.hecho === i ? '✓ ' : '⤵ ') + o.label, i, ok: it.hecho === i }))
+        : [{ t: (estado === '🟢' && igual(ancla, it.val) ? '✓ ' : '⤵ ') + (it.folio ? 'UUID + Buscar' : it.modo === 'check' ? (it.val ? 'Marcar' : 'Desmarcar') : String(it.val)), ok: estado === '🟢' && igual(ancla, it.val) }];
+      ops.forEach(o => { const b = document.createElement('button'); b.textContent = o.t; b.title = 'Llenar: ' + it.label; if (o.ok) b.className = 'ok'; b.onmousedown = e => e.preventDefault(); b.onclick = () => llenar(it, o.i); chip.appendChild(b); });
+      capa.appendChild(chip);
+    }
+    P.querySelector('header b').textContent = `${D.tipo} · ${pend} por llenar · ${ok} listos`;
+    P.querySelector('#cfgAviso').textContent = aviso;
+  }
+
+  P.querySelector('[data-x]').onclick = () => W.__cfGuia.cerrar();
+  P.querySelector('[data-min]').onclick = () => P.classList.toggle('min');
+  P.querySelector('[data-chips]').onclick = e => { chipsOn = !chipsOn; e.target.textContent = chipsOn ? 'Ocultar botones' : 'Mostrar botones'; pintar(); };
+  P.querySelector('[data-todo]').onclick = () => { items.filter(it => !it.set && !it.folio).forEach(it => { const el = campo(it.obs); if (el && vacio(el) && it.modo !== 'lista') poner(el, it.obs, it.val, it.modo); }); aviso = 'Listo. Las listas del SAT (régimen, uso, unidad…) y los impuestos se llenan con su botón.'; pintar(); };
+  P.querySelectorAll('[data-it]').forEach(d => d.onclick = () => { const it = items.find(x => x.id === d.dataset.it); if (it) { llenar(it, 0); const el = it.obs && campo(it.obs); el && el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } });
+  const reloj = setInterval(pintar, 700);
+  const alMover = () => pintar();
+  addEventListener('scroll', alMover, true); addEventListener('resize', alMover);
+  W.__cfGuia = { cerrar() {
+    clearInterval(reloj); removeEventListener('scroll', alMover, true); removeEventListener('resize', alMover);
+    document.querySelectorAll('.cfg-pend,.cfg-ok').forEach(e => e.classList.remove('cfg-pend', 'cfg-ok'));
+    capa.remove(); P.remove(); css.remove(); W.__cfGuia = null;
+  } };
+  pintar();
+  console.log('%cGuía de Control Facturas lista: campos en amarillo = por llenar', 'color:#003D79;font-weight:bold');
 }
 
-/** Arma los datos del asistente a partir de una factura (todo editable en el modal) */
-function datosAsistenteSAT(f) {
+/* ---- Datos de cada guía ---- */
+
+/** Valores sugeridos para el COMPLEMENTO de pago de una factura */
+function datosComplementoSAT(f) {
   const d = desglose(f), Rc = C.RECEPTOR, Fa = C.FACTURA;
   const dep = depositoDe(f);
   const fecha = dep?.fecha || f.fechaCobro || today();
   const hora = (dep?.hora || '12:00:00').padEnd(8, ':00').slice(0, 8);
-  const saldoAnt = f.total || 0;
+  const total = f.total || 0;
+  // Tasa real de ESTA factura (p. ej. ret. IVA 0.106666 o 0.106700); si no hay desglose, la de CONFIG
   const tasa = (imp, def) => d.subtotal && imp ? (Math.floor(imp / d.subtotal * 1e6 + 1e-6) / 1e6).toFixed(6) : def;
   return {
     rfc: f.rfcCliente || Rc.rfc, nombre: f.cliente || Rc.nombre, cp: Rc.cp, regimen: Rc.regimen.split(' · ')[0],
     fecha: `${fecha} ${hora}`, forma: '03', numOperacion: dep?.referencia || '',
     uuid: f.uuid || '', serie: '', folio: f.folio || '', parcialidad: String(f.complemento?.parcialidad || 1),
-    saldoAnt: saldoAnt.toFixed(2), pagado: (f.montoCobrado || dep?.deposito || saldoAnt).toFixed(2),
-    subtotal: d.subtotal, total: f.total || 0,
-    // Tasa real de ESTA factura (p. ej. ret. IVA 0.106666 o 0.106700); si no hay desglose, la de CONFIG
+    saldoAnt: total.toFixed(2), pagado: (f.montoCobrado || dep?.deposito || total).toFixed(2), insoluto: '0.00', monto: '',
+    usaIva: d.iva > 0, usaRetIva: d.retIva > 0, usaRetIsr: d.retIsr > 0,
     tasaIva: tasa(d.iva, Fa.tasaIva), tasaRetIva: tasa(d.retIva, Fa.tasaRetIva), tasaRetIsr: tasa(d.retIsr, Fa.tasaRetIsr),
-    conIva: d.iva > 0, conRetIva: d.retIva > 0, conRetIsr: d.retIsr > 0,
-    titulo: '#' + f.seq + (f.referencia ? ' · ' + f.referencia : '')
+    base: '', iva: '', retIva: '', retIsr: '', uuidSustituye: '',
+    _subtotal: d.subtotal, _total: total
+  };
+}
+/** Valores sugeridos para generar la FACTURA (ingreso) */
+function datosFacturaSAT(f) {
+  const d = desglose(f), Rc = C.RECEPTOR, Fa = C.FACTURA, k = v => String(v).split(' · ')[0];
+  return {
+    rfc: f.rfcCliente || Rc.rfc, nombre: f.cliente || Rc.nombre, cp: Rc.cp, regimen: k(Rc.regimen), uso: k(Rc.usoCfdi),
+    forma: k(Fa.formaPago), metodo: f.metodoPago || k(Fa.metodoPago), exportacion: k(Fa.exportacion),
+    claveProdServ: Fa.claveProdServ, cantidad: Fa.cantidad, claveUnidad: Fa.claveUnidad, valorUnitario: d.subtotal ? d.subtotal.toFixed(2) : '',
+    descripcion: f.descripcion || '', objetoImp: k(Fa.objetoImp),
+    usaIva: (f.ivaRate ?? C.IVA_DEFAULT) > 0, usaRetIva: (f.retIvaRate ?? C.RET_IVA_DEFAULT) > 0, usaRetIsr: (f.retIsrRate ?? C.RET_ISR_DEFAULT) > 0,
+    total: ''
   };
 }
 
 /**
- * Modal "Asistente SAT": pide/confirma los campos y genera el script.
- * Los impuestos del documento se recalculan en proporción al importe pagado.
+ * Formularios del modal (lo que la app te pide antes de generar el script).
+ * Cada campo: [clave, etiqueta, tipo, opciones/nota]
  */
-function openAsistenteSAT(f) {
-  const v0 = datosAsistenteSAT(f);
-  const m = openModal({ title: 'Complemento de pago · asistente para el portal del SAT', size: 'wide', body: R('asistente-sat', v0),
+const GUIA_FORM = {
+  complemento: [
+    ['Cliente (receptor)', [['rfc', 'RFC'], ['cp', 'Código postal'], ['nombre', 'Nombre o razón social', 'full'], ['regimen', 'Régimen fiscal (clave)']]],
+    ['Recepción de pago', [['fecha', 'Fecha y hora de pago', '', 'aaaa-mm-dd hh:mm:ss'], ['forma', 'Forma de pago', 'sel:03 · Transferencia electrónica|02 · Cheque nominativo|01 · Efectivo'],
+      ['monto', 'Monto (= importe pagado)', 'ro'], ['numOperacion', 'Número de operación (opcional)']]],
+    ['Documento relacionado (la factura que te pagaron)', [['uuid', 'UUID (folio fiscal)', 'full mono'], ['serie', 'Serie'], ['folio', 'Folio'], ['parcialidad', 'Núm. de parcialidad'],
+      ['saldoAnt', 'Saldo anterior'], ['pagado', 'Importe pagado'], ['insoluto', 'Saldo insoluto', 'ro']]],
+    ['Impuestos del documento (base = cantidad × pagado / total)', [['usaIva', 'IVA trasladado (002)', 'chk'], ['tasaIva', 'Tasa IVA'], ['iva', 'Importe IVA', 'ro'],
+      ['usaRetIva', 'IVA retenido (002)', 'chk'], ['tasaRetIva', 'Tasa ret. IVA'], ['retIva', 'Importe ret. IVA', 'ro'],
+      ['usaRetIsr', 'ISR retenido (001)', 'chk'], ['tasaRetIsr', 'Tasa ret. ISR'], ['retIsr', 'Importe ret. ISR', 'ro'], ['base', 'Base DR', 'ro']]],
+    ['Sustitución (sólo si cancelaste un complemento)', [['uuidSustituye', 'UUID del complemento cancelado (relación 04)', 'full mono']]]
+  ],
+  factura: [
+    ['Cliente (receptor)', [['rfc', 'RFC'], ['cp', 'Código postal'], ['nombre', 'Nombre o razón social', 'full'], ['regimen', 'Régimen fiscal (clave)'], ['uso', 'Uso del CFDI (clave)']]],
+    ['Comprobante', [['forma', 'Forma de pago', 'sel:99 · Por definir|03 · Transferencia electrónica'], ['metodo', 'Método de pago', 'sel:PPD · Pago en parcialidades o diferido|PUE · Pago en una sola exhibición'], ['exportacion', 'Exportación (clave)']]],
+    ['Concepto', [['claveProdServ', 'Producto o servicio (clave)'], ['claveUnidad', 'Unidad de medida (clave)'], ['cantidad', 'Cantidad'], ['valorUnitario', 'Valor unitario (la CANTIDAD sin IVA)'],
+      ['descripcion', 'Descripción detallada', 'full area'], ['objetoImp', 'Objeto de impuesto (clave)']]],
+    ['Impuestos del concepto', [['usaIva', 'IVA cobrado 16%', 'chk'], ['usaRetIva', 'Retención de IVA (2/3)', 'chk'], ['usaRetIsr', 'Retención de ISR 10%', 'chk'], ['total', 'Total estimado', 'ro']]]
+  ]
+};
+
+/** Convierte lo capturado en el modal → datos del script (grupos y campos del portal) */
+function armarGuia(tipo, v, titulo) {
+  const T = (obs, label, val, modo = 'texto') => ({ obs, label, val, modo });
+  if (tipo === 'factura') {
+    const g = [
+      { titulo: 'Datos del cliente', campos: [T('E1350003PFAC085Descrip', 'Cliente frecuente (opcional)', v.rfc, 'lista'), T('E1350003PFAC007', 'RFC', v.rfc), T('E1350003PFAC008', 'Nombre o razón social', v.nombre),
+        T('E1350003PFAC101', 'Código postal', v.cp), T('E1350003PFAC103', 'Régimen fiscal', v.regimen, 'lista'), T('E1350003PFAC009Descrip', 'Uso de la factura', v.uso, 'lista'),
+        T('E1350003PUsoFacturaMoralDescrip', 'Uso de la factura', v.uso, 'lista')] },
+      { titulo: 'Comprobante', campos: [T('E1350006PformadePago', 'Forma de pago', v.forma), T('E1350006PmetododePago', 'Método de pago', v.metodo), T('E1350006PExportacion', 'Exportación', v.exportacion)] },
+      { titulo: 'Concepto', campos: [T('E1350001PFAC013', 'Producto o servicio', v.claveProdServ, 'lista'), T('E1350001PFAC083', 'Descripción detallada', v.descripcion),
+        T('E1350001PFAC016', 'Cantidad', v.cantidad), T('E1350001PFAC015', 'Unidad de medida', v.claveUnidad, 'lista'), T('E1350001PFAC017', 'Valor unitario', v.valorUnitario),
+        T('E1350001PFAC104', 'Objeto de impuesto', v.objetoImp)] },
+      { titulo: 'Impuestos del concepto', campos: [
+        ...(v.usaIva ? [T('E1350001PFAC022', 'IVA cobrado', true, 'check'), T('E1350001PIvaCobradoConSimbolo', 'Valor IVA (elige 16%)', '16', 'lista')] : []),
+        ...(v.usaRetIva ? [T('E1350001PFAC024', 'Retención de IVA', true, 'check'), T('E1350001PRetencionIvaConSimbolo', 'Valor ret. IVA (elige 10.6667%)', '10.6', 'lista')] : []),
+        ...(v.usaRetIsr ? [T('E1350001PFAC026', 'Retención de ISR', true, 'check'), T('E1350001PRetencionIsrConSimbolo', 'Valor ret. ISR (elige 10%)', '10', 'lista')] : [])] }
+    ];
+    return { tipo: 'Factura', titulo, grupos: g.filter(x => x.campos.length) };
+  }
+  const DR = ['E1560004P7BASEDRR', 'E1560004P7IMPUESTODRR', 'E1560004P7TIPOFACTORDRR', 'E1560004P7TASAOCUOTADRR', 'E1560004P7TIPOIMPORTEDRR', 'E1560004P7IMPORTEDRR'];
+  const opc = [];
+  const imp = (label, impuesto, tasa, tipoI, importe) => opc.push({ label, vals: { [DR[0]]: v.base, [DR[1]]: impuesto, [DR[2]]: 'Tasa', [DR[3]]: tasa, [DR[4]]: tipoI, [DR[5]]: importe } });
+  if (v.usaIva) imp('IVA 16%', '002', v.tasaIva, 'Traslado', v.iva);
+  if (v.usaRetIva) imp('Ret. IVA', '002', v.tasaRetIva, 'Retención', v.retIva);
+  if (v.usaRetIsr) imp('Ret. ISR', '001', v.tasaRetIsr, 'Retención', v.retIsr);
+  const g = [
+    { titulo: 'Datos del cliente', campos: [T('E1350003PFAC085Descrip', 'Cliente frecuente (opcional)', v.rfc, 'lista'), T('E1350003PFAC007', 'RFC', v.rfc), T('E1350003PFAC008', 'Nombre o razón social', v.nombre),
+      T('E1350003PFAC101', 'Código postal', v.cp), T('E1350003PFAC103', 'Régimen fiscal', v.regimen, 'lista')] },
+    v.uuidSustituye ? { titulo: 'Sustitución del complemento cancelado', campos: [T('E1350003PFAC066', 'Facturas relacionadas', true, 'check'), T('E1350005PFAC067', 'Tipo de relación', '04'), T('E1350005PFAC068', 'Folio fiscal cancelado', v.uuidSustituye)] } : null,
+    { titulo: 'Recepción de pago', campos: [T('E1560001P7FECHAPAGO', 'Fecha de pago', v.fecha), T('E1560001P7FORMAPAGO', 'Forma de pago', v.forma), T('E1560001P7MONEDADescrip', 'Moneda', 'MXN', 'lista'),
+      T('E1560001P7MONTO', 'Monto', v.monto), ...(v.numOperacion ? [T('E1560001P7NUMEROOPERACION', 'Número de operación', v.numOperacion)] : [])] },
+    { titulo: 'Documento relacionado', campos: [{ folio: true, label: 'Búsqueda por folio', val: v.uuid }, T('E1560003P7IDDOCUMENTO', 'ID del documento (UUID)', v.uuid), T('E1560003P7OBJETOIMPDR', 'Objeto de impuesto', '02'),
+      ...(v.serie ? [T('E1560003P7SERIE', 'Serie', v.serie)] : []), ...(v.folio ? [T('E1560003P7FOLIO', 'Folio', v.folio)] : []), T('E1560003P7TIPOCAMBIODR', 'Equivalencia', '1'),
+      T('E1560003P7NUMPARCIALIDAD', 'Número de parcialidad', v.parcialidad), T('E1560003P7IMPORTESALDOANT', 'Saldo anterior', v.saldoAnt), T('E1560003P7IMPORTEPAGADO', 'Importe pagado', v.pagado),
+      T('E1560003P7IMPORTESALDOINSOL', 'Saldo insoluto', v.insoluto)] },
+    opc.length ? { titulo: 'Impuestos del documento (uno por uno: Agregar → botón → Guardar)', campos: [{ set: true, label: 'Impuesto DR', ancla: DR[0], obs: DR, opciones: opc }] } : null
+  ];
+  return { tipo: 'Complemento', titulo, grupos: g.filter(Boolean) };
+}
+
+/**
+ * Modal de la guía: pide/confirma los campos y genera el script.
+ * @param {'complemento'|'factura'} tipo
+ */
+function openGuiaSAT(f, tipo) {
+  const v0 = tipo === 'factura' ? datosFacturaSAT(f) : datosComplementoSAT(f);
+  const titulo = '#' + f.seq + (f.referencia ? ' · ' + f.referencia : '');
+  const secciones = GUIA_FORM[tipo].map(([t, campos]) => ({ titulo: t, campos: campos.map(([k, label, tp = '', nota = '']) => ({
+    k, label, val: v0[k], ro: tp === 'ro', chk: tp === 'chk', full: /full/.test(tp), mono: /mono/.test(tp), area: /area/.test(tp), nota,
+    opts: tp.startsWith('sel:') ? tp.slice(4).split('|').map(o => ({ v: o.split(' · ')[0], t: o, sel: o.split(' · ')[0] === v0[k] })) : null })) }));
+  const m = openModal({ title: tipo === 'factura' ? 'Factura · guía para el portal del SAT' : 'Complemento de pago · guía para el portal del SAT', size: 'wide',
+    body: R('asistente-sat', { tipo, secciones }),
     footer: '<button class="btn" id="asCopiarDatos">' + ICONS.copy + ' Copiar sólo datos</button><span class="spacer"></span><button class="btn" data-close>Cerrar</button><button class="btn primary" id="asCopiar">' + ICONS.copy + ' Copiar script</button>' });
-  const val = k => ($(`[data-as="${k}"]`, m.el)?.value ?? '').trim();
-  const put = (k, x) => { const el = $(`[data-as="${k}"]`, m.el); if (el) el.value = x; };
-  /** Recalcula insoluto e impuestos (base = subtotal × pagado / total) */
+  const el = k => $(`[data-as="${k}"]`, m.el);
+  const val = k => { const e = el(k); return !e ? v0[k] : e.type === 'checkbox' ? e.checked : e.value.trim(); };
+  const put = (k, x) => { const e = el(k); if (e) e.value = x; };
   const recalc = () => {
+    if (tipo === 'factura') {
+      const sub = num(val('valorUnitario')) * (num(val('cantidad')) || 1);
+      const c = calcDesdeCantidad(sub, val('usaIva') ? C.IVA_DEFAULT : 0, val('usaRetIsr') ? C.RET_ISR_DEFAULT : 0, val('usaRetIva') ? C.RET_IVA_DEFAULT : 0);
+      put('total', sub ? money(c.total) : '');
+      return;
+    }
     const ant = num(val('saldoAnt')), pag = num(val('pagado'));
     put('insoluto', r2(Math.max(0, ant - pag)).toFixed(2));
     put('monto', pag.toFixed(2));
-    const base = v0.total ? r2(v0.subtotal * pag / v0.total) : v0.subtotal;
+    const base = v0._total ? r2(v0._subtotal * pag / v0._total) : v0._subtotal;
     put('base', base.toFixed(2));
     for (const [k, t] of [['iva', 'tasaIva'], ['retIva', 'tasaRetIva'], ['retIsr', 'tasaRetIsr']]) put(k, r2(base * num(val(t))).toFixed(2));
   };
   recalc();
-  m.el.addEventListener('input', e => { if (['saldoAnt', 'pagado', 'tasaIva', 'tasaRetIva', 'tasaRetIsr'].includes(e.target.dataset.as)) recalc(); });
-  const armar = () => {
-    const faltan = ['fecha', 'monto', 'uuid', 'pagado'].filter(k => !val(k));
-    if (faltan.length) { toast('Faltan datos: ' + faltan.join(', '), 'err'); return null; }
-    if (!/^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(val('uuid'))) { toast('El UUID no tiene el formato correcto', 'err'); return null; }
-    const base = val('base');
-    const imp = [];
-    if ($('[data-as="usaIva"]', m.el).checked) imp.push({ nombre: 'IVA trasladado 16%', impuesto: '002', tasa: val('tasaIva'), tipo: 'Traslado', base, importe: val('iva') });
-    if ($('[data-as="usaRetIva"]', m.el).checked) imp.push({ nombre: 'IVA retenido', impuesto: '002', tasa: val('tasaRetIva'), tipo: 'Retención', base, importe: val('retIva') });
-    if ($('[data-as="usaRetIsr"]', m.el).checked) imp.push({ nombre: 'ISR retenido', impuesto: '001', tasa: val('tasaRetIsr'), tipo: 'Retención', base, importe: val('retIsr') });
-    return {
-      titulo: v0.titulo,
-      cliente: { buscar: val('rfc'), rfc: val('rfc').toUpperCase(), nombre: val('nombre'), cp: val('cp'), regimen: val('regimen') },
-      pago: { fecha: val('fecha'), forma: val('forma'), monto: val('monto'), numOperacion: val('numOperacion') },
-      doc: { uuid: val('uuid').toUpperCase(), serie: val('serie'), folio: val('folio'), parcialidad: val('parcialidad'), saldoAnt: val('saldoAnt'), pagado: val('pagado'), insoluto: val('insoluto'), objetoImp: '02' },
-      impuestos: imp
-    };
+  m.el.addEventListener('input', recalc); m.el.addEventListener('change', recalc);
+  const leer = () => Object.fromEntries(Object.keys(v0).filter(k => !k.startsWith('_')).map(k => [k, val(k)]));
+  const validar = v => {
+    const req = tipo === 'factura' ? ['rfc', 'nombre', 'cp', 'valorUnitario', 'descripcion'] : ['fecha', 'uuid', 'pagado'];
+    const faltan = req.filter(k => !v[k]);
+    if (faltan.length) { toast('Faltan datos: ' + faltan.join(', '), 'err'); return false; }
+    const U = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
+    if (tipo === 'complemento' && !U.test(v.uuid)) { toast('El UUID no tiene el formato correcto', 'err'); return false; }
+    if (tipo === 'complemento' && v.uuidSustituye && !U.test(v.uuidSustituye)) { toast('El UUID del complemento cancelado no es válido', 'err'); return false; }
+    return true;
   };
   const copiar = async (texto, msg) => {
     try { await navigator.clipboard.writeText(texto); toast(msg, 'ok'); }
     catch { $('#asOut', m.el).hidden = false; $('#asOut textarea', m.el).value = texto; $('#asOut textarea', m.el).select(); toast('Cópialo del cuadro de abajo (Ctrl+C)', 'err'); }
   };
   $('#asCopiar', m.el).onclick = () => {
-    const D = armar(); if (!D) return;
-    copiar(`/* Control Facturas · asistente de complemento · ${v0.titulo} */\n(${satAsistente.toString()})(${JSON.stringify(D)});`, 'Script copiado: pégalo en la consola (F12) del portal del SAT');
+    const v = leer(); if (!validar(v)) return;
+    const D = armarGuia(tipo, v, titulo);
+    copiar(`/* Control Facturas · guía de ${D.tipo.toLowerCase()} · ${titulo} */\n(${satGuia.toString()})(${JSON.stringify(D)});`, 'Script copiado: pégalo en la consola (F12) del portal del SAT');
   };
   $('#asCopiarDatos', m.el).onclick = () => {
-    const D = armar(); if (!D) return;
-    copiar([`Fecha de pago: ${D.pago.fecha}`, `Forma de pago: ${D.pago.forma}`, `Monto: ${D.pago.monto}`, `UUID: ${D.doc.uuid}`, `Parcialidad: ${D.doc.parcialidad}`,
-      `Saldo anterior: ${D.doc.saldoAnt}`, `Importe pagado: ${D.doc.pagado}`, `Saldo insoluto: ${D.doc.insoluto}`, ...D.impuestos.map(t => `${t.nombre}: base ${t.base} × ${t.tasa} = ${t.importe}`)].join('\n'), 'Datos copiados');
+    const v = leer(); if (!validar(v)) return;
+    const D = armarGuia(tipo, v, titulo);
+    copiar(D.grupos.map(g => g.titulo.toUpperCase() + '\n' + g.campos.map(c => c.set ? c.opciones.map(o => `  ${o.label}: ` + Object.values(o.vals).join(' · ')).join('\n')
+      : `  ${c.label}: ${c.modo === 'check' ? (c.val ? 'Sí' : 'No') : c.val}`).join('\n')).join('\n\n'), 'Datos copiados');
   };
 }
 
@@ -3419,16 +3537,53 @@ function renderBanco() {
   });
   $$('[data-bsort]').forEach(b => b.onclick = () => { const kk = b.dataset.bsort; ui.bf.sort = { k: kk, d: ui.bf.sort.k === kk ? -ui.bf.sort.d : 1 }; renderBanco(); });
   $$('[data-vinc]').forEach(b => b.onclick = e => { e.stopPropagation(); vincularMov(b.dataset.vinc); });
-  // Quitar / volver a poner el amarillo de la fila (depósitos CIE sin vincular)
-  $$('[data-resaltar]').forEach(b => b.onclick = async e => {
-    e.stopPropagation();
-    const m = db.banco.find(x => x.id === b.dataset.resaltar); if (!m) return;
-    m.sinResaltar = !m.sinResaltar;
-    renderBanco(); await persist();
-  });
+  // Lápiz: editar el movimiento (y quitar/poner el amarillo de los pagos UNAM)
+  $$('[data-editmov]').forEach(b => b.onclick = e => { e.stopPropagation(); editarMov(b.dataset.editmov); });
+  // Doble clic en una fila: preguntar si se borra
+  if (!ui.ro) $$('tr[data-mov]').forEach(tr => tr.ondblclick = e => { if (!e.target.closest('button,a,select,input')) borrarMov(tr.dataset.mov); });
   $$('[data-fac]').forEach(b => b.onclick = e => { e.stopPropagation(); openFactura(db.facturas.find(f => f.id === b.dataset.fac)); });
 }
 /** Vincular / desvincular un depósito con una factura a mano */
+/** Borra un movimiento del banco (con confirmación) */
+async function borrarMov(id, despues) {
+  const m = db.banco.find(x => x.id === id); if (!m) return;
+  const f = m.facturaId && db.facturas.find(x => x.id === m.facturaId);
+  const ok = await confirmar(`¿Borrar el movimiento del ${fmtDate(m.fecha)}?\n${m.concepto} · ${money(m.deposito || m.retiro)}`
+    + (f ? `\n\nEstá vinculado con la factura #${f.seq}; se quitará el vínculo.` : ''), 'Borrar', true);
+  if (!ok) return false;
+  db.banco = db.banco.filter(x => x !== m);
+  await persist(); renderBanco(); toast('Movimiento borrado', 'ok');
+  despues && despues();
+  return true;
+}
+
+/** Modal para editar un movimiento: fecha, concepto, importes, nota y resaltado amarillo */
+function editarMov(id) {
+  const m = db.banco.find(x => x.id === id); if (!m) return;
+  const f = m.facturaId && db.facturas.find(x => x.id === m.facturaId);
+  const md = openModal({ title: 'Editar movimiento', body: R('mov-editar', { m, cie: /^Depósito CIE/.test(tipoMov(m)), vinc: f ? f.seq : '' }),
+    footer: '<button class="btn danger" id="meDel">Borrar</button><span class="spacer"></span><button class="btn" data-close>Cancelar</button><button class="btn primary" id="meOk">Guardar cambios</button>' });
+  const v = k => $(`[data-me="${k}"]`, md.el);
+  $('#meDel', md.el).onclick = () => borrarMov(id, () => md.close());
+  $('#meOk', md.el).onclick = async () => {
+    const nuevo = {
+      fecha: v('fecha').value, hora: v('hora').value ? v('hora').value.padEnd(8, ':00').slice(0, 8) : '',
+      concepto: v('concepto').value.replace(/\s+/g, ' ').trim(), referencia: v('referencia').value.trim(),
+      retiro: r2(Math.abs(num(v('retiro').value))), deposito: r2(Math.abs(num(v('deposito').value))), nota: v('nota').value.trim()
+    };
+    if (!aFecha(nuevo.fecha)) return toast('Fecha inválida', 'err');
+    if (!nuevo.concepto) return toast('Falta el concepto', 'err');
+    if (nuevo.retiro && nuevo.deposito) return toast('Pon el importe sólo en Retiro o en Depósito', 'err');
+    if (!nuevo.retiro && !nuevo.deposito) return toast('Falta el importe', 'err');
+    const k = claveMov(nuevo);
+    if (db.banco.some(x => x !== m && claveMov(x) === k)) return toast('Ya existe un movimiento con la misma fecha, concepto e importe', 'err');
+    Object.assign(m, nuevo);
+    if (v('resaltar') && !v('resaltar').disabled) m.sinResaltar = !v('resaltar').checked;
+    m.editado = new Date().toISOString();
+    await persist(); md.close(); renderBanco(); toast('Cambios guardados', 'ok');
+  };
+}
+
 function vincularMov(id) {
   const m = db.banco.find(x => x.id === id); if (!m) return;
   const usadas = new Set(db.banco.filter(x => x.facturaId && x !== m).map(x => x.facturaId));
