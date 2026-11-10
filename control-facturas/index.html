@@ -452,6 +452,11 @@
     .xtable tbody tr.cie:hover td { background: #FFEBA3; }
     .xtable tbody tr.cie td:first-child { box-shadow: inset 4px 0 0 var(--oro); }
     .cie-dot { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #FFF4C7; border: 1px solid var(--oro); vertical-align: -1px; }
+    .tag.cie-tag { background: #FFF4C7; border-color: #F1D27A; color: #7a5600; }
+    .res-btn { vertical-align: middle; margin-left: 4px; opacity: .7; }
+    .res-btn:hover { opacity: 1; }
+    .res-btn.off { opacity: .35; }
+    .hint .ico, .hint svg { width: 14px; height: 14px; vertical-align: -2px; }
     .xtable tfoot td { background: var(--azul-soft); border-top: 2px solid var(--azul); padding: 10px; color: var(--azul-900); }
     .tsel { padding: 5px 6px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 12px; max-width: 170px; }
     .tsel.warn { border-color: var(--oro); background: var(--oro-soft); }
@@ -465,6 +470,16 @@
     .ib-det summary { cursor: pointer; }
     .ib-det ul { margin: 8px 0 4px; padding-left: 18px; max-height: 220px; overflow: auto; font-size: 13px; }
     .ib-det li { margin: 3px 0; }
+    /* Asistente SAT (complemento de pago) */
+    .as-pasos { margin: 0 0 14px; padding: 12px 14px 12px 32px; background: var(--azul-soft); border-radius: 10px; font-size: 13.5px; }
+    .as-pasos li { margin: 3px 0; }
+    .as-pasos code { background: #fff; padding: 1px 5px; border-radius: 4px; }
+    .as-imp { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 6px 10px; align-items: center; font-size: 13px; }
+    .as-imp > b { font-size: 12px; color: var(--muted); }
+    .as-imp input:not([type=checkbox]) { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+    .as-imp input[readonly], [data-as][readonly] { background: #f5f7fb; }
+    .as-imp .chk { display: flex; gap: 6px; align-items: center; }
+    @media (max-width: 700px) { .as-imp { grid-template-columns: 1fr 1fr 1fr; } .as-imp > b, .as-imp > span:first-child { display: none; } .as-imp .chk { grid-column: 1 / -1; margin-top: 6px; } }
     .anio-sel, .anio-lbl { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--azul-line); background: var(--azul-soft); color: var(--azul); font-weight: 800; }
     @media (max-width: 759px) {
       .xtable, .xtable tbody, .xtable tfoot { display: block; }
