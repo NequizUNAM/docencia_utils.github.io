@@ -55,7 +55,7 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '20',
+  VERSION: '21',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
@@ -1463,9 +1463,11 @@ function openDrawer() {
    ========================================================================= */
 /** Datos de la plantilla "factura-card" */
 function cardVM(f) {
-  const e = estadoFactura(f), d = desglose(f);
+  const e = estadoFactura(f), d = desglose(f), dep = depositoDe(f);
   return {
     // datos extra para el renglón de la tabla
+    // vinculado: hay un depósito en Banco enlazado a esta factura (icono en la lista)
+    vinculado: !!dep, fechaDep: dep ? fmtDate(dep.fecha) : '',
     parcialidadTxt: f.parcialidad ? `${f.parcialidad} de ${f.parcialidades || '?'}` : '—',
     cobrado: e === 'cobrado' ? (f.montoCobrado || f.total) : 0, sede: f.sede || '—', alta: fmtDate(f.createdAt),
     id: f.id, seq: f.seq, ref: f.referencia || 'Sin referencia', metodo: f.metodoPago, desc: f.descripcion || '—',
@@ -2722,7 +2724,7 @@ function openGuiaSAT(f, tipo) {
     k, label, val: v0[k], ro: tp === 'ro', chk: tp === 'chk', full: /full/.test(tp), mono: /mono/.test(tp), area: /area/.test(tp), nota,
     opts: tp.startsWith('sel:') ? tp.slice(4).split('|').map(o => ({ v: o.split(' · ')[0], t: o, sel: o.split(' · ')[0] === v0[k] })) : null })) }));
   const m = openModal({ title: tipo === 'factura' ? 'Factura · guía para el portal del SAT' : 'Complemento de pago · guía para el portal del SAT', size: 'wide',
-    body: R('asistente-sat', { tipo, secciones }),
+    body: R('asistente-sat', { tipo, secciones, sinFecha: tipo === 'complemento' && !v0.fecha }),
     footer: '<button class="btn" id="asCopiarDatos">' + ICONS.copy + ' Copiar sólo datos</button><span class="spacer"></span><button class="btn" data-close>Cerrar</button><button class="btn primary" id="asCopiar">' + ICONS.copy + ' Copiar script</button>' });
   const el = k => $(`[data-as="${k}"]`, m.el);
   const val = k => { const e = el(k); return !e ? v0[k] : e.type === 'checkbox' ? e.checked : e.value.trim(); };
@@ -2745,6 +2747,9 @@ function openGuiaSAT(f, tipo) {
   m.el.addEventListener('input', recalc); m.el.addEventListener('change', recalc);
   const leer = () => Object.fromEntries(Object.keys(v0).filter(k => !k.startsWith('_')).map(k => [k, val(k)]));
   const validar = v => {
+    // Complemento sin fecha de pago: avisar con toast específico ANTES del
+    // genérico de "faltan datos", porque esa fecha viene del depósito en Banco.
+    if (tipo === 'complemento' && !v.fecha) { toast('Sin fecha de pago: esa fecha viene del depósito en Banco. Vincúlalo primero en Banco o escríbela tal como viene en el estado de cuenta.', 'err'); return false; }
     const req = tipo === 'factura' ? ['rfc', 'nombre', 'cp', 'valorUnitario', 'descripcion'] : ['fecha', 'uuid', 'pagado'];
     const faltan = req.filter(k => !v[k]);
     if (faltan.length) { toast('Faltan datos: ' + faltan.join(', '), 'err'); return false; }

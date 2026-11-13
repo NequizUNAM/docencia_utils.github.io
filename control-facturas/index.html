@@ -310,7 +310,12 @@
     .calc { background: linear-gradient(180deg, var(--surface-2), #fff); border: 1px solid var(--line); border-radius: 13px; padding: 10px 13px; margin-top: 12px; }
     .calc .row { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; padding: 4px 0; font-variant-numeric: tabular-nums; }
     .calc .row.sep { border-top: 1px dashed var(--line); margin-top: 3px; padding-top: 7px; }
-    .calc .row.total { border-top: 2px solid var(--azul); margin-top: 5px; padding-top: 8px; font-weight: 800; color: var(--azul); font-size: 15px; }
+    .calc .row.total { border-top: 2px solid var(--azul); margin: 5px -4px 0; padding: 8px 10px; font-weight: 800; color: var(--azul); font-size: 15px; background: #E8EEF9; border-radius: 8px; }
+    /* Formulario de factura: campos clave en gris azulado pastel (#EDF1F7,
+       borde #B9C6DD): azul UNAM muy diluido, sin rojo ni amarillo de alerta */
+    label.f.f-key input, label.f.f-key select, label.f.f-key textarea { background: #EDF1F7; border-color: #B9C6DD; font-weight: 600; color: var(--azul-900); }
+    label.f.f-key input:focus, label.f.f-key select:focus, label.f.f-key textarea:focus { background: #fff; }
+    label.f.f-key input[disabled] { background: #E2E8F2; color: var(--azul-900); border-color: #B9C6DD; }
     .calc .row.hl { color: var(--azul); font-weight: 700; }
     .calc .row .lbl small { color: var(--muted); font-weight: 400; }
     .presets { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 0; }
@@ -447,10 +452,13 @@
     .xtable tr.x-cancel td { text-decoration: line-through; color: var(--muted); }
     .xtable tr.x-cancel td .badge, .xtable tr.x-cancel td select { text-decoration: none; }
     .xtable tr.x-fuera td.num { color: var(--muted); }
-    /* Banco: factura vinculada (#n) en morado pastel */
-    .btn.fac-num { background: #EDE9FE; color: #5B21B6; border-color: #CDBDF5; }
-    .btn.fac-num:hover { background: #DDD0FA; border-color: #B7A3EC; }
+    /* Banco: solo el numeral (#n) en morado pastel; la referencia que sigue
+       (después del espacio) queda sin colorear */
+    .fac-num { background: #EDE9FE; color: #5B21B6; border: 1px solid #CDBDF5; padding: 2px 8px; border-radius: 8px; font-weight: 800; white-space: nowrap; }
     .fac-num-text { background: #EDE9FE; color: #5B21B6; padding: 2px 8px; border-radius: 8px; }
+    /* Facturas: icono de pago vinculado en Banco (banco en círculo azul suave) */
+    .vinc-ico { display: inline-flex; vertical-align: -4px; margin-left: 6px; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 50%; background: var(--azul-soft); color: var(--azul); border: 1px solid var(--azul-line); }
+    .vinc-ico svg { width: 13px; height: 13px; }
     /* Banco: depósitos CIE (pago UNAM) en amarillo pastel */
     .xtable tbody tr.cie td, .xtable tbody tr.cie:nth-child(even) td { background: #FFF4C7; }
     .xtable tbody tr.cie:hover td { background: #FFEBA3; }
@@ -476,6 +484,8 @@
     .ib-det li { margin: 3px 0; }
     /* Asistente SAT (complemento de pago) */
     .as-pasos { margin: 0 0 14px; padding: 12px 14px 12px 32px; background: var(--azul-soft); border-radius: 10px; font-size: 13.5px; }
+    /* Guía SAT: aviso de que falta la fecha de pago (viene del Banco) */
+    .as-aviso { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--azul-soft); border: 1px solid var(--azul-line); color: var(--azul-900); font-size: 13.5px; }
     .as-pasos li { margin: 3px 0; }
     .as-pasos code { background: #fff; padding: 1px 5px; border-radius: 4px; }
     .as-imp { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 6px 10px; align-items: center; font-size: 13px; }

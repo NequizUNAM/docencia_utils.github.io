@@ -347,7 +347,7 @@
 <script type="text/x-jsrender" id="factura-row">
 <tr class="frow e-{{:estado}}" data-id="{{:id}}" tabindex="0">
   <td class="seqc"><span class="seq">{{:seq}}</span></td>
-  <td class="refc"><b>{{>ref}}</b>{{if metodo}}<small>{{>metodo}}</small>{{/if}}</td>
+  <td class="refc"><b>{{>ref}}</b>{{if vinculado}}<span class="vinc-ico" title="Pago vinculado en Banco · depósito del {{>fechaDep}}">{{:~icon('bank')}}</span>{{/if}}{{if metodo}}<small>{{>metodo}}</small>{{/if}}</td>
   <td class="estc"><span class="badge {{:estadoCls}}">{{>estadoLabel}}</span></td>
   <td class="r num" data-l="Cantidad">{{:~money(subtotal)}}</td>
   <td class="r num cobc" data-l="{{if cobrado}}Cobrado{{else}}Por cobrar{{/if}}">{{if cobrado}}<b>{{:~money(cobrado)}}</b>{{else}}<span class="muted" title="Total a pagar, aún no cobrado">{{:~money(total)}}</span>{{/if}}</td>
@@ -405,7 +405,7 @@
       <summary><span>Folio, UUID y cliente</span><em id="resCfdi"></em>{{:~icon('chev')}}</summary>
       <div class="form-grid r1">
         <label class="f">Serie y folio<input name="folio" value="{{>f.folio}}"></label>
-        <label class="f">Fecha de emisión<input name="fechaEmision" type="date" value="{{>f.fechaEmision}}"></label>
+        <label class="f f-key">Fecha de emisión<input name="fechaEmision" type="date" value="{{>f.fechaEmision}}"></label>
         <label class="f full">UUID (folio fiscal)<input name="uuid" value="{{>f.uuid}}" style="text-transform:uppercase;font-size:13px"></label>
         <label class="f">Cliente (receptor)<input name="cliente" value="{{>f.cliente}}"></label>
         <label class="f">RFC del cliente<input name="rfcCliente" value="{{>f.rfcCliente}}" style="text-transform:uppercase"></label>
@@ -419,7 +419,7 @@
   </fieldset>
 
   <fieldset><legend>Importes</legend>
-    <label class="f">Cantidad (sin IVA)<input name="subtotal" type="number" step="0.01" inputmode="decimal" value="{{:f.subtotal || ''}}" placeholder="11075.00"></label>
+    <label class="f f-key">Cantidad (sin IVA)<input name="subtotal" type="number" step="0.01" inputmode="decimal" value="{{:f.subtotal || ''}}" placeholder="11075.00"></label>
     <details class="sub-acc">
       <summary><span>Porcentajes</span><em id="resPct"></em>{{:~icon('chev')}}</summary>
       <div class="form-grid" style="grid-template-columns:repeat(3,1fr)">
@@ -440,9 +440,9 @@
     <details class="sub-acc">
       <summary><span>Complemento de pago</span><em id="resComp"></em>{{:~icon('chev')}}</summary>
       <div class="form-grid r1">
-        <label class="f">Fecha de pago<input name="fechaCobro" type="date" value="{{>f.fechaCobro}}" disabled title="Se llena sola al vincular el depósito en Banco"></label>
+        <label class="f f-key">Fecha de pago<input name="fechaCobro" type="date" value="{{>f.fechaCobro}}" disabled title="Se llena sola al vincular el depósito en Banco"></label>
         <p class="hint full" style="margin:0">Se llena sola al vincular el depósito en Banco. No se captura a mano ni se toma del complemento: sin depósito vinculado, queda vacía.</p>
-        <label class="f">Monto pagado<input name="montoCobrado" type="number" step="0.01" inputmode="decimal" value="{{:f.montoCobrado || ''}}" placeholder="= total a pagar"></label>
+        <label class="f f-key">Monto pagado<input name="montoCobrado" type="number" step="0.01" inputmode="decimal" value="{{:f.montoCobrado || ''}}" placeholder="= total a pagar"></label>
         <label class="f full">UUID del complemento<input name="compUuid" value="{{>f.complemento.uuid}}" style="text-transform:uppercase;font-size:13px"></label>
         <label class="f">Parcialidad pagada<input name="compParcialidad" type="number" min="1" inputmode="numeric" value="{{:f.complemento.parcialidad || ''}}"></label>
         <label class="f">Saldo insoluto<input name="compSaldo" type="number" step="0.01" inputmode="decimal" value="{{:f.complemento.saldoInsoluto ?? ''}}"></label>
@@ -524,6 +524,7 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
   {{/for}}
 </div></fieldset>
 {{/for}}
+{{if sinFecha}}<p class="as-aviso">⚠ <b>Sin fecha de pago:</b> esa fecha viene del depósito en Banco. Vincúlalo primero en Banco, o escríbela arriba tal como viene en el estado de cuenta; al copiar el script te aviso si falta.</p>{{/if}}
 {{if tipo=='complemento'}}<p class="hint">Si el SAT ya trae los impuestos al buscar la factura, sólo revisa que coincidan.</p>{{/if}}
 <div id="asOut" hidden><label class="f full">Script<textarea rows="5" readonly></textarea></label></div>
 </script>
@@ -1045,7 +1046,7 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
         <td class="r num" data-l="Depósito">{{if deposito}}<b style="color:var(--green)">{{:~money(deposito)}}</b>{{else}}<span class="muted">—</span>{{/if}}</td>
         <td data-l="Complemento">
           {{if fac}}
-            <button class="btn sm fac-num" data-fac="{{:fac.id}}">{{if fac.ok}}✅{{else}}⚠{{/if}} #{{:fac.seq}} {{>fac.ref}}</button>
+            <button class="btn sm" data-fac="{{:fac.id}}">{{if fac.ok}}✅{{else}}⚠{{/if}} <span class="fac-num">#{{:fac.seq}}</span> {{>fac.ref}}</button>
             {{if fac.dif}}<small class="muted">dif. {{:~money(fac.dif)}}</small>{{/if}}
             {{if !~root.ro}}<button class="icon-btn mini" data-vinc="{{:id}}" title="Cambiar vínculo">{{:~icon('layers')}}</button>{{/if}}
           {{else puedeVincular && !~root.ro}}<button class="btn sm" data-vinc="{{:id}}">Vincular factura</button>
@@ -1057,7 +1058,7 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
     <tfoot><tr><td colspan="3"><b>Total de lo visible ({{:filas.length}})</b></td><td class="r num"><b>-{{:~money(k.ret)}}</b></td><td class="r num"><b>{{:~money(k.dep)}}</b></td><td></td></tr></tfoot>
   </table>
 </div>
-<p class="hint"><span class="cie-dot"></span> Fila amarilla = pago UNAM (CIE) <b>sin vincular</b>; al vincularse sólo queda resaltada la etiqueta. Con {{:~icon('marker')}} editas el movimiento o quitas el amarillo; doble clic en una fila para borrarla. <b>Ningún depósito se vincula solo: lo vinculas tú a mano</b> con “Vincular factura” (o con el botón <span class="fac-num-text">#n</span>). Al vincular, la fecha de pago de la factura toma la fecha de ese depósito. ✅ = ya subiste el complemento; ⚠ = te pagaron pero falta el complemento.</p>
+<p class="hint"><span class="cie-dot"></span> Fila amarilla = pago UNAM (CIE) <b>sin vincular</b>; al vincularse sólo queda resaltada la etiqueta. Con {{:~icon('marker')}} editas el movimiento o quitas el amarillo; doble clic en una fila para borrarla. <b>Ningún depósito se vincula solo: lo vinculas tú a mano</b> con “Vincular factura” (o con el botón <span class="fac-num">#n</span>). Al vincular, la fecha de pago de la factura toma la fecha de ese depósito. ✅ = ya subiste el complemento; ⚠ = te pagaron pero falta el complemento.</p>
 {{else}}
 <div class="empty"><h3>Sin movimientos</h3>
   <p><b>1.</b> Descarga la plantilla · <b>2.</b> Captura tus movimientos (fecha, concepto, retiro o depósito) · <b>3.</b> Súbela con “Cargar estado de cuenta”.</p>
@@ -1091,7 +1092,7 @@ Estado: <span class="badge {{:cls}}">{{>label}}</span>
 <script type="text/x-jsrender" id="vincular">
 <p class="hint" style="margin-top:0">{{>concepto}}</p>
 <div class="list">
-  {{for opciones}}<div class="li"><div class="grow"><b class="fac-num-text">#{{:seq}} {{>ref}}</b><small>Total {{:~money(total)}} · diferencia {{:~money(dif)}}</small></div>
+  {{for opciones}}<div class="li"><div class="grow"><b><span class="fac-num">#{{:seq}}</span> {{>ref}}</b><small>Total {{:~money(total)}} · diferencia {{:~money(dif)}}</small></div>
     <button class="btn sm {{if sel}}primary{{/if}}" data-pick="{{:id}}">{{if sel}}Vinculada{{else}}Elegir{{/if}}</button></div>
   {{else}}<p class="muted">No hay facturas disponibles.</p>{{/for}}
 </div>
