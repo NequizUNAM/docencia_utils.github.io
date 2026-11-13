@@ -35,6 +35,12 @@
      Pendiente     → se suben la factura PDF + XML del CFDI
      Cobrado       → se sube el complemento de pago (REP); el PDF de la
                      factura recibe la marca de agua FACTURADO
+     Fecha de pago (fechaCobro) → NUNCA se toma del complemento ni se
+                     pone "hoy" al guardar: queda vacía hasta que el
+                     depósito se vincule a mano con la factura en Banco,
+                     y entonces es la fecha de ese depósito. El enlace
+                     banco→factura tampoco es automático: se hace a mano
+                     en Banco → "Vincular factura".
    ========================================================================= */
 (() => {
 'use strict';
@@ -49,7 +55,7 @@ const CONFIG = {
   APP_NAME: 'Control de Facturas',
 
   /** Súbelo cada vez que cambies templates.html (evita usar copia vieja en caché). */
-  VERSION: '19',
+  VERSION: '20',
 
   /**
    * SHA-256 de la contraseña de desbloqueo.
@@ -88,7 +94,9 @@ const CONFIG = {
     { texto: 'gobernacion', tipo: 'NOMINA' },
     { texto: 'impulso', tipo: 'NOMINA' }
   ],
-  /** BANCO · diferencia máxima (pesos) para vincular un depósito con una factura */
+  /** BANCO · diferencia máxima (pesos) que usaba la conciliación automática.
+   *  Ya no se usa: desde la v20 no hay vínculo automático banco→factura;
+   *  el vínculo se hace a mano en Banco → "Vincular factura". */
   TOLERANCIA_BANCO: 1.00,
 
   /** Minutos sin uso antes de bloquear la app. */
@@ -943,7 +951,7 @@ const R = (name, data = {}) => {
                           notas, docs:[{ id, tipo, file }] } }
    }
    ========================================================================= */
-const emptyDB = () => ({ version: 4, seq: 0, facturas: [], mensuales: {}, anuales: {}, gastos: [], banco: [], reglasRfc: {}, updatedAt: null });
+const emptyDB = () => ({ version: 5, seq: 0, facturas: [], mensuales: {}, anuales: {}, gastos: [], banco: [], reglasRfc: {}, updatedAt: null });
 /** Base de datos en memoria; se guarda con persist() */
 let db = emptyDB();
 /** Estado de la interfaz (filtros, año visible, etc.) */
@@ -1091,6 +1099,12 @@ function migrar(d) {
     }
     f.timbrado ??= false;
     if (estadoFactura(f) === 'cobrado') f.montoCobrado = f.total;
+    // Fecha de pago: sólo la del depósito vinculado en Banco. Si la factura
+    // no tiene depósito vinculado, queda vacía aunque ya tenga complemento
+    // (antes se guardaba la fecha de emisión del complemento o "hoy").
+    // Si sí lo tiene, se corrige a la fecha real de ese depósito.
+    const depMig = (d.banco || []).find(m => m.facturaId === f.id);
+    f.fechaCobro = depMig ? depMig.fecha : '';
     if (f.saldo && f.saldo.monto > 0) {
       const p = f.saldo.periodoOrigen || (f.createdAt ? localISO(new Date(f.createdAt)).slice(0, 7) : thisMonth());
       const r = d.mensuales[p] ||= nuevoMes(p);
@@ -1105,7 +1119,7 @@ function migrar(d) {
   Object.values(d.mensuales).forEach(r => { r.saldo ||= nuevoSaldo(); r.saldo.aplicaciones ||= []; });
   d.seq = Math.max(d.seq || 0, ...d.facturas.map(f => f.seq), 0);
   d.gastos ||= []; d.banco ||= []; d.reglasRfc ||= {};
-  d.version = 4;
+  d.version = 5;
   return d;
 }
 
@@ -1131,9 +1145,15 @@ function busy(msg) {
   document.body.appendChild(b);
   return { set: m => ($('span', b).textContent = m), done: () => b.remove() };
 }
+/** Valores de los campos EDITABLES de un modal, para saber si se capturó algo en él (los de sólo lectura no cuentan: se recalculan solos) */
+function valoresModal(bg) { return $$('input, select, textarea', bg).filter(el => !el.readOnly && !el.disabled).map(el => (el.type === 'checkbox' || el.type === 'radio') ? (el.checked ? '1' : '0') : el.value).join('\u0001'); }
+/** true si algún campo del modal cambió desde que se abrió (hay captura sin guardar) */
+function modalSucio(bg) { return bg._cfInicial != null && valoresModal(bg) !== bg._cfInicial; }
 /**
  * Abre una ventana modal (plantilla "modal").
  * Cualquier elemento con data-close la cierra; al cerrarse emite el evento "closed".
+ * Esc también la cierra (ver el manejador de Escape abajo): si el modal tiene
+ * captura sin guardar, Esc pregunta antes de cerrar para no perderla.
  * @returns {{el:HTMLElement, close:Function, body:HTMLElement}}
  */
 function openModal({ title, body, footer = '', size = '' }) {
@@ -1146,17 +1166,30 @@ function openModal({ title, body, footer = '', size = '' }) {
   bg.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
   // Solo lectura: los campos se ven pero no se pueden editar
   if (Store.readOnly) $$('input, select, textarea', bg).forEach(el => { el.disabled = true; });
+  bg._cfInicial = valoresModal(bg);   // foto inicial para detectar captura sin guardar (Esc); después de deshabilitar, para comparar igual
   return { el: bg, close, body: $('.modal-b', bg) };
 }
 /**
- * Tecla Esc: cierra la vista previa de documentos (o "Datos para facturar") que esté hasta arriba.
- * Si hay varias abiertas, se cierran una por una (la última primero).
- * Los formularios no se cierran con Esc para no perder lo capturado.
+ * Tecla Esc: cierra lo que esté hasta arriba, uno por uno (el último primero):
+ * primero el filtro estilo Excel, luego el menú lateral y luego el modal.
+ * Todos los modales se cierran con Esc; si el modal tiene captura sin
+ * guardar, Esc pregunta antes de cerrar para no perder lo capturado.
  */
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  const pop = $$('.xf-pop').pop();
+  if (pop) { e.preventDefault(); pop.remove(); return; }
+  const drawerBg = document.querySelector('.drawer-bg');
+  if (drawerBg) { e.preventDefault(); drawerBg.click(); return; }
   const top = $$('.modal-bg').pop();
-  if (top && top.querySelector('.modal.full, [data-esc]')) { e.preventDefault(); top.querySelector('[data-close]').click(); }
+  if (!top) return;
+  e.preventDefault();
+  const cerrar = () => { const b = top.querySelector('[data-close]'); b && b.click(); };
+  if (!modalSucio(top)) return cerrar();
+  // Hay captura sin guardar: confirmar; si es el diálogo de confirmación
+  // mismo, no tiene campos, así que nunca llega aquí (se cierra directo).
+  confirmar('¿Cerrar sin guardar? Se perderán los cambios no guardados de este modal.', 'Cerrar sin guardar', true)
+    .then(ok => { if (ok && document.contains(top)) cerrar(); });
 });
 /** Pregunta Sí/No. Devuelve Promise<boolean>. */
 function confirmar(msg, ok = 'Aceptar', danger = false) {
@@ -1289,7 +1322,7 @@ async function loadData() {
   const data = await Store.loadDB();
   db = migrar(Object.assign(emptyDB(), data || {}));
   if (Store.readOnly) return;                // el lector no guarda nada
-  if (data && data.version !== 4) persist(); // guarda la migración
+  if (data && data.version !== 5) persist(); // guarda la migración
   if (!data && Store.mode === 'drive') {
     const loc = await Store.loadLocalDB();
     if (loc && loc.facturas?.length && await confirmar(`Hay ${loc.facturas.length} factura(s) guardadas sólo en este dispositivo. ¿Subirlas a Google Drive?`, 'Subir a Drive')) {
@@ -1584,6 +1617,9 @@ async function sincronizarMarca(f) {
 function openFactura(orig, preload = {}) {
   const isNew = !orig;
   const f = isNew ? nuevaFactura() : structuredClone(orig);   // se edita una copia
+  // Fecha de pago: sólo la del depósito vinculado en Banco; si no hay
+  // vínculo, vacía (aunque la factura ya tenga complemento).
+  { const dep0 = orig ? db.banco.find(m => m.facturaId === f.id) : null; f.fechaCobro = dep0 ? dep0.fecha : ''; }
   const pending = {};                                          // key → File | 'REMOVE'
   const m = openModal({
     title: isNew ? 'Nueva factura' : `Factura #${f.seq} · ${f.referencia || 'sin referencia'}`, size: 'wide',
@@ -1778,7 +1814,9 @@ function openFactura(orig, preload = {}) {
   }
   /**
    * Datos del complemento de pago (de XML o PDF) → formulario.
-   * - Fecha de pago = fecha de EMISIÓN del complemento
+   * - La FECHA DE PAGO NO se toma del complemento: queda vacía hasta que
+   *   el depósito se vincule a mano en Banco (fechaCobro = fecha del depósito).
+   *   La fecha de emisión del complemento no es la fecha en que te pagaron.
    * - Monto pagado, parcialidad, saldo insoluto y UUID del complemento
    * - Si la factura no tiene importes timbrados y el complemento liquida todo,
    *   se toma su desglose real (base, IVA y retenciones del documento relacionado)
@@ -1788,7 +1826,7 @@ function openFactura(orig, preload = {}) {
     const uuidFac = F('uuid').value.trim().toUpperCase();
     if (c.relacionado && uuidFac && c.relacionado !== uuidFac) avisos.push(`El complemento paga la factura …${c.relacionado.slice(-6)}, no ésta (…${uuidFac.slice(-6)}). Revisa que sea el correcto.`);
     if (c.relacionado && !uuidFac) poner(llenos, 'uuid', c.relacionado);
-    if (poner(llenos, 'fechaCobro', c.fecha)) campos.push(`Fecha de pago ${fmtDate(c.fecha)} (emisión del complemento)`);
+    if (c.fecha) avisos.push(`La fecha de pago NO se tomó del complemento (${fmtDate(c.fecha)} es su fecha de emisión). Quedará vacía hasta vincular el depósito en Banco.`);
     if (poner(llenos, 'compUuid', c.uuid)) campos.push(`UUID del complemento …${c.uuid.slice(-6)}`);
     if (c.parcialidad) poner(llenos, 'compParcialidad', c.parcialidad);
     if (c.saldoInsoluto != null) poner(llenos, 'compSaldo', c.saldoInsoluto);
@@ -1802,7 +1840,6 @@ function openFactura(orig, preload = {}) {
       poner(llenos, 'montoCobrado', monto.toFixed(2));
       campos.push(`Monto pagado ${money(monto)}${c.saldoInsoluto ? ' · saldo insoluto ' + money(c.saldoInsoluto) : ''}`);
     }
-    if (!F('fechaCobro').value) poner(llenos, 'fechaCobro', today());
     $('#readbox', m.el).innerHTML = R('readbox', { ok: campos.length > 0, campos, avisos, titulo: 'Datos leídos del complemento' + (origen ? ` (${origen})` : '') });
     marcar(llenos); refresh();
   }
@@ -1820,7 +1857,7 @@ function openFactura(orig, preload = {}) {
     try {
       const { texto } = await Solicitud.leerTexto(file, msg => b.set(msg));
       const c = Solicitud.parseComplemento(texto);
-      if (!c.esPago && !c.uuid) { if (!F('fechaCobro').value) F('fechaCobro').value = today(); refresh(); return; }
+      if (!c.esPago && !c.uuid) { refresh(); return; }   // sin datos legibles: no se inventa fecha de pago
       if (!c.esPago) toast('Ese PDF no parece un complemento de pago', 'err');
       applyComplemento(c, 'PDF');
     } catch (e) { console.warn(e); } finally { b.done(); }
@@ -1847,7 +1884,9 @@ function openFactura(orig, preload = {}) {
   /*
    * Guardar:
    *  1. valida consecutivo único
-   *  2. si quedó cobrada: cobrado = total a pagar (fecha del complemento o hoy)
+   *  2. si quedó cobrada: cobrado = total a pagar; la fecha de pago es la
+   *     del depósito vinculado en Banco, o vacía si aún no hay vínculo
+   *     (nunca la fecha del complemento ni la de hoy)
    *  3. sube/borra los archivos pendientes
    *  4. renombra todos los archivos a 053_RFC_REF… (por si cambió la referencia)
    *  5. pone o quita la marca FACTURADO
@@ -1859,10 +1898,14 @@ function openFactura(orig, preload = {}) {
     if (!(f.seq > 0)) return toast('El número consecutivo debe ser mayor a 0', 'err');
     const dup = db.facturas.find(x => x.seq === f.seq && x.id !== f.id);
     if (dup) return toast(`El consecutivo ${f.seq} ya lo usa la factura ${dup.referencia || ''}`, 'err');
+    if (f.montoCobrado > (f.total || 0) + 0.01 && (f.total || 0) > 0) return toast(`El monto pagado (${money(f.montoCobrado)}) no puede ser mayor que el total a pagar (${money(f.total)}). Revisa el monto del complemento.`, 'err');
     if (isNew) f.createdAt = new Date().toISOString();
     const cobrada = estadoFactura({ ...f, docs: docsEfectivos() }) === 'cobrado';
     f.montoCobrado = cobrada ? (f.montoCobrado || f.total) : 0;   // por defecto: total a pagar
-    f.fechaCobro = cobrada ? (f.fechaCobro || today()) : '';
+    // Fecha de pago: SÓLO la del depósito vinculado en Banco. Sin vínculo,
+    // queda vacía aunque la factura ya esté cobrada con complemento.
+    const depCobro = db.banco.find(m => m.facturaId === f.id);
+    f.fechaCobro = depCobro ? depCobro.fecha : '';
     const keys = Object.keys(pending);
     const b = busy('Guardando…');
     try {
@@ -2570,14 +2613,18 @@ function satGuia(D) {
 function datosComplementoSAT(f) {
   const d = desglose(f), Rc = C.RECEPTOR, Fa = C.FACTURA;
   const dep = depositoDe(f);
-  const fecha = dep?.fecha || f.fechaCobro || today();
-  const hora = (dep?.hora || '12:00:00').padEnd(8, ':00').slice(0, 8);
+  // Fecha y hora de pago: SÓLO del depósito vinculado en Banco.
+  // Si no hay depósito, quedan vacías (hay que vincularlo o escribirlas
+  // tal como vienen en el estado de cuenta). Nunca se inventa "hoy" ni
+  // "12:00:00": esa hora inventada era la que fallaba en el complemento.
+  const fecha = dep?.fecha || '';
+  const hora = normalizarHora(dep?.hora) || '';
   const total = f.total || 0;
   // Tasa real de ESTA factura (p. ej. ret. IVA 0.106666 o 0.106700); si no hay desglose, la de CONFIG
   const tasa = (imp, def) => d.subtotal && imp ? (Math.floor(imp / d.subtotal * 1e6 + 1e-6) / 1e6).toFixed(6) : def;
   return {
     rfc: f.rfcCliente || Rc.rfc, nombre: f.cliente || Rc.nombre, cp: Rc.cp, regimen: Rc.regimen.split(' · ')[0],
-    fecha: `${fecha} ${hora}`, forma: '03', numOperacion: dep?.referencia || '',
+    fecha: fecha ? (hora ? `${fecha} ${hora}` : fecha) : '', forma: '03', numOperacion: dep?.referencia || '',
     uuid: f.uuid || '', serie: '', folio: f.folio || '', parcialidad: String(f.complemento?.parcialidad || 1),
     saldoAnt: total.toFixed(2), pagado: (f.montoCobrado || dep?.deposito || total).toFixed(2), insoluto: '0.00', monto: '',
     usaIva: d.iva > 0, usaRetIva: d.retIva > 0, usaRetIsr: d.retIsr > 0,
@@ -2606,7 +2653,7 @@ function datosFacturaSAT(f) {
 const GUIA_FORM = {
   complemento: [
     ['Cliente (receptor)', [['rfc', 'RFC'], ['cp', 'Código postal'], ['nombre', 'Nombre o razón social', 'full'], ['regimen', 'Régimen fiscal (clave)']]],
-    ['Recepción de pago', [['fecha', 'Fecha y hora de pago', '', 'aaaa-mm-dd hh:mm:ss'], ['forma', 'Forma de pago', 'sel:03 · Transferencia electrónica|02 · Cheque nominativo|01 · Efectivo'],
+    ['Recepción de pago', [['fecha', 'Fecha y hora de pago', '', 'aaaa-mm-dd hh:mm:ss · la del depósito en Banco, nunca 12:00 por defecto'], ['forma', 'Forma de pago', 'sel:03 · Transferencia electrónica|02 · Cheque nominativo|01 · Efectivo'],
       ['monto', 'Monto (= importe pagado)', 'ro'], ['numOperacion', 'Número de operación (opcional)']]],
     ['Documento relacionado (la factura que te pagaron)', [['uuid', 'UUID (folio fiscal)', 'full mono'], ['serie', 'Serie'], ['folio', 'Folio'], ['parcialidad', 'Núm. de parcialidad'],
       ['saldoAnt', 'Saldo anterior'], ['pagado', 'Importe pagado'], ['insoluto', 'Saldo insoluto', 'ro']]],
@@ -2704,8 +2751,22 @@ function openGuiaSAT(f, tipo) {
     const U = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
     if (tipo === 'complemento' && !U.test(v.uuid)) { toast('El UUID no tiene el formato correcto', 'err'); return false; }
     if (tipo === 'complemento' && v.uuidSustituye && !U.test(v.uuidSustituye)) { toast('El UUID del complemento cancelado no es válido', 'err'); return false; }
+    if (tipo === 'complemento') {
+      // Fecha y hora de pago: formato completo, fecha real y no futura.
+      // Es el campo donde se colaba la hora inventada (12:00:00).
+      const errFecha = validarFechaHoraPago(v.fecha);
+      if (errFecha) { toast(errFecha, 'err'); return false; }
+      // El importe pagado no puede ser mayor que el saldo anterior:
+      // el SAT lo rechaza (CRP20217) y el monto del pago tampoco puede
+      // ser menor que la suma de los importes pagados.
+      if (!(num(v.pagado) > 0)) { toast('El importe pagado debe ser mayor a 0', 'err'); return false; }
+      if (num(v.pagado) > num(v.saldoAnt) + 0.01) { toast(`El importe pagado (${money(num(v.pagado))}) no puede ser mayor que el saldo anterior (${money(num(v.saldoAnt))}). El SAT rechaza el complemento con ese error.`, 'err'); return false; }
+    }
     return true;
   };
+  // Aviso al abrir la guía del complemento si aún no hay depósito vinculado
+  // o si el depósito no trae hora: la fecha/hora quedan vacías a propósito.
+  if (tipo === 'complemento' && !depositoDe(f)) toast('Sin depósito vinculado en Banco: la fecha y hora de pago quedan vacías. Vincúlalo primero en Banco o escríbelas tal como vienen en el estado de cuenta.', 'err');
   const copiar = async (texto, msg) => {
     try { await navigator.clipboard.writeText(texto); toast(msg, 'ok'); }
     catch { $('#asOut', m.el).hidden = false; $('#asOut textarea', m.el).value = texto; $('#asOut textarea', m.el).select(); toast('Cópialo del cuadro de abajo (Ctrl+C)', 'err'); }
@@ -2870,6 +2931,41 @@ function aFechaHora(v) {
   x = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2}):?(\d{2})?\s*([ap])?/i);
   if (x) { let h = +x[4]; if (x[7]) { const pm = /p/i.test(x[7]); if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; } return `${x[3]}-${x[2]}-${x[1]} ${pad(h, 2)}:${x[5]}:${x[6] || '00'}`; }
   return aFecha(s) ? aFecha(s) + ' 00:00:00' : '';
+}
+/**
+ * Normaliza una hora a "HH:MM:SS" (24 h). Acepta "14:30", "14:30:00",
+ * "2:30 pm", un Date o la fracción de día de Excel. Devuelve '' si no es
+ * una hora válida: nunca inventa una hora (antes se usaba "12:00:00" por
+ * defecto y esa hora inventada era la que fallaba en el complemento).
+ */
+function normalizarHora(v) {
+  if (v instanceof Date && !isNaN(v)) return localISO(v).slice(11, 19);
+  if (typeof v === 'number' && v >= 0 && v < 1) return new Date(Math.round(v * 86400) * 1000).toISOString().slice(11, 19);
+  const s = String(v ?? '').trim();
+  if (!s) return '';
+  const x = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([ap])\.?\s*m?\.?)?$/i);
+  if (!x) return '';
+  let h = +x[1]; if (x[4]) { if (/p/i.test(x[4]) && h < 12) h += 12; if (/a/i.test(x[4]) && h === 12) h = 0; }
+  if (h > 23 || +x[2] > 59 || +(x[3] || 0) > 59) return '';
+  return `${pad(h, 2)}:${x[2]}:${x[3] || '00'}`;
+}
+/**
+ * Valida la fecha y hora de pago del complemento (SAT: "aaaa-mm-dd hh:mm:ss").
+ * Devuelve '' si es válida o el mensaje del error si no lo es.
+ * Rechaza formato incompleto, fechas que no existen (31/02, mes 13),
+ * horas fuera de rango (25:00, 14:70) y fechas futuras.
+ */
+function validarFechaHoraPago(v) {
+  const s = String(v ?? '').trim();
+  if (!s) return 'Falta la fecha y hora de pago: vincúlala primero en Banco (Banco → Vincular factura) o escríbela tal como viene en el estado de cuenta. No se usa la fecha del complemento ni la de hoy.';
+  const x = s.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+  if (!x) return 'La fecha y hora de pago debe ser aaaa-mm-dd hh:mm:ss (ej. 2026-11-10 14:32:00), con los dos puntos y los segundos.';
+  const [, y, mo, d, h, mi, se] = x.map(Number);
+  const dt = new Date(y, mo - 1, d, h, mi, se);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d || dt.getHours() !== h || dt.getMinutes() !== mi || dt.getSeconds() !== se)
+    return 'Esa fecha y hora no existe (revisa día, mes y hora: la hora va de 00 a 23 y los minutos/segundos de 00 a 59).';
+  if (dt.getTime() > Date.now() + 5 * 60000) return 'La fecha y hora de pago está en el futuro: el pago ya debió haber llegado al banco.';
+  return '';
 }
 
 
@@ -3232,10 +3328,11 @@ function pickFiles(accept) {
    CONCEPTO/DESCRIPCIÓN, RETIRO/CARGO, DEPÓSITO/ABONO o IMPORTE).
    Plantilla: botón "Plantilla" descarga un machote .xlsx estandarizado.
    Sin duplicados: misma fecha + concepto + importe = mismo movimiento.
-   Conciliación automática: cada depósito se vincula a la factura cuyo total
-   coincide (±CONFIG.TOLERANCIA_BANCO, por los centavos de diferencia entre
-   la solicitud y la factura). Así sabes cuándo te pagaron y si falta subir
-   el complemento (lo que antes marcabas con ✅).
+   SIN conciliación automática: ningún depósito se vincula solo con una
+   factura; el vínculo lo haces tú a mano en Banco → "Vincular factura"
+   (o con el botón de la factura vinculada). Al vincular, la fecha de pago
+   de la factura (fechaCobro) toma la fecha de ese depósito; al
+   desvincular o borrar el depósito, vuelve a quedar vacía.
    ========================================================================= */
 /** Texto normalizado para comparar (mayúsculas, sin acentos ni espacios dobles) */
 const normTxt = v => String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -3329,7 +3426,7 @@ ${dv(`E5:G${fin}`, 'decimal', 'greaterThanOrEqual', '0', '', 'IMPORTE', 'Número
     ['', ''],
     ['EJEMPLO', ''],
     ['25/06/2026 07:41', 'CARGO PAGO TARJETA CREDITO · RETIRO 18995.58'],
-    ['24/06/2026 03:32', 'CIE0402940250136351 T06 · DEPOSITO 6864.00  → se vincula solo con tu factura']
+    ['24/06/2026 03:32', 'CIE0402940250136351 T06 · DEPOSITO 6864.00  → lo vinculas tú a mano con tu factura en Banco']
   ];
   const hoja2 = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -3399,10 +3496,14 @@ function movsDeHoja(rows) {
       if ((cR >= 0 && noNum(r[cR])) || (cD >= 0 && noNum(r[cD]))) mal.push('el importe no es un número (escribe sólo cifras, ej. 1500.50)');
       else if (ret && dep) mal.push('tiene importe en RETIRO y en DEPOSITO; usa sólo uno');
       else if (!ret && !dep) mal.push('falta el importe (RETIRO o DEPOSITO)');
+      if (cH >= 0 && !vacio(r[cH]) && !normalizarHora(r[cH])) mal.push(`HORA inválida (“${r[cH]}”), usa hh:mm (ej. 14:30)`);
       if (mal.length) { errores.push(`Fila ${fila}: ${mal.join('; ')}.`); return; }
     } else if (!fecha || (!ret && !dep)) return; // exportación del banco: se saltan totales/títulos
     const h = r[cH];
-    const hora = h instanceof Date ? localISO(h).slice(11, 19) : typeof h === 'number' ? new Date(Math.round((h % 1) * 86400) * 1000).toISOString().slice(11, 19) : String(h ?? '').trim();
+    // Hora normalizada a HH:MM:SS; si viene inválida queda vacía (nunca se guarda basura
+    // que luego se colaría como hora del complemento). En la plantilla, la hora inválida
+    // ya se reportó arriba como error de fila.
+    const hora = normalizarHora(h);
     movs.push({ fila, fecha, hora, concepto, retiro: r2(ret), deposito: r2(dep), saldo: cS >= 0 && !vacio(r[cS]) ? aMonto(r[cS]) : null, referencia: cRef >= 0 ? String(r[cRef] ?? '').trim() : '' });
   });
   return { movs, cuenta, plantilla, errores };
@@ -3437,41 +3538,26 @@ async function importarBanco(files) {
     } catch (e) { res.errores.push(`${f.name}: ${e.message}`); }
   }
   db.banco.sort((a, b) => (a.fecha + (a.hora || '')).localeCompare(b.fecha + (b.hora || '')));
-  res.conciliadas = conciliar();
+  // Sin conciliación automática: los depósitos nuevos quedan sin vincular
+  // (facturaId: null) y los vinculas tú a mano. Antes conciliar() los
+  // vinculaba solos por importe (±TOLERANCIA_BANCO); esa función se eliminó.
+  res.conciliadas = 0;
   return res;
-}
-/**
- * Vincula depósitos con facturas por importe (±tolerancia) y fecha más cercana.
- * No toca los vínculos que hiciste a mano.
- * @returns {number} vínculos nuevos
- */
-function conciliar() {
-  // 1) todas las parejas posibles depósito–factura con su "distancia"
-  //    (diferencia en pesos ×100 + días de diferencia); 2) se asignan de la mejor a la peor
-  const usadas = new Set(db.banco.filter(m => m.facturaId).map(m => m.facturaId));
-  const pares = [];
-  for (const m of db.banco) {
-    if (m.facturaId || m.manual || !m.deposito || /NOMINA/i.test(m.concepto)) continue;
-    for (const f of db.facturas) {
-      if (usadas.has(f.id) || f.cancelada || !f.total) continue;
-      const dif = Math.min(Math.abs(m.deposito - f.total), f.montoCobrado ? Math.abs(m.deposito - f.montoCobrado) : Infinity);
-      if (dif > C.TOLERANCIA_BANCO) continue;
-      const ref = f.fechaCobro || f.fechaEmision || (f.createdAt || '').slice(0, 10) || m.fecha;
-      const dias = Math.abs((new Date(m.fecha) - new Date(ref)) / 86400000) || 0;
-      pares.push({ m, f, score: dif * 100 + dias });
-    }
-  }
-  pares.sort((a, b) => a.score - b.score);
-  const movUsado = new Set();
-  let n = 0;
-  for (const { m, f } of pares) {
-    if (movUsado.has(m) || usadas.has(f.id)) continue;
-    m.facturaId = f.id; movUsado.add(m); usadas.add(f.id); n++;
-  }
-  return n;
 }
 /** Depósito del banco vinculado a una factura (o null) */
 const depositoDe = f => db.banco.find(m => m.facturaId === f.id) || null;
+/**
+ * Sincroniza la fecha de pago de una factura con su depósito vinculado:
+ * fecha del depósito, o vacía si ya no tiene depósito vinculado.
+ * Se llama al vincular, desvincular, borrar o editar un movimiento.
+ */
+function aplicarFechaCobroPorBanco(facturaId) {
+  const f = db.facturas.find(x => x.id === facturaId);
+  if (!f) return;
+  const dep = depositoDe(f);
+  f.fechaCobro = dep ? dep.fecha : '';
+  f.updatedAt = new Date().toISOString();
+}
 
 const BCOLS = {
   mes: { titulo: 'Mes', fn: m => m.fecha.slice(0, 7), label: mesLabel },
@@ -3524,7 +3610,6 @@ function renderBanco() {
     $('#ibPlant', m.el).onclick = () => descargarPlantillaBanco().catch(handleErr);
   });
   $$('[data-bplant]').forEach(b => b.onclick = () => descargarPlantillaBanco().then(() => toast('Plantilla descargada: llénala y súbela con “Cargar estado de cuenta”', 'ok')).catch(handleErr));
-  $('#bConciliar') && ($('#bConciliar').onclick = async () => { const n = conciliar(); if (n) await persist(); renderBanco(); toast(n ? `${n} depósito(s) vinculados a facturas` : 'No hay depósitos nuevos que coincidan', n ? 'ok' : ''); });
   $('#bq').oninput = e => { ui.bf.q = e.target.value; const pos = e.target.selectionStart; renderBanco(); const n = $('#bq'); n.focus(); n.setSelectionRange(pos, pos); };
   $('#bAnio') && ($('#bAnio').onchange = e => { ui.bf.anio = e.target.value; ui.bf.cols.mes = null; renderBanco(); });
   $$('[data-bmes]').forEach(b => b.onclick = () => { const s = new Set(ui.bf.cols.mes || []); s.has(b.dataset.bmes) ? s.delete(b.dataset.bmes) : s.add(b.dataset.bmes); ui.bf.cols.mes = s.size ? s : null; renderBanco(); });
@@ -3551,7 +3636,11 @@ async function borrarMov(id, despues) {
   const ok = await confirmar(`¿Borrar el movimiento del ${fmtDate(m.fecha)}?\n${m.concepto} · ${money(m.deposito || m.retiro)}`
     + (f ? `\n\nEstá vinculado con la factura #${f.seq}; se quitará el vínculo.` : ''), 'Borrar', true);
   if (!ok) return false;
+  const facIdBorrado = m.facturaId;
   db.banco = db.banco.filter(x => x !== m);
+  // Si el movimiento borrado era el depósito vinculado, la fecha de pago
+  // de esa factura vuelve a quedar vacía.
+  if (facIdBorrado) aplicarFechaCobroPorBanco(facIdBorrado);
   await persist(); renderBanco(); toast('Movimiento borrado', 'ok');
   despues && despues();
   return true;
@@ -3566,12 +3655,15 @@ function editarMov(id) {
   const v = k => $(`[data-me="${k}"]`, md.el);
   $('#meDel', md.el).onclick = () => borrarMov(id, () => md.close());
   $('#meOk', md.el).onclick = async () => {
+    const horaTxt = v('hora').value.trim();
+    if (horaTxt && !normalizarHora(horaTxt)) return toast('Hora inválida: usa hh:mm (ej. 14:30), con la hora de 00 a 23.', 'err');
     const nuevo = {
-      fecha: v('fecha').value, hora: v('hora').value ? v('hora').value.padEnd(8, ':00').slice(0, 8) : '',
+      fecha: v('fecha').value, hora: normalizarHora(horaTxt),
       concepto: v('concepto').value.replace(/\s+/g, ' ').trim(), referencia: v('referencia').value.trim(),
       retiro: r2(Math.abs(num(v('retiro').value))), deposito: r2(Math.abs(num(v('deposito').value))), nota: v('nota').value.trim()
     };
     if (!aFecha(nuevo.fecha)) return toast('Fecha inválida', 'err');
+    if (aFecha(nuevo.fecha) > today()) return toast('La fecha del movimiento está en el futuro: revisa el día, mes y año.', 'err');
     if (!nuevo.concepto) return toast('Falta el concepto', 'err');
     if (nuevo.retiro && nuevo.deposito) return toast('Pon el importe sólo en Retiro o en Depósito', 'err');
     if (!nuevo.retiro && !nuevo.deposito) return toast('Falta el importe', 'err');
@@ -3580,10 +3672,16 @@ function editarMov(id) {
     Object.assign(m, nuevo);
     if (v('resaltar') && !v('resaltar').disabled) m.sinResaltar = !v('resaltar').checked;
     m.editado = new Date().toISOString();
+    // Si el movimiento está vinculado, la fecha de pago de su factura es
+    // la fecha (corregida) de este depósito.
+    if (m.facturaId) aplicarFechaCobroPorBanco(m.facturaId);
     await persist(); md.close(); renderBanco(); toast('Cambios guardados', 'ok');
   };
 }
 
+/** Vincular / desvincular un depósito con una factura A MANO (sin automático).
+ *  Al vincular, la fecha de pago de la factura toma la fecha del depósito;
+ *  al desvincular, vuelve a quedar vacía. */
 function vincularMov(id) {
   const m = db.banco.find(x => x.id === id); if (!m) return;
   const usadas = new Set(db.banco.filter(x => x.facturaId && x !== m).map(x => x.facturaId));
@@ -3591,15 +3689,25 @@ function vincularMov(id) {
     .map(f => ({ id: f.id, seq: f.seq, ref: f.referencia, total: f.total, dif: r2(m.deposito - f.total), sel: f.id === m.facturaId }))
     .sort((a, b) => Math.abs(a.dif) - Math.abs(b.dif)).slice(0, 30);
   const md = openModal({ title: `Depósito ${money(m.deposito)} · ${fmtDate(m.fecha)}`, body: R('vincular', { concepto: m.concepto, opciones, actual: !!m.facturaId }), footer: '<span class="spacer"></span><button class="btn" data-close>Cerrar</button>' });
-  $$('[data-pick]', md.el).forEach(b => b.onclick = async () => { m.facturaId = b.dataset.pick; m.manual = true; await persist(); md.close(); renderBanco(); toast('Vinculado', 'ok'); });
-  $('#desv', md.el) && ($('#desv', md.el).onclick = async () => { m.facturaId = null; m.manual = true; await persist(); md.close(); renderBanco(); });
+  $$('[data-pick]', md.el).forEach(b => b.onclick = async () => {
+    m.facturaId = b.dataset.pick; m.manual = true;
+    aplicarFechaCobroPorBanco(m.facturaId);   // fecha de pago = fecha del depósito
+    await persist(); md.close(); renderBanco(); toast(`Vinculado: fecha de pago ${fmtDate(m.fecha)}`, 'ok');
+  });
+  $('#desv', md.el) && ($('#desv', md.el).onclick = async () => {
+    const facId = m.facturaId;
+    m.facturaId = null; m.manual = true;
+    if (facId) aplicarFechaCobroPorBanco(facId);   // fecha de pago vuelve a quedar vacía
+    await persist(); md.close(); renderBanco(); toast('Desvinculado: la fecha de pago quedó vacía', 'ok');
+  });
 }
 
 
 /* =========================================================================
    20. RESUMEN DEL MES PARA DECLARAR (equivale a tus columnas H–N)
    Ingresos y IVA de las facturas COBRADAS en el mes (fecha del depósito en
-   el banco si está vinculado; si no, la fecha de cobro del complemento),
+   el banco si está vinculado; si no, la fecha de pago, que es la del
+   depósito vinculado y está vacía sin vínculo),
    retenciones de la UNAM e IVA acreditable de tus gastos del mes.
    IVA a cargo = IVA cobrado − IVA retenido − IVA acreditable
    (si sale negativo, es saldo a favor). Es una estimación de apoyo.
@@ -3607,6 +3715,7 @@ function vincularMov(id) {
 function resumenMes(p) {
   // Cobrada en el mes = depósito en el banco en ese mes (aunque falte el complemento)
   // o, si no hay depósito vinculado, complemento con fecha de pago en ese mes
+  // (esa fecha es la del depósito vinculado, así que sin vínculo está vacía)
   const cobradas = db.facturas.filter(f => {
     if (f.cancelada) return false;
     const dep = depositoDe(f);
