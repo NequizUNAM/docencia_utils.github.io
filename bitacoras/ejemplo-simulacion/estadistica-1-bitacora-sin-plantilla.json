@@ -1,0 +1,54 @@
+{
+  "hashtag": "#Estadistica1",
+  "slug": "estadistica-1",
+  "nombre": "Estadística 1",
+  "plantilla_version": 1,
+  "nota_simulacion": "Entrada SIN plantilla: texto libre. Lo que no venia en el mensaje queda en null o como dato por detallar; no se inventa.",
+  "sesiones": [
+    {
+      "id": "estadistica-1-2026-11-17-001",
+      "fecha": "2026-11-17 16:39",
+      "titulo": "Reporte",
+      "tipo": "Reporte",
+      "texto": "Se revisan acuerdos del dia. Entregas pendientes de listado de grupos.",
+      "asistentes": null,
+      "acuerdos": [],
+      "campos_propios": {
+        "unidad": null,
+        "tema": null,
+        "ejercicios": null
+      },
+      "evidencias": [
+        {
+          "archivo": "Evidencias/estadistica-1-2026-11-17-001-img1.jpg",
+          "descripcion": "Imagen 1 - sin descripcion, por etiquetar"
+        },
+        {
+          "archivo": "Evidencias/estadistica-1-2026-11-17-001-img2.jpg",
+          "descripcion": "Imagen 2 - sin descripcion, por etiquetar"
+        },
+        {
+          "archivo": "Evidencias/estadistica-1-2026-11-17-001-img3.jpg",
+          "descripcion": "Imagen 3 - sin descripcion, por etiquetar"
+        },
+        {
+          "archivo": "Evidencias/estadistica-1-2026-11-17-001-img4.jpg",
+          "descripcion": "Imagen 4 - sin descripcion, por etiquetar"
+        }
+      ],
+      "plantilla_version": 1
+    }
+  ],
+  "pendientes": [
+    {
+      "id": "estadistica-1-2026-11-17-001",
+      "texto": "Revisar entregas pendientes del listado de grupos",
+      "responsable": null,
+      "fecha_compromiso": null,
+      "estado": "Pendiente - por detallar",
+      "minuta_origen": "estadistica-1-2026-11-17-001",
+      "nota": "No venian grupos, responsables ni fechas en el mensaje; no se inventaron."
+    }
+  ],
+  "hitos": []
+}

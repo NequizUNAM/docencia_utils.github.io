@@ -1,0 +1,130 @@
+{
+  "base_fields": [
+    "id",
+    "fecha",
+    "titulo",
+    "tipo",
+    "texto",
+    "asistentes",
+    "acuerdos",
+    "pendientes",
+    "hitos",
+    "evidencias"
+  ],
+  "projects": [
+    {
+      "bitacora_json": "Bitacoras/estadistica-1/bitacora.json",
+      "campos_propios": [
+        "unidad",
+        "tema",
+        "ejercicios"
+      ],
+      "drive_folder": "Bitacoras/estadistica-1/",
+      "ficha": "Bitacoras/estadistica-1/ficha.md",
+      "github_repo": "",
+      "hashtag": "#Estadistica1",
+      "nombre": "Estadística 1",
+      "slug": "estadistica-1",
+      "color": "#0B7285",
+      "folio": "20271-01"
+    },
+    {
+      "bitacora_json": "Bitacoras/estadistica-2/bitacora.json",
+      "campos_propios": [
+        "unidad",
+        "tema",
+        "ejercicios"
+      ],
+      "drive_folder": "Bitacoras/estadistica-2/",
+      "ficha": "Bitacoras/estadistica-2/ficha.md",
+      "github_repo": "",
+      "hashtag": "#Estadistica2",
+      "nombre": "Estadística 2",
+      "slug": "estadistica-2",
+      "color": "#002663",
+      "folio": "20271-02"
+    },
+    {
+      "bitacora_json": "Bitacoras/cch-page/bitacora.json",
+      "campos_propios": [
+        "grupo",
+        "parcial",
+        "version"
+      ],
+      "drive_folder": "Bitacoras/cch-page/",
+      "ficha": "Bitacoras/cch-page/ficha.md",
+      "github_repo": "NequizUNAM/CCH-Page",
+      "hashtag": "#CchPage",
+      "nombre": "CCH-Page",
+      "slug": "cch-page",
+      "color": "#7C3AED",
+      "folio": "20271-03"
+    },
+    {
+      "bitacora_json": "Bitacoras/control-facturas/bitacora.json",
+      "campos_propios": [
+        "folio",
+        "monto",
+        "fecha_pago",
+        "sat"
+      ],
+      "drive_folder": "Bitacoras/control-facturas/",
+      "ficha": "Bitacoras/control-facturas/ficha.md",
+      "github_repo": "",
+      "hashtag": "#ControlFacturas",
+      "nombre": "Control de Facturas",
+      "slug": "control-facturas",
+      "color": "#15803D",
+      "folio": "20271-04"
+    },
+    {
+      "bitacora_json": "Bitacoras/asistencia-cch/bitacora.json",
+      "campos_propios": [
+        "turno",
+        "grupo",
+        "fecha_sesion"
+      ],
+      "drive_folder": "Bitacoras/asistencia-cch/",
+      "ficha": "Bitacoras/asistencia-cch/ficha.md",
+      "github_repo": "",
+      "hashtag": "#AsistenciaCch",
+      "nombre": "Asistencia CCH",
+      "slug": "asistencia-cch",
+      "color": "#C2410C",
+      "folio": "20271-05"
+    },
+    {
+      "bitacora_json": "Bitacoras/moodle-dgtic/bitacora.json",
+      "campos_propios": [
+        "curso",
+        "plataforma",
+        "tipo"
+      ],
+      "drive_folder": "Bitacoras/moodle-dgtic/",
+      "ficha": "Bitacoras/moodle-dgtic/ficha.md",
+      "github_repo": "",
+      "hashtag": "#MoodleDgtic",
+      "nombre": "Moodle DGTIC",
+      "slug": "moodle-dgtic",
+      "color": "#B45309",
+      "folio": "20271-06"
+    }
+  ],
+  "root": "Bitacoras/",
+  "rule": "El primer hashtag del mensaje, en CamelCase, identifica el proyecto. Si falta o no está en esta tabla, preguntar; no adivinar.",
+  "updated": "2026-11-17",
+  "version": 1,
+  "configCiclo": {
+    "ciclo": "20271",
+    "siguiente": 7,
+    "usados": [
+      "20271-01",
+      "20271-02",
+      "20271-03",
+      "20271-04",
+      "20271-05",
+      "20271-06"
+    ],
+    "historial": {}
+  }
+}
