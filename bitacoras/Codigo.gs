@@ -38,8 +38,8 @@
  *     guardarSesion, guardarPendiente, cerrarPendiente, guardarHito,
  *     subirEvidencia, crearProyecto, guardar, verEvidencia y
  *     registrarPuntaje. Nunca puede ejecutar login, cambiarPassword,
- *     crearEstructura, guardarConfigCiclo, verificarEstructura ni acciones
- *     de borrado/edición fuera de esa lista. Su acción guardar fusiona por id
+ *     crearEstructura, guardarConfigCiclo, verificarEstructura, cerrarProyecto
+ *     ni acciones de borrado/edición fuera de esa lista. Su acción guardar fusiona por id
  *     y conserva los registros omitidos; el token no puede borrar datos.
  *   - Tras 5 intentos fallidos de login, el login se bloquea 5 minutos
  *     SOLO para ese cliente (M1): el bloqueo se guarda por identificador
@@ -65,7 +65,7 @@
  *   Sin acción: devuelve un HTML mínimo de estado.
  *
  * ACCIONES POST (doPost, JSON en el body: {accion, token, ...})
- *   login, leer, leerProyecto, crearProyecto, guardar, guardarSesion,
+ *   login, leer, leerProyecto, crearProyecto, cerrarProyecto, guardar, guardarSesion,
  *   guardarPendiente, cerrarPendiente, guardarHito, editarHito,
  *   eliminarHito, subirEvidencia, subirInforme, guardarFormato,
  *   crearEstructura, cambiarPassword, registrarPuntaje, validarSesion,
@@ -119,6 +119,24 @@ var MUSE_SERVICE_ALLOWED_ACTIONS = [
   'cerrarPendiente', 'guardarHito', 'subirEvidencia', 'crearProyecto',
   'guardar', 'verEvidencia', 'registrarPuntaje'
 ];
+
+var ACCIONES_REQUIEREN_PROYECTO_ABIERTO = [
+  'guardar', 'guardarSesion', 'editarSesion', 'eliminarSesion',
+  'guardarPendiente', 'cerrarPendiente', 'guardarHito', 'editarHito',
+  'eliminarHito', 'subirEvidencia', 'subirInforme', 'guardarFormato',
+  'registrarPuntaje'
+];
+
+function validarProyectoAbierto_(accion, datos) {
+  if (ACCIONES_REQUIEREN_PROYECTO_ABIERTO.indexOf(accion) === -1) return null;
+  var slug = String((datos && datos.slug) || '');
+  var proyecto = proyectoPorSlug_(slug);
+  if (!proyecto) return { ok: false, error: 'Slug no reconocido: ' + slug };
+  if (String(proyecto.estado || 'Activo').toLowerCase() === 'cerrado') {
+    return { ok: false, error: 'El proyecto está cerrado y solo permite lectura y descarga.' };
+  }
+  return null;
+}
 
 /** Solo se conserva como filtro de migración, no como catálogo activo. */
 var PROYECTOS_INICIALES_OCULTOS = {
@@ -246,6 +264,7 @@ function doGet(e) {
  *                     en Informes/ dentro de la carpeta del proyecto (D7)
  *   guardarFormato   {slug, formato} -> guarda formato-exportacion.json versionado
  *   crearProyecto   {proyecto} -> registra el proyecto y crea su estructura
+ *   cerrarProyecto  {slug, confirmacion:"CERRAR"} -> cierre irreversible; libera hashtag
  *   guardarConfigCiclo {config, proyectos} -> guarda config-ciclo.json
  *                     (ciclo vigente + siguiente + usados) y los folios en
  *                     INDICE-bitacoras.json (v4, folios CICLO-NN)
@@ -322,6 +341,8 @@ function doPost(e) {
         error: 'Otro guardado está en curso. Inténtalo de nuevo en unos segundos.' });
     }
     try {
+      var bloqueoProyecto = validarProyectoAbierto_(accion, datos);
+      if (bloqueoProyecto) return responder_(bloqueoProyecto);
       switch (accion) {
         case 'guardar':          return responder_(tipoToken === 'servicio'
           ? guardarBitacoraServicio_(datos) : guardarBitacora_(datos));
@@ -339,6 +360,7 @@ function doPost(e) {
         case 'guardarFormato':   return responder_(guardarFormato_(datos));
         case 'guardarConfigCiclo': return responder_(guardarConfigCiclo_(datos));
         case 'crearProyecto':    return responder_(crearProyecto_(datos));
+        case 'cerrarProyecto':   return responder_(cerrarProyecto_(datos));
         case 'crearEstructura':  return responder_({ ok: true, accion: 'crearEstructura',
                                        resultado: crearEstructuraDesdeCero() });
         case 'cambiarPassword':  return responder_(cambiarPassword_(datos));
@@ -585,7 +607,8 @@ function leerTodo_() {
     }
     return { slug: p.slug, hashtag: p.hashtag, nombre: p.nombre,
       color: p.color || '#002663', campos_propios: p.campos_propios || [],
-      folio: folio, bitacora: bit };
+      folio: folio, estado: p.estado || 'Activo', cerrado_en: p.cerrado_en || '',
+      bitacora: bit };
   });
   return { indice: indiceVisible_(indice), proyectos: proyectos,
     configCiclo: configCiclo, actualizado: ahoraISO_() };
@@ -1430,7 +1453,9 @@ function guardarConfigCiclo_(datos) {
     datos.proyectos.forEach(function (pf) {
       if (!pf.slug || !pf.folio) return;
       (indice.projects || []).forEach(function (ip) {
-        if (ip.slug === pf.slug) ip.folio = pf.folio;
+        if (ip.slug === pf.slug && String(ip.estado || 'Activo').toLowerCase() !== 'cerrado') {
+          ip.folio = pf.folio;
+        }
       });
     });
     escribirJSON_(root, 'INDICE-bitacoras.json', indice, true);
@@ -1465,14 +1490,14 @@ function crearProyecto_(datos) {
   var indice = leerJSON_(root, 'INDICE-bitacoras.json') || indicePorDefecto_();
   if (!Array.isArray(indice.projects)) indice.projects = [];
   var proyectosArchivados = archivarProyectosIniciales_(indice);
-  var carpetaEnRaiz = buscarCarpeta_(root, slug);
-  var carpetaEnPadrePorSlug = buscarCarpeta_(padreProyectos, slug);
   var hashtagNormalizado = hashtag.toLowerCase();
   var duplicado = indice.projects.some(function (p) {
-    return p.slug === slug || String(p.hashtag || '').toLowerCase() === hashtagNormalizado;
+    var cerrado = String(p.estado || 'Activo').toLowerCase() === 'cerrado';
+    return !cerrado && (p.slug === slug ||
+      String(p.hashtag || '').toLowerCase() === hashtagNormalizado);
   });
-  if (duplicado || carpetaEnRaiz || carpetaEnPadrePorSlug) {
-    return { ok: false, error: 'Ya existe un proyecto o carpeta con ese nombre.' };
+  if (duplicado) {
+    return { ok: false, error: 'Ya existe un proyecto activo con ese nombre o hashtag.' };
   }
 
   var config = leerConfigCiclo_();
@@ -1488,6 +1513,7 @@ function crearProyecto_(datos) {
   var folio = config.ciclo + '-' + String(config.siguiente).padStart(2, '0');
   config.usados.push(folio);
   config.siguiente++;
+  slug = slugUnicoProyecto_(slug, folio, indice.projects);
   var carpeta = buscarCarpeta_(padreProyectos, folio);
   if (carpeta) {
     var bitacoraExistente = leerJSON_(carpeta, 'bitacora.json');
@@ -1520,6 +1546,71 @@ function crearProyecto_(datos) {
   escribirJSON_(root, 'config-ciclo.json', config, false);
   asegurarFilaProyecto_(slug);
   return { ok: true, proyecto: proyecto, configCiclo: config };
+}
+
+function slugUnicoProyecto_(slugBase, folio, proyectos) {
+  var slug = slugBase;
+  var existe = function (valor) {
+    return (proyectos || []).some(function (p) { return p && p.slug === valor; });
+  };
+  if (!existe(slug)) return slug;
+  var numeroFolio = String(folio || '').split('-').pop();
+  var intento = 1;
+  do {
+    var sufijo = '-' + numeroFolio + (intento > 1 ? '-' + intento : '');
+    var base = slugBase.substring(0, 60 - sufijo.length).replace(/-+$/g, '');
+    slug = base + sufijo;
+    intento++;
+  } while (existe(slug));
+  return slug;
+}
+
+function cerrarProyecto_(datos) {
+  var slug = String((datos && datos.slug) || '');
+  if (!slug) return { ok: false, error: 'Falta el proyecto que se va a cerrar.' };
+  if (String((datos && datos.confirmacion) || '') !== 'CERRAR') {
+    return { ok: false, error: 'Escribe CERRAR para confirmar el cierre.' };
+  }
+  var proyectoActual = proyectoPorSlug_(slug);
+  if (!proyectoActual) return { ok: false, error: 'Slug no reconocido: ' + slug };
+  if (String(proyectoActual.estado || 'Activo').toLowerCase() === 'cerrado') {
+    return { ok: false, error: 'El proyecto ya está cerrado.' };
+  }
+  var root = getOrCreateFolder_();
+  var indice = leerJSON_(root, 'INDICE-bitacoras.json') || indicePorDefecto_();
+  if (!Array.isArray(indice.projects)) indice.projects = [];
+  var proyecto = indice.projects.find(function (p) { return p && p.slug === slug; });
+  if (!proyecto) {
+    proyecto = Object.assign({}, proyectoActual);
+    indice.projects.push(proyecto);
+  }
+  proyecto.estado = 'Cerrado';
+  proyecto.cerrado_en = ahoraISO_();
+  indice.updated = ahoraISO_().slice(0, 10);
+  escribirJSON_(root, 'INDICE-bitacoras.json', indice, true);
+
+  var aviso = '';
+  try {
+    asegurarFilaProyecto_(slug);
+    actualizarEstadoProyectoEnHoja_(slug, 'Cerrado');
+  } catch (err) {
+    aviso = 'El proyecto se cerró en el índice, pero no se pudo actualizar su estado en la hoja Bitacoras: ' + err.message;
+    Logger.log(aviso);
+  }
+  return { ok: true, mensaje: 'Proyecto cerrado. El hashtag quedó disponible para un proyecto nuevo.',
+    aviso: aviso, proyecto: proyecto };
+}
+
+function actualizarEstadoProyectoEnHoja_(slug, estado) {
+  var hoja = getHoja_('Bitacoras');
+  var valores = hoja.getDataRange().getValues();
+  for (var i = 1; i < valores.length; i++) {
+    if (valores[i][0] === slug) {
+      hoja.getRange(i + 1, 5).setValue(estado);
+      return;
+    }
+  }
+  asegurarFilaProyecto_(slug);
 }
 
 /** Estructura vacía de bitacora.json para un proyecto. */
@@ -1686,32 +1777,24 @@ function fechaRespaldo_() {
     'yyyy-MM-dd-HHmm');
 }
 
-/** Busca el proyecto por slug en el catálogo local o el índice de Drive. */
+/** Busca primero el estado persistido del proyecto; después usa el catálogo base. */
 function proyectoPorSlug_(slug) {
-  for (var i = 0; i < PROYECTOS.length; i++) {
-    if (PROYECTOS[i].slug === slug) return PROYECTOS[i];
-  }
   var root = getRootFolder_();
   var indice = root ? leerJSON_(root, 'INDICE-bitacoras.json') : null;
   if (indice && Array.isArray(indice.projects)) {
     for (var j = 0; j < indice.projects.length; j++) {
       if (indice.projects[j].slug === slug && !esProyectoInicialOculto_(indice.projects[j])) {
-        var proyecto = indice.projects[j];
-        return {
-          slug: proyecto.slug, folio: proyecto.folio || '',
-          hashtag: proyecto.hashtag || '', nombre: proyecto.nombre || proyecto.slug,
-          color: proyecto.color || '#002663', estado: proyecto.estado || 'Activo',
-          campos_propios: Array.isArray(proyecto.campos_propios) ? proyecto.campos_propios : [],
-          drive_folder: proyecto.drive_folder || '',
-          drive_folder_id: proyecto.drive_folder_id || ''
-        };
+        return proyectoPorSlugDesdeIndice_(indice.projects[j]);
       }
     }
+  }
+  for (var i = 0; i < PROYECTOS.length; i++) {
+    if (PROYECTOS[i].slug === slug) return PROYECTOS[i];
   }
   return null;
 }
 
-/** Devuelve únicamente los proyectos activos registrados en el índice. */
+/** Devuelve todos los proyectos registrados, incluidos los cerrados para lectura. */
 function proyectosRegistrados_(indice) {
   var root = getRootFolder_();
   var catalogo = indice || (root ? leerJSON_(root, 'INDICE-bitacoras.json') : null);
@@ -1738,6 +1821,7 @@ function proyectoPorSlugDesdeIndice_(p) {
     slug: p.slug, folio: p.folio || '', hashtag: p.hashtag || '',
     nombre: p.nombre || p.slug, color: p.color || '#002663',
     estado: p.estado || 'Activo',
+    cerrado_en: p.cerrado_en || '',
     campos_propios: Array.isArray(p.campos_propios) ? p.campos_propios : [],
     drive_folder: p.drive_folder || '',
     drive_folder_id: p.drive_folder_id || ''

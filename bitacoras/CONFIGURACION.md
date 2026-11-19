@@ -32,7 +32,7 @@ Resumen del programa en [`README.md`](README.md). El checklist de decisiones (27
    Cada hoja lleva sus columnas según `../guia-configuracion-appsheet.md` (mismas hojas para la web y para AppSheet). No hace falta llenarlas: se llenan solas al usar la página. Si ya hay un libro llamado `Bitacoras` fuera de `Proyectos/`, Apps Script lo mueve allí y lo reutiliza; no crea otro.
 7. No tienes que copiar IDs de Drive en Apps Script: la raíz `Bitacoras/` y `Proyectos/` se buscan por nombre. El programa guarda automáticamente el ID del libro en Script Properties y el de cada carpeta de proyecto en `INDICE-bitacoras.json`.
 
-> **Nota (M11):** los archivos que se suben a Drive (evidencias e informes Word) son **privados del dueño** por defecto: sus enlaces `/view` solo los abre la cuenta propietaria. Si alguien más debe ver las fotos o los informes, comparte con esa persona la carpeta del proyecto `Proyectos/<folio>/Evidencias/` o `Proyectos/<folio>/Informes/` desde Drive. No se cambian permisos automáticamente.
+> **Nota (M11):** las evidencias que se suben a Drive son **privadas del dueño** por defecto: sus enlaces `/view` solo los abre la cuenta propietaria. Los informes Word/PDF del botón Exportar se descargan en el navegador, no se suben automáticamente. Si guardas un informe por otra vía en `Informes/`, comparte esa carpeta manualmente; el programa no cambia permisos.
 
 > **Nota (v2 — documentos como evidencia):** además de imágenes, cada sesión acepta PDF, Word (`.doc`, `.docx`) y Excel (`.xls`, `.xlsx`) como evidencia, **máx. 10 MB por archivo**. Las imágenes se comprimen a máx. 1200 px (JPG); los documentos se guardan tal cual, con su nombre original, en la carpeta `Evidencias/` del proyecto. En modo local (sin Apps Script) los documentos quedan como base64 en localStorage: un solo PDF grande puede llenar el límite de ~5 MB, así que en ese modo conviene subirlos a Drive cuanto antes.
 
@@ -166,9 +166,22 @@ Si algo falla, anota en qué paso, con qué proyecto y qué mensaje apareció. C
   `Codigo.gs` como una nueva versión del despliegue existente (se conserva
   la URL `/exec`). Después, recarga la página sin caché.
 
-- El reporte Word usa «Información» como formato predeterminado. Después
-  presenta las bitácoras por fecha, con el contenido antes de sus evidencias;
-  las imágenes se ordenan por fecha de agregado cuando ese dato está disponible.
+- Para cerrar un proyecto, selecciónalo en el filtro, abre **Mantenimiento**,
+  escribe exactamente `CERRAR` y pulsa **Cerrar proyecto definitivamente**.
+  El cierre es irreversible: conserva la lectura y las descargas, pero el
+  servidor bloquea futuras modificaciones. El hashtag se libera; un proyecto
+  nuevo recibe otro folio, carpeta y `slug`, mientras el anterior permanece
+  intacto. Si hay hashtags repetidos, el selector muestra también el folio.
+  Esta protección requiere Apps Script conectado.
+
+- Los informes aplican «Información» como plantilla predeterminada; un formato
+  JSON guardado por proyecto puede cambiar el orden de secciones/campos y se
+  reutiliza en sus exportaciones Word y PDF. Word se descarga como `.docx`
+  OOXML real, con cada foto como imagen incrustada dentro del paquete. PDF se
+  genera en tamaño carta, con cuatro fotos por página (2×2). Las imágenes se
+  descargan y validan antes de construir el archivo; si alguna falla, se
+  cancela la exportación. Los archivos se descargan en el navegador y no se
+  guardan automáticamente en Drive.
 
 ## 11) Token de servicio para Muse
 
