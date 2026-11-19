@@ -1,6 +1,6 @@
-# Programa de Bitácoras CCH — v4
+# Programa de Bitácoras CCH — v6
 
-**Versión:** v4 — 2026-11-18 (auditoría v5: borrar datos de ejemplo y folio consecutivo CICLO-NN por proyecto)
+**Versión:** v6 — 2026-11-19 (token de servicio limitado para Muse)
 **Para:** Nequiz (CCH-UNAM)
 **Carpeta del programa:** `~/workspace/goals/ordenar-mis-minutas-y-pendientes/files/programa-bitacoras-v1/`
 
@@ -8,22 +8,11 @@
 
 Una sola página web para llevar **bitácoras y minutas de varios proyectos en paralelo**, con texto, imágenes y documentos de evidencia (PDF, Word, Excel), fecha actual por defecto, calendario, hitos y checklist de pendientes por proyecto.
 
-Cada proyecto tiene su propia bitácora, su propia ficha y su propia carpeta en Google Drive. Nada se mezcla: lo que se escribe en `#Estadistica2` queda en `#Estadistica2`.
+Cada proyecto tiene su propia bitácora, ficha y carpeta en Google Drive. Nada se mezcla entre proyectos.
 
-### Los 6 proyectos de la v1
+No hay proyectos precargados. Los proyectos se agregan desde **Mantenimiento → Agregar proyecto** y el índice central se actualiza automáticamente. Los seis registros heredados se ocultan de la interfaz, pero sus archivos de Drive se conservan.
 
-| Hashtag | Proyecto |
-|---|---|
-| `#Estadistica1` | Estadística y Probabilidad I |
-| `#Estadistica2` | Estadística y Probabilidad II |
-| `#CchPage` | CCH-Page (dashboard) |
-| `#ControlFacturas` | Control de Facturas |
-| `#AsistenciaCch` | Sistema de Asistencia CCH |
-| `#MoodleDgtic` | Automatización Moodle DGTIC |
-
-**Regla de direccionamiento (§17 del checklist):** el primer hashtag en CamelCase identifica el proyecto. Si el mensaje no trae hashtag, o trae uno no reconocido, Muse pregunta; **nunca adivina el proyecto**.
-
-Los proyectos no se crean mediante comandos de WhatsApp. Para agregarlos, inicia sesión y usa **Mantenimiento → Agregar proyecto**; la página asigna el ciclo y prepara carpeta, ficha, plantilla y formato.
+Desde la página, agrega proyectos en **Mantenimiento → Agregar proyecto**. Por WhatsApp, `#nuevaBitacora` solo prepara una propuesta: Muse necesita tu autorización explícita antes de crearla, aunque tenga token de servicio.
 
 ## Arquitectura
 
@@ -70,10 +59,10 @@ Los proyectos no se crean mediante comandos de WhatsApp. Para agregarlos, inicia
 └──────────────────────────────┘
 ```
 
-Las carpetas de los seis proyectos iniciales conservan su ubicación en
-`Bitacoras/`. Los proyectos nuevos se nombran `<ciclo>-<nombre>` (por ejemplo,
+Los seis proyectos heredados se ocultan de la lista; sus carpetas y bitácoras
+se conservan. Los proyectos nuevos se nombran `<ciclo>-<nombre>` (por ejemplo,
 `20271-prueba`) y su carpeta se crea junto a la hoja de cálculo; el índice
-central conserva su ID para encontrarla sin mover proyectos anteriores.
+central conserva su ID para localizarla.
 
 **Lo que NO es la v1:** el bot de WhatsApp Business (Cloud API, número dedicado, webhook) es solo **v2**. En la v1 la captura es por WhatsApp 1 a 1 con Muse.
 
@@ -95,9 +84,9 @@ La entrega vive en `~/workspace/goals/ordenar-mis-minutas-y-pendientes/files/`. 
 | Archivo / carpeta | Qué es |
 |---|---|
 | `checklist-bitacora-web.md` | Checklist de control del programa: **27 secciones** (§1–§27). Es el documento maestro de decisiones; nada se construye sin que el checklist lo apruebe. |
-| `INDICE-bitacoras.json` | Índice central: hashtag → slug → carpeta en Drive, por proyecto. Muse escribe en Drive por ID de archivo, no solo por nombre. |
+| `INDICE-bitacoras.json` | Índice dinámico de los proyectos creados desde la interfaz. Se actualiza automáticamente; inicia vacío. |
 | `banco-peticiones.md` y `banco-peticiones.json` | Banco de peticiones **v3: 16 comandos** en CamelCase sin acentos (`#nuevaBitacora`, `#nuevaSesion`, `#verPendientes`, etc.). |
-| `plantillas/` | Una plantilla de sesión prellenada por proyecto (`plantilla-sesion.json`, v1): `estadistica-1-`, `estadistica-2-`, `cch-page-`, `control-facturas-`, `asistencia-cch-` y `moodle-dgtic-plantilla-sesion.json`, más `plantillas-mensaje.txt`. Versionadas: si se agrega un campo sube de versión y las sesiones viejas conservan la suya. La plantilla de `#Estadistica2` está aprobada. |
+| `plantillas/` | Plantillas heredadas opcionales que se conservan como referencia; no crean proyectos ni se cargan automáticamente. |
 | `formato-por-defecto.json` | Formato por defecto para cargar un formato específico por proyecto desde la interfaz (JSON por proyecto, se guarda como formato de ese proyecto y se usa al exportar). |
 | `guia-configuracion-appsheet.md` | Guía de AppSheet (§26 del checklist): mismas hojas de Drive para la web y para AppSheet. |
 
@@ -125,22 +114,25 @@ Máster en texto plano (Markdown/JSON) en Drive y GitHub. Google Docs o Word sol
 ### Login y mantenimiento
 
 - **Login web** con contraseña aparte, guardada como **hash SHA-256 con sal** en Apps Script Properties, **nunca en el HTML** (checklist §25). El bloqueo tras 5 fallos es **por cliente**, no global: un visitante no puede bloquear al dueño (Apps Script no expone la IP; el identificador lo genera la página y viaja en el login; alguien que lo rote podría eludirlo, queda documentado como mitigación, no como garantía). Al cargar, la página valida el token contra el backend (`validarSesion`); el bloqueo de la interfaz por sí solo **no es seguridad**, el backend valida el token en cada llamada.
+- **Token de servicio Muse:** `generarTokenServicioMuse()` crea un token aleatorio, guarda solo su hash con sal en Script Properties (`MUSE_SERVICE_TOKEN_HASH`) y lo muestra una vez en los logs de Apps Script. No se incluye en `index.html` ni en archivos del repositorio. Reemplazarlo con uno nuevo invalida el anterior; `revocarTokenServicioMuse()` lo invalida de inmediato.
+- **Sesiones independientes:** el token web sigue expirando a las **6 horas** y se invalida con la época al cambiar la contraseña. El token de servicio no usa esa época ni caduca por tiempo; solo se invalida al revocarlo o reemplazarlo.
+- **Alcance de Muse:** permite `leer`, `leerProyecto`, `guardarSesion`, `guardarPendiente`, `cerrarPendiente`, `guardarHito`, `subirEvidencia`, `crearProyecto`, `guardar`, `verEvidencia` y `registrarPuntaje`. Rechaza cualquier otra acción; no permite login, cambio de contraseña, crear/verificar estructura, cambiar ciclo, ni las acciones dedicadas para editar o borrar sesiones/hitos. Su `guardar` de sincronización fusiona por ID; conserva registros y elementos de arreglos omitidos, así como propiedades ausentes, nulas o vacías, evitando el borrado de datos por sincronización.
 - **Escrituras con `LockService`:** dos guardados simultáneos no se pisan en `bitacora.json` ni en las hojas.
 - **Mantenimiento** (§24): crear tablas y hojas de Drive desde cero; «Verificar estructura» llama de verdad a `verificarEstructura` y muestra los faltantes.
-- **Proyectos dinámicos:** en Mantenimiento puedes agregar un proyecto con nombre y color. En modo local queda guardado en este navegador; con Apps Script se registra en Drive junto a la hoja de cálculo, con nombre `<ciclo>-<nombre>` (el folio consecutivo sigue siendo independiente). No hace falta editar `INDICE-bitacoras.json` manualmente. Para activar esta función en la versión publicada, actualiza y vuelve a desplegar `Codigo.gs`.
+- **Proyectos dinámicos:** en Mantenimiento puedes agregar un proyecto con nombre y color. En modo local queda guardado en este navegador; con Apps Script se registra en Drive junto a la hoja de cálculo, con nombre `<ciclo>-<nombre>` (el folio consecutivo sigue siendo independiente). No hace falta editar `INDICE-bitacoras.json` manualmente. Para activar los cambios publicados, actualiza `index.html` en GitHub Pages y `Codigo.gs` en Apps Script; este último requiere una nueva versión del despliegue.
 - **Sin datos precargados:** la página ya no crea sesiones de demostración al abrirse. Los archivos JSON de simulación también se retiraron; los registros heredados marcados como ejemplo se pueden limpiar desde Mantenimiento.
 - **AppSheet** (§26): acceso controlado desde Apps Script (`CUENTAS_AUTORIZADAS_APPSHEET` + acción `verificarAppSheet`) / cuenta Google; usa las mismas hojas de Drive que la web.
 - **Evidencias e informes privados (M11):** los archivos subidos a Drive son privados del dueño; sus enlaces `/view` solo los abre la cuenta propietaria. Para que alguien más los vea, hay que compartirle la carpeta `<slug>/Evidencias/` o `<slug>/Informes/` desde Drive; el programa no cambia permisos automáticamente.
-- **Colores (M14):** los 6 proyectos iniciales conservan el catálogo compartido en `index.html` y `Codigo.gs`. Los proyectos nuevos guardan su propio color en el índice central.
-- **`NequizUNAM/CCH-Page` (M13):** el repo de GitHub que aparece como `github_repo` del proyecto `#CchPage` es el repo propio de Nequiz, intencional; no es una URL real ni una credencial, es su proyecto CCH-Page.
+- **Colores (M14):** cada proyecto nuevo guarda su propio color en el índice central. Los colores de los registros heredados se conservan en su archivo de Drive.
+- **Proyectos heredados:** los seis proyectos de demostración se retiraron de la lista activa. Sus carpetas y bitácoras se conservan; al crear el siguiente proyecto, sus entradas del índice se guardan como archivadas.
 
 ## Pasos que Nequiz hará él en Drive y GitHub (resumen)
 
 Nequiz se encarga él mismo de configurar Drive y GitHub. El detalle paso a paso está en [`CONFIGURACION.md`](CONFIGURACION.md).
 
 1. **Drive:** crear la carpeta `Bitacoras/` y subir los archivos de esta entrega donde indica la guía.
-2. **GitHub:** crear el repositorio (nombre a elegir; sugerencia: `bitacoras`), subir **solo** `index.html` y `protocolo-puntaje-cch-v2.json` a la raíz o a `docs/`, activar GitHub Pages. El resto de la carpeta (checklist, análisis, auditorías, plantillas) NO se publica: es documentación interna.
-3. **Apps Script:** crear el proyecto, pegar `Codigo.gs`, desplegar como Web App (Execute as: Me) y copiar la URL `/exec`.
+2. **GitHub:** crear el repositorio (nombre a elegir; sugerencia: `bitacoras`), subir **solo** `index.html` y `protocolo-puntaje-cch-v2.json` a la raíz o a `docs/`, activar GitHub Pages. Para actualizar la interfaz, publica el nuevo `index.html`.
+3. **Apps Script:** crear el proyecto, pegar `Codigo.gs`, desplegar como Web App (Execute as: Me) y copiar la URL `/exec`. Al cambiar el backend, publica una nueva versión de la implementación.
 4. **Pegar la URL en un solo lugar:** `CONFIG.appsScriptUrl` dentro de `index.html`.
 5. **Contraseña web:** fijarla en Apps Script Properties con la función indicada en `Codigo.gs` (nunca en el HTML).
 6. **AppSheet:** conectarlo a las hojas de Drive según `guia-configuracion-appsheet.md`.
@@ -203,7 +195,7 @@ Pendiente tras este turno: nada de la auditoría. Queda sin probar contra un App
 
 Probar en este orden, con la página ya publicada y la URL de Apps Script puesta en `index.html`:
 
-1. **Crear sesión con fecha actual:** abrir la página, elegir un proyecto (por ejemplo `#Estadistica2`), crear una sesión nueva. La fecha debe venir puesta en la fecha actual por defecto. Guardar y comprobar que aparece en la lista del proyecto.
+1. **Crear sesión con fecha actual:** abrir la página, crear un proyecto desde Mantenimiento, elegirlo, crear una sesión nueva y comprobar que aparece en su lista.
 2. **Acuerdo → pendiente:** en la sesión, escribir un acuerdo con responsable y fecha y pulsar «→ Pendiente». Comprobar que aparece en el checklist de pendientes del proyecto, con su responsable y su fecha, y que también quedó guardado en Drive (recargar la página: el pendiente debe seguir ahí). Si se pulsa «→ Pendiente» dos veces sobre el mismo acuerdo, solo se crea un pendiente (no se duplica).
 3. **Marcar hecho:** marcar ese pendiente como hecho. Comprobar que cambia de estado y que ya no sale en los pendientes abiertos, y que tras recargar sigue marcado como hecho (se sincronizó con Drive con `cerrarPendiente`).
 4. **Calendario:** abrir el calendario y comprobar que en la cuadrícula de cada día aparecen la sesión (●), el hito (◆) y los pendientes con fecha de ese día (•, y ⚠ en rojo si están vencidos); al hacer clic en el día se ve el detalle completo.
@@ -217,10 +209,9 @@ Si alguna prueba falla, anotar qué proyecto, qué paso y qué mensaje apareció
 
 - **Sin contraseñas reales.** Solo el placeholder `TU_CONTRASENA_AQUI`; la contraseña real se fija en Apps Script Properties, nunca en el HTML.
 - **Sin URLs reales.** Solo el placeholder `TU_URL_APPS_SCRIPT_AQUI`; la URL real es la `/exec` del despliegue de cada quien.
-- **Sin bot de WhatsApp Business.** No hay número dedicado, ni webhook, ni Cloud API en la v1. Eso es v2. La captura de la v1 es reenviar la minuta a Muse por WhatsApp 1 a 1.
-- **Sin Drive ni GitHub conectados a Muse.** A 2026-11-17 no estaban conectados; Nequiz los configura él con su propia cuenta.
-- **Creación desde la interfaz:** el alta de proyectos se hace en Mantenimiento. El comando `#nuevaBitacora` es una referencia del banco de peticiones y no crea carpetas por sí mismo.
+- **Sin puente automático de WhatsApp.** No hay webhook ni Cloud API. El token habilita llamadas autorizadas de Muse al Web App, pero no automatiza la recepción de mensajes.
+- **Entrega segura del token:** no lo escribas en chats, HTML, JSON, README ni checklist. Cópialo de los logs al generarlo y entrégalo a Muse solo por el mecanismo seguro configurado.
 
 ## Versión
 
-**v4 — 2026-11-18.** Auditoría v5 sobre la v3: borrar datos de ejemplo desde Mantenimiento (sin tocar datos reales) y folio consecutivo por proyecto CICLO-NN configurable en Mantenimiento (ciclo 20271, folios 20271-01 a 20271-06). La v3 aportó el selector de proyecto con buscador.
+**v6 — 2026-11-19.** Token de servicio Muse almacenado solo como hash con sal, con acciones permitidas explícitas, rechazo por lista permitida y revocación independiente de la sesión web de 6 horas. v5 vació el catálogo inicial y ocultó los registros heredados sin borrar sus datos.

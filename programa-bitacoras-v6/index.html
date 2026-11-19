@@ -1,0 +1,1891 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitácoras CCH — UNAM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ===== Bitácoras CCH v1 — CSS puro, fondo blanco UNAM ===== */
+:root{
+  --azul:#002663; --azul-claro:#0b3d91; --dorado:#C9A227; --dorado-suave:#F7EFD2;
+  --gris:#6B7280; --gris-claro:#F3F4F6; --borde:#E5E7EB; --rojo:#DC2626; --verde:#15803D;
+  --naranja:#C2410C; --texto:#111827;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#FFFFFF;color:var(--texto);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5}
+body{min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--borde);border-radius:8px;width:100%;background:#fff}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--azul-claro);outline-offset:1px}
+label{font-weight:600;font-size:13px;display:block;margin:10px 0 4px}
+h1{font-size:22px;color:var(--azul)}
+h2{font-size:18px;color:var(--azul);margin-bottom:10px}
+h3{font-size:15px;color:var(--azul)}
+.muted{color:var(--gris);font-size:13px}
+.aviso{background:#FEF3C7;border:1px solid var(--dorado);color:#78350F;padding:10px 14px;border-radius:10px;margin:10px 0;font-size:14px}
+.aviso.rojo{background:#FEE2E2;border-color:var(--rojo);color:#7F1D1D}
+.aviso.verde{background:#DCFCE7;border-color:var(--verde);color:#14532D}
+
+/* Encabezado */
+header{background:var(--azul);color:#fff;padding:14px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+header .logo{font-weight:800;font-size:20px;letter-spacing:.3px}
+header .logo span{color:var(--dorado)}
+header input[type=search]{max-width:320px;flex:1;min-width:180px}
+.btn{background:var(--azul);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:600;font-size:14px}
+.btn:hover{background:var(--azul-claro)}
+.btn.dorado{background:var(--dorado);color:#1F2937}
+.btn.dorado:hover{filter:brightness(.95)}
+.btn.blanco{background:#fff;color:var(--azul);border:1px solid var(--borde)}
+.btn.peligro{background:var(--rojo)}
+.btn.chico{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.tabs{display:flex;gap:6px;padding:10px 18px 0;flex-wrap:wrap}
+.tabs button{border:1px solid var(--borde);background:#fff;border-radius:8px 8px 0 0;padding:9px 16px;font-weight:600;color:var(--gris)}
+.tabs button.activa{background:var(--azul);color:#fff;border-color:var(--azul)}
+
+/* Layout principal */
+main{display:block;padding:16px 18px}
+section.contenido{flex:1;min-width:300px}
+.proyecto-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:#fff;border:1px solid var(--borde);border-radius:10px;padding:9px 10px;margin-bottom:8px;font-weight:600}
+.proyecto-item.activo{border-color:var(--azul);box-shadow:0 0 0 1px var(--azul)}
+.punto{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.contador{margin-left:auto;background:var(--rojo);color:#fff;border-radius:999px;font-size:11px;padding:1px 8px;font-weight:700}
+.contador.cero{background:var(--gris-claro);color:var(--gris)}
+.tarjeta{border:1px solid var(--borde);border-radius:12px;padding:16px;margin-bottom:14px;background:#fff}
+.tarjeta .fecha{color:var(--gris);font-size:13px}
+.etiqueta{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--gris-claro);color:var(--azul);margin-right:6px}
+.etiqueta.hito{background:var(--dorado-suave);color:#78350F}
+.barra{height:10px;background:var(--gris-claro);border-radius:999px;overflow:hidden;margin:6px 0}
+.barra>div{height:100%;background:var(--dorado)}
+.fila{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fila>*{flex:1;min-width:120px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.miniaturas{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.miniaturas img{width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--borde);cursor:pointer}
+.doc-evidencia{display:flex;align-items:center;gap:8px;border:1px solid var(--borde);border-radius:8px;padding:8px 10px;background:#fff;text-decoration:none;color:var(--texto);max-width:260px;text-align:left}
+.doc-etiqueta{background:var(--azul);color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:3px 7px;white-space:nowrap}
+.miniaturas figure{margin:0;max-width:260px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{border:1px solid var(--borde);padding:7px 9px;text-align:left}
+th{background:var(--azul);color:#fff}
+tr.vencido td{color:var(--rojo);font-weight:600}
+.calendario{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.calendario .dia{border:1px solid var(--borde);border-radius:8px;min-height:64px;padding:6px;font-size:13px;cursor:pointer;background:#fff}
+.calendario .dia.hoy{border-color:var(--dorado);box-shadow:0 0 0 1px var(--dorado)}
+.calendario .dia.seleccionado{background:var(--dorado-suave)}
+.calendario .cab{font-weight:700;text-align:center;color:var(--azul);font-size:12px;padding:4px}
+.marca{font-size:11px;line-height:1.3}
+.modal-fondo{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal-fondo.abierto{display:flex}
+.modal{background:#fff;border-radius:14px;padding:20px;max-width:640px;width:100%;max-height:90vh;overflow:auto}
+.modal img{max-width:100%;border-radius:8px}
+.oculto{display:none!important}
+.resumen{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:12px 18px 0}
+.kpi{border:1px solid var(--borde);border-radius:12px;padding:12px 14px;background:#fff;text-align:left;cursor:pointer}
+.kpi b{display:block;font-size:24px;color:var(--azul)}
+.kpi.alerta b{color:var(--rojo)}
+.kpi span{font-size:12px;color:var(--gris)}
+.rojo{color:var(--rojo)}
+.dos-col{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+#atencion{position:sticky;top:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;border:1px solid var(--borde);background:#fff;border-radius:999px;padding:6px 12px;font-weight:600;font-size:13px}
+/* Selector de proyecto con buscador (v3): una fila compacta en lugar de
+   la fila de chips; escala a muchos proyectos sin crecer la página. */
+.selector-proyecto{position:relative;padding:12px 18px 0;max-width:460px}
+#btnSelectorProyecto{display:flex;align-items:center;gap:8px;width:100%;border:1px solid var(--borde);background:#fff;border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px;cursor:pointer;text-align:left}
+#btnSelectorProyecto .contador{margin-left:auto}
+#btnSelectorProyecto .sel-flecha{color:var(--gris);flex-shrink:0}
+.selector-lista{position:absolute;left:18px;right:18px;top:100%;margin-top:4px;background:#fff;border:1px solid var(--borde);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:30;overflow:hidden}
+.selector-lista input[type=search]{width:100%;border:none;border-bottom:1px solid var(--borde);padding:10px 12px;font-size:14px;outline:none}
+#opcionesProyectos{max-height:300px;overflow:auto}
+.sel-opcion{display:flex;align-items:center;gap:8px;width:100%;border:none;background:#fff;padding:9px 12px;font-size:14px;cursor:pointer;text-align:left}
+.sel-opcion:hover,.sel-opcion.resaltado{background:#E3EDFB}
+.sel-opcion.activo{font-weight:700;color:var(--azul)}
+@media (max-width:760px){.selector-proyecto{max-width:none}}
+.semana{margin:18px 0 8px;color:var(--azul);font-size:15px}
+/* Vistas Tarjeta/Tabla (v2): interruptor y tablas con desplazamiento propio. */
+.vista-toggle{display:flex;border:1px solid var(--borde);border-radius:8px;overflow:hidden;flex:0 0 auto}
+.fila .vista-toggle{flex:0 0 auto;min-width:0}
+.vista-toggle button{background:#fff;border:none;padding:7px 11px;font-weight:600;font-size:13px;color:var(--gris);display:flex;gap:6px;align-items:center}
+.vista-toggle button[aria-pressed="true"]{background:var(--azul);color:#fff}
+.vista-toggle button svg{flex-shrink:0}
+.tabla-scroll{overflow-x:auto;margin-bottom:14px}
+.tabla-scroll table{min-width:760px}
+.tabla-scroll .fila>*{flex:0 0 auto;min-width:0}
+.pend-tarjetas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:10px}
+.pend-tarjeta{border:1px solid var(--borde);border-radius:10px;padding:12px;background:#fff}
+.pend-tarjeta.vencido{border-color:var(--rojo)}
+.pend-tarjeta p{margin:4px 0;font-size:14px}
+details.menu summary{cursor:pointer;list-style:none;font-weight:700}
+details.menu summary::-webkit-details-marker{display:none}
+@media (max-width:1000px){.dos-col{grid-template-columns:1fr}#atencion{position:static;order:-1}}
+@media (max-width:760px){
+  .resumen{grid-template-columns:1fr 1fr}
+  main{flex-direction:column}
+  .grid2{grid-template-columns:1fr}
+  header{flex-wrap:nowrap;padding:10px 12px}
+  header .logo{font-size:17px}
+  header input[type=search]{display:none}
+  header .btn{padding:8px 10px;font-size:13px}
+  .tabs{position:fixed;bottom:0;left:0;right:0;background:#fff;z-index:40;border-top:1px solid var(--borde);padding:6px 8px;justify-content:space-around}
+  .tabs button{border-radius:8px;flex:1}
+  body{padding-bottom:64px}
+  #btnNuevaFlotante{display:block!important;position:fixed;right:16px;bottom:72px;z-index:41;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  #listaPendientes table,#listaPendientes thead,#listaPendientes tbody,#listaPendientes tr,#listaPendientes td{display:block;width:100%}
+  #listaPendientes thead{display:none}
+  #listaPendientes tr{border:1px solid var(--borde);border-radius:10px;margin-bottom:10px;padding:6px}
+  #listaPendientes td{border:none;padding:4px 8px}
+  .agenda{display:block!important}
+}
+.agenda{display:none}
+@media (max-width:760px){
+  /* Dentro de .tabla-scroll la tabla conserva su formato y se desplaza
+     en horizontal, en lugar de romperse en bloques (regla general de móvil). */
+  #listaPendientes .tabla-scroll table{display:table;width:100%}
+  #listaPendientes .tabla-scroll thead{display:table-header-group}
+  #listaPendientes .tabla-scroll tbody{display:table-row-group}
+  #listaPendientes .tabla-scroll tr{display:table-row;border:none;border-radius:0;margin-bottom:0;padding:0}
+  #listaPendientes .tabla-scroll td,#listaPendientes .tabla-scroll th{display:table-cell;border:1px solid var(--borde);padding:7px 9px}
+  #listaPendientes .tabla-scroll thead{display:table-header-group}
+}
+@media print{ header,.tabs,.no-imprimir{display:none!important} body{font-size:12px} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Bitácoras <span>CCH</span> · UNAM</div>
+  <input type="search" id="buscador" placeholder="Buscar en títulos, texto, asistentes y pendientes…" aria-label="Buscador global">
+  <button class="btn dorado" id="btnNuevaSesion">+ Nueva sesión</button>
+  <button class="btn blanco" id="btnLogin">Login</button>
+  <button class="btn blanco oculto" id="btnMantenimiento">Mantenimiento</button>
+  <span id="estadoModo" class="chip" style="background:#fff;color:var(--texto)">● Local</span>
+</header>
+<button class="btn dorado oculto" id="btnNuevaFlotante" style="display:none">+ Sesión</button>
+
+<div id="avisoSesion" class="aviso rojo oculto" style="margin:12px 18px 0">Sin sesión: crear, editar, borrar, exportar y Mantenimiento están bloqueados. Inicia sesión para habilitarlos.</div>
+
+<section id="resumen" class="resumen" aria-label="Resumen"></section>
+<nav class="tabs" role="tablist">
+  <button data-vista="bitacoras" class="activa" role="tab" aria-selected="true">Bitácoras</button>
+  <button data-vista="calendario" role="tab" aria-selected="false">Calendario</button>
+  <button data-vista="pendientes" role="tab" aria-selected="false">Pendientes</button>
+  <button data-vista="puntaje" role="tab" aria-selected="false">Puntaje</button>
+</nav>
+<div class="selector-proyecto" id="selectorProyecto">
+  <button type="button" id="btnSelectorProyecto" aria-haspopup="listbox" aria-expanded="false" aria-controls="listaProyectos" aria-label="Proyecto activo: elige un proyecto">
+    <span class="punto" id="selPunto" style="background:#002663"></span>
+    <span id="selTexto">Todos los proyectos</span>
+    <span class="contador cero" id="selContador" style="display:none"></span>
+    <span class="sel-flecha" aria-hidden="true">&#9662;</span>
+  </button>
+  <div id="listaProyectos" class="selector-lista oculto" role="listbox" aria-label="Proyectos">
+    <input type="search" id="buscadorProyectos" placeholder="Buscar proyecto por nombre o hashtag…" aria-label="Buscar proyecto" autocomplete="off">
+    <div id="opcionesProyectos"></div>
+  </div>
+</div>
+
+<main>
+  <input type="file" id="inputFormato" accept=".json,application/json" class="oculto">
+  <input type="file" id="inputImportar" accept=".json,application/json" class="oculto">
+  <section class="contenido">
+    <!-- Vista Bitácoras -->
+    <div id="vista-bitacoras">
+      <div class="fila" style="margin-bottom:12px">
+        <h2 id="tituloProyecto" style="flex:2">Todas las bitácoras</h2>
+        <div class="vista-toggle" role="group" aria-label="Vista de bitácoras">
+          <button type="button" id="btnVistaBitTarjeta" aria-pressed="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="5" rx="1"/><rect x="1.5" y="9.5" width="13" height="5" rx="1"/></svg>Tarjeta</button>
+          <button type="button" id="btnVistaBitTabla" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="1"/><line x1="1.5" y1="6" x2="14.5" y2="6"/><line x1="6" y1="1.5" x2="6" y2="14.5"/></svg>Tabla</button>
+        </div>
+        <button class="btn" id="btnExportarProyecto">Exportar informe</button>
+      </div>
+      <div id="panelExportar" class="tarjeta oculto">
+        <h3>Exportar informe</h3>
+        <div class="fila" style="margin-top:8px">
+          <button class="btn" data-export="pdf">PDF (imprimir)</button>
+          <button class="btn" data-export="word">Word (.doc)</button>
+          <button class="btn" data-export="docs">Google Docs (copiar)</button>
+          <button class="btn" data-export="texto">Texto (.md)</button>
+          <button class="btn" data-export="csv">CSV pendientes</button>
+          <button class="btn" data-export="json">JSON respaldo</button>
+        </div>
+        <p class="muted">Word: con Apps Script, el informe se guarda en Drive en &lt;proyecto&gt;/Informes/ y sobrescribe el archivo del mismo nombre. Sin conexión, se descarga en el navegador.</p>
+      </div>
+      <div id="panelHitos" class="tarjeta"></div>
+      <div class="dos-col">
+        <div id="lineaTiempo"></div>
+        <div id="atencion" class="tarjeta"></div>
+      </div>
+    </div>
+
+    <!-- Vista Calendario -->
+    <div id="vista-calendario" class="oculto">
+      <div class="tarjeta">
+        <div class="fila">
+          <button class="btn blanco" id="calAnt">‹ Anterior</button>
+          <h2 id="calTitulo" style="text-align:center;flex:2"></h2>
+          <button class="btn blanco" id="calSig">Siguiente ›</button>
+          <button class="btn" id="calHoy">Hoy</button>
+        </div>
+        <div class="calendario" id="calGrid" style="margin-top:12px"></div>
+        <p class="muted" style="margin-top:8px">● sesión &nbsp; ◆ <span style="color:var(--dorado)">hito</span> &nbsp; <span style="color:var(--rojo)">vencido en rojo</span></p>
+      </div>
+      <div class="tarjeta" id="detalleDia"><h3>Selecciona un día</h3></div>
+      <div class="tarjeta" id="proximos7"><h3>Próximos 7 días</h3></div>
+      <div class="tarjeta agenda" id="agendaCal"><h3>Agenda</h3></div>
+    </div>
+
+    <!-- Vista Puntaje -->
+    <div id="vista-puntaje" class="oculto">
+      <div class="fila" style="margin-bottom:12px"><h2 style="flex:2">Puntaje</h2><button class="btn dorado" id="btnPuntaje">Registrar puntaje</button></div>
+      <p class="muted">Protocolo CCH 2020: rubro, actividad, nivel y puntos.</p>
+      <div id="panelPuntaje" class="tarjeta"></div>
+    </div>
+
+    <!-- Vista Pendientes -->
+    <div id="vista-pendientes" class="oculto">
+      <div class="tarjeta">
+        <div class="fila"><h2 id="tituloPendientes" style="flex:2">Pendientes</h2>
+          <div class="vista-toggle" role="group" aria-label="Vista de pendientes">
+            <button type="button" id="btnVistaPendTarjeta" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="5" rx="1"/><rect x="1.5" y="9.5" width="13" height="5" rx="1"/></svg>Tarjeta</button>
+            <button type="button" id="btnVistaPendTabla" aria-pressed="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="1"/><line x1="1.5" y1="6" x2="14.5" y2="6"/><line x1="6" y1="1.5" x2="6" y2="14.5"/></svg>Tabla</button>
+          </div>
+          <button class="btn chico blanco oculto" id="btnQuitarFiltro">✕ Quitar filtro</button></div>
+        <p id="resumenPendientes" class="muted"></p>
+        <div class="fila" style="margin-top:8px">
+          <select id="filtroPendEstado" aria-label="Filtrar por estado">
+            <option value="">Todos los estados</option>
+            <option>Pendiente</option><option>En proceso</option><option>Cerrado</option><option>Vencido</option>
+          </select>
+          <input id="filtroPendResponsable" placeholder="Filtrar por responsable">
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="filtroSoloVencidos" style="width:auto"> Solo vencidos</label>
+        </div>
+      </div>
+      <div id="listaPendientes"></div>
+    </div>
+  </section>
+</main>
+
+<!-- Modal genérico -->
+<div class="modal-fondo" id="modalFondo"><div class="modal" id="modalContenido"></div></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   BITÁCORAS CCH v1 — JS puro. Modo local (localStorage) + Apps Script
+   opcional. Sin contraseñas ni URLs reales en el archivo.
+   ===================================================================== */
+const CONFIG = {
+  appsScriptUrl: "https://script.google.com/macros/s/AKfycbz17mg04DZAx1YFgEK16ZjF53Ir1iH8LuYUFyzPKh0szi0cKumAXZiFbKyQbDk2D-jw/exec",
+  claveLocal: 'bitacoras_v1',
+  maxIntentosLogin: 5,
+  minutosBloqueo: 5
+};
+const TIENE_APPS_SCRIPT = CONFIG.appsScriptUrl && !CONFIG.appsScriptUrl.startsWith('TU_');
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+/* Se esconden proyectos de demostración heredados sin borrar sus datos de Drive. */
+const PROYECTOS_BASE = [];
+const PROYECTOS_INICIALES_OCULTOS = new Set([
+  'estadistica-1', 'estadistica-2', 'cch-page',
+  'control-facturas', 'asistencia-cch', 'moodle-dgtic'
+]);
+function esProyectoInicialOculto(slug){ return PROYECTOS_INICIALES_OCULTOS.has(slug); }
+/* Folio consecutivo por proyecto (v4): CICLO-NN, p. ej. 20271-01. El ciclo
+   se configura en Mantenimiento; al cambiarlo, el contador se reinicia en
+   01 y los folios del ciclo anterior NO cambian. El consecutivo es global
+   por ciclo (no por proyecto) y un número asignado nunca se reutiliza
+   aunque se borre el proyecto (queda el hueco en `usados`). */
+const CICLO_DEFECTO = '20271';
+function configCicloPorDefecto(){ return { ciclo: CICLO_DEFECTO, siguiente: 1, usados: [], historial: {} }; }
+function validarCiclo(c){ return typeof c === 'string' && /^\d{4,6}$/.test(c); }
+function folioDe(ciclo, n){ return ciclo + '-' + String(n).padStart(2, '0'); }
+function numeroDeFolio(folio, ciclo){ const m = /^\d{4,6}-(\d+)$/.exec(String(folio || '')); return (m && String(folio).startsWith(ciclo + '-')) ? parseInt(m[1], 10) : 0; }
+/* Normaliza {ciclo, siguiente, usados} con los folios que ya tienen los
+   proyectos: registra los folios del ciclo vigente y recalcula el
+   siguiente como el mayor usado + 1 (nunca se reutiliza un número). */
+function normalizarConfigCiclo(c, proyectos){
+  const cfg = (c && typeof c === 'object') ? c : {};
+  const ciclo = validarCiclo(cfg.ciclo) ? cfg.ciclo : CICLO_DEFECTO;
+  const usados = [];
+  (proyectos || []).forEach(pr => { const n = numeroDeFolio(pr.folio, ciclo); if(n > 0) usados.push(pr.folio); });
+  (Array.isArray(cfg.usados) ? cfg.usados : []).forEach(f => { const n = numeroDeFolio(f, ciclo); if(n > 0 && !usados.includes(f)) usados.push(f); });
+  /* v5: historial por ciclo — al volver a un ciclo anterior se recuperan
+     los números ya usados en ese ciclo (incluidos los de proyectos
+     borrados), para que nunca se reutilicen. */
+  const hist = (cfg.historial && typeof cfg.historial === 'object') ? cfg.historial : {};
+  (Array.isArray(hist[ciclo]) ? hist[ciclo] : []).forEach(f => { const n = numeroDeFolio(f, ciclo); if(n > 0 && !usados.includes(f)) usados.push(f); });
+  usados.sort();
+  const max = usados.reduce((a, f) => Math.max(a, numeroDeFolio(f, ciclo)), 0);
+  return { ciclo, siguiente: Math.max(max + 1, 1), usados, historial: hist };
+}
+/* Asigna folio a los proyectos que no tienen: en el orden del índice,
+   con el siguiente número del ciclo vigente. Devuelve el config actualizado. */
+function normalizarFolios(proyectos, cfg){
+  const c = normalizarConfigCiclo(cfg, proyectos);
+  (proyectos || []).forEach(pr => {
+    if(pr.folio && numeroDeFolio(pr.folio, c.ciclo) > 0) return; // ya tiene folio del ciclo vigente
+    if(pr.folio && /^\d{4,6}-\d+$/.test(String(pr.folio))) return; // folio de un ciclo anterior: se conserva
+    pr.folio = folioDe(c.ciclo, c.siguiente);
+    c.usados.push(pr.folio); c.usados.sort(); c.siguiente++;
+  });
+  return c;
+}
+/* ---------- Formato simple por defecto (informe) ---------- */
+const FORMATO_DEFECTO = {
+  formato_version: 1,
+  nombre: 'Información',
+  secciones: [
+    { titulo:'Información', campos:['fecha','titulo','tipo'] },
+    { titulo:'Contenido de las bitácoras', campos:['bitacoras'] },
+    { titulo:'Pendientes', campos:['pendientes'] },
+    { titulo:'Hitos', campos:['hitos'] }
+  ]
+};
+
+/* ---------- Estado ---------- */
+let estado = { proyectos: PROYECTOS_BASE, sesiones: [], pendientes: [], hitos: [], formatos: {}, puntaje: [], configCiclo: configCicloPorDefecto(), ejemploBorrado: false };
+let proyectoSel = 'todos';
+let vistaActual = 'bitacoras';
+/* Vistas Tarjeta/Tabla (v2): la vista elegida se guarda en localStorage y
+   se restaura al abrir. Bitácoras nace en Tarjeta y Pendientes en Tabla,
+   que son sus vistas históricas. */
+function leerVistaGuardada(clave, defecto){ try { const v = localStorage.getItem(clave); return (v === 'tarjeta' || v === 'tabla') ? v : defecto; } catch(e){ return defecto; } }
+function guardarVista(clave, v){ try { localStorage.setItem(clave, v); } catch(e){} }
+let vistaBitacoras = leerVistaGuardada('bitacoras_vista_bitacoras', 'tarjeta');
+let vistaPendientes = leerVistaGuardada('bitacoras_vista_pendientes', 'tabla');
+function sincronizarToggleBit(){ const a = $('#btnVistaBitTarjeta'), b = $('#btnVistaBitTabla'); if(!a || !b) return; a.setAttribute('aria-pressed', vistaBitacoras === 'tarjeta' ? 'true' : 'false'); b.setAttribute('aria-pressed', vistaBitacoras === 'tabla' ? 'true' : 'false'); }
+function sincronizarTogglePend(){ const a = $('#btnVistaPendTarjeta'), b = $('#btnVistaPendTabla'); if(!a || !b) return; a.setAttribute('aria-pressed', vistaPendientes === 'tarjeta' ? 'true' : 'false'); b.setAttribute('aria-pressed', vistaPendientes === 'tabla' ? 'true' : 'false'); }
+let calCursor = new Date(); calCursor.setDate(1);
+let diaSel = null;
+let intentosLogin = 0, bloqueoHasta = 0;
+let busqueda = '';
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const uid = p => p + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function hoyISO(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+/* A2: fecha/hora actual en HORA LOCAL (nunca UTC): 'AAAA-MM-DDTHH:MM'.
+   new Date().toISOString() es UTC y en México desde las 18:00 ya es el día
+   siguiente; por eso no se usa en ningún formulario ni guardado. */
+function ahoraLocalISO(){ const d = new Date(); return hoyISO() + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+/* A4: normaliza un formato cargado (de Drive, de archivo o del defecto) al
+   modelo único: secciones con `titulo` (no `nombre`) y `formato_version`
+   (no `version`). Acepta las variantes viejas, pero nunca las guarda. */
+function normalizarFormato(j){
+  if(!j || typeof j !== 'object') return FORMATO_DEFECTO;
+  const secs = (Array.isArray(j.secciones) ? j.secciones : []).map(s => ({
+    titulo: (s && (s.titulo || s.nombre)) || '',
+    campos: (s && Array.isArray(s.campos)) ? s.campos.slice() : []
+  })).filter(s => s.titulo);
+  return { nombre: j.nombre || 'Formato simple por defecto',
+    formato_version: Number(j.formato_version != null ? j.formato_version : (j.version != null ? j.version : 1)) || 1,
+    instrucciones: j.instrucciones || '', secciones: secs.length ? secs : FORMATO_DEFECTO.secciones,
+    campos: Array.isArray(j.campos) ? j.campos : [] };
+}
+/* Migración de respaldos/datos viejos al modelo único (A1): proyecto->slug,
+   sesionId->sesion_id, fecha->fecha_compromiso (pendiente),
+   minutaOrigen->minuta_origen, estado 'Hecho'->'Cerrado', hitos en
+   minúscula->'Pendiente'/'En curso'/'Cerrado', evidencias dataUrl->url,
+   formatos normalizados. Los datos nuevos ya nacen con el modelo único. */
+function migrarEstado(d){
+  if(!d || typeof d !== 'object') return d;
+  if(Array.isArray(d.proyectos)) d.proyectos = d.proyectos.filter(p => !esProyectoInicialOculto(p.slug));
+  (d.sesiones || []).forEach(s => {
+    if(s.fecha) s.fecha = normalizarFechaISO(s.fecha);
+    if(s.proyecto && !s.slug) s.slug = s.proyecto; delete s.proyecto;
+    (s.evidencias || []).forEach((e, idx) => { if(e.dataUrl && !e.url) e.url = e.dataUrl; delete e.dataUrl; const ev = normalizarEvidencia(e, idx); e.url = ev.url; e.pie = ev.pie; e.nombre = ev.nombre; e.mime = ev.mime; e.tipo = ev.tipo; e.tamano = ev.tamano; });
+  });
+  (d.pendientes || []).forEach(pn => {
+    if(pn.proyecto && !pn.slug) pn.slug = pn.proyecto; delete pn.proyecto;
+    if(pn.sesionId && !pn.sesion_id) pn.sesion_id = pn.sesionId; delete pn.sesionId;
+    if(pn.fecha != null && pn.fecha_compromiso == null) pn.fecha_compromiso = pn.fecha; delete pn.fecha;
+    if(pn.minutaOrigen && !pn.minuta_origen) pn.minuta_origen = pn.minutaOrigen; delete pn.minutaOrigen;
+    if(pn.fechaCierre != null && pn.fecha_cierre == null) pn.fecha_cierre = pn.fechaCierre; delete pn.fechaCierre;
+    if(pn.estado === 'Hecho') pn.estado = 'Cerrado';
+  });
+  (d.hitos || []).forEach(h => {
+    if(h.proyecto && !h.slug) h.slug = h.proyecto; delete h.proyecto;
+    const m = { 'pendiente':'Pendiente', 'en curso':'En curso', 'completado':'Cerrado' };
+    if(m[h.estado]) h.estado = m[h.estado];
+  });
+  if(d.formatos) Object.keys(d.formatos).forEach(k => { d.formatos[k] = normalizarFormato(d.formatos[k]); });
+  /* v4: folios por proyecto. Los proyectos sin folio (datos viejos o
+     importados) reciben el siguiente número del ciclo vigente, en el
+     orden del índice; los folios de ciclos anteriores se conservan. */
+  if(Array.isArray(d.proyectos)) d.configCiclo = normalizarFolios(d.proyectos, d.configCiclo);
+  else if(d.configCiclo) d.configCiclo = normalizarConfigCiclo(d.configCiclo, d.proyectos);
+  return d;
+}
+function fechaCorta(iso){ if(!iso) return ''; const p = iso.split('T')[0].split('-'); if(p.length<3) return iso; return parseInt(p[2],10) + ' ' + MESES[parseInt(p[1],10)-1].slice(0,3) + ' ' + p[0]; }
+function fechaHoraBonita(iso){ if(!iso) return ''; const d = new Date(iso); if(isNaN(d)) return iso; return d.getDate() + ' ' + MESES[d.getMonth()].slice(0,3) + ' ' + d.getFullYear() + ', ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+function fechaInputAISO(v){ return v ? v.replace('T','T') : ''; }
+/* Auditoría v2, Paso 4: normaliza 'AAAA-MM-DD HH:MM[:SS]' (formato del
+   backend/plantillas, con espacio) a 'AAAA-MM-DDTHH:MM' para datetime-local
+   y para que el orden por texto sea consistente. */
+function normalizarFechaISO(v){ return String(v || '').trim().replace(' ', 'T').slice(0, 16); }
+/* Auditoría v2, Paso 8a: fecha libre de un acuerdo. Acepta AAAA-MM-DD o
+   DD/MM/AAAA; cualquier otra cosa devuelve null (no se inventa fecha). */
+function normalizarFecha(t){
+  t = String(t || '').trim(); if(!t) return '';
+  if(t.length === 10 && t[4] === '-' && t[7] === '-') return t;
+  const p = t.split('/');
+  if(p.length === 3 && p[2].length === 4) return p[2] + '-' + p[1].padStart(2, '0') + '-' + p[0].padStart(2, '0');
+  return null;
+}
+/* Auditoría v2, Paso 3: miniaturas de Drive por base64 (verEvidencia).
+   La URL /file/d/ID/view es una página HTML, no una imagen, así que
+   <img src> no la muestra; se pide el base64 con token y se cachea. */
+const CACHE_EV = {};
+const PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+function idDrive(url){ const s = String(url || ''), i = s.indexOf('/file/d/'); return i < 0 ? '' : s.slice(i + 8).split('/')[0].split('?')[0]; }
+function srcEvidencia(url){ const id = idDrive(url); return id ? "src='" + PIXEL + "' data-drive='" + esc(id) + "'" : "src='" + esc(url || '') + "'"; }
+async function cargarMiniaturas(raiz){
+  if(!raiz) return;
+  for(const img of raiz.querySelectorAll('img[data-drive]')){
+    const id = img.dataset.drive;
+    try {
+      if(!CACHE_EV[id]){ const r = await llamar('verEvidencia', { id }); CACHE_EV[id] = 'data:' + r.mime + ';base64,' + r.base64; }
+      img.src = CACHE_EV[id];
+    } catch(e){ img.alt = 'No se pudo cargar'; }
+  }
+}
+/* M4: sesionAutenticada() solo revisa que haya ALGO en sessionStorage:
+   cualquier valor, incluso inventado, "autentica" la interfaz. El bloqueo
+   de la UI NO es seguridad: el backend valida el token en cada llamada
+   (doPost/doGet). Por eso al cargar se valida el token de verdad con
+   validarSesion() y, si el backend lo rechaza, se cierra la sesión. */
+/* Paso 10 (M9): en modo local (sin URL de Apps Script) no hay sesión que
+   pedir: sesionAutenticada() es siempre true y se puede crear, editar y
+   probar todo en localStorage. Con Apps Script, exige el token. */
+function sesionAutenticada(){ return !TIENE_APPS_SCRIPT || !!sessionStorage.getItem('bitacoras_token'); }
+async function validarSesion(){
+  if(!TIENE_APPS_SCRIPT || !sesionAutenticada()) return false;
+  try {
+    const r = await enviarAppsScript('validarSesion', {});
+    if(!r || !r.ok){ sessionStorage.removeItem('bitacoras_token'); refrescarSesionUI(); return false; }
+    return true;
+  } catch(e){ return false; }
+}
+/* v2: documentos como evidencia (PDF, Word, Excel). Límite 10 MB por
+   archivo: Drive/Apps Script no aguantan base64 enormes en una sola llamada.
+   Las imágenes se comprimen igual que antes; los documentos se leen tal cual
+   con FileReader, sin comprimir ni convertir. */
+const MAX_EVIDENCIA_BYTES = 10 * 1024 * 1024;
+const MIMES_DOCUMENTO = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx'
+};
+const EXT_DOCUMENTO = { pdf:'application/pdf', doc:'application/msword', docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xls:'application/vnd.ms-excel', xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+function extensionArchivo(nombre){ const p = String(nombre || '').split('.'); return p.length > 1 ? p.pop().toLowerCase() : ''; }
+function mimeDocumento(file){ if(!file) return ''; if(MIMES_DOCUMENTO[file.type]) return file.type; return EXT_DOCUMENTO[extensionArchivo(file.name)] || ''; }
+function esImagenArchivo(file){ return !!file && String(file.type || '').startsWith('image/'); }
+function leerArchivoDataURL(file){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('No se pudo leer el archivo.')); r.readAsDataURL(file); }); }
+function sanitizarNombreArchivo(n){ return String(n || '').replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim() || 'documento'; }
+function formatoTamano(b){ b = Number(b) || 0; if(!b) return ''; if(b < 1024) return b + ' B'; if(b < 1048576) return (b / 1024).toFixed(0) + ' KB'; return (b / 1048576).toFixed(1) + ' MB'; }
+/* Normaliza una evidencia al modelo {url, pie, nombre, mime, tipo, tamano,
+   agregada_en}.
+   Las viejas solo traen {url, pie}: se infiere el tipo. En v1 solo había
+   imágenes, así que una URL de Drive sin extensión ni mime es imagen. */
+function normalizarEvidencia(e, i){
+  if(!e) return { url:'', pie:'', nombre:'Evidencia ' + ((i || 0) + 1), mime:'', tipo:'imagen', tamano:0, agregada_en:'' };
+  const ev = { url: e.url || '', pie: e.pie || '', nombre: e.nombre || '', mime: e.mime || '', tipo: e.tipo || '', tamano: Number(e.tamano) || 0, agregada_en: e.agregada_en || '' };
+  if(!ev.tipo){
+    if(ev.mime) ev.tipo = ev.mime.indexOf('image/') === 0 ? 'imagen' : 'documento';
+    else if(ev.url.indexOf('data:image/') === 0) ev.tipo = 'imagen';
+    else if(ev.url.indexOf('data:') === 0) ev.tipo = 'documento';
+    else { const ext = extensionArchivo(ev.nombre || ev.url); ev.tipo = EXT_DOCUMENTO[ext] ? 'documento' : 'imagen'; }
+  }
+  if(!ev.mime && ev.tipo === 'documento') ev.mime = EXT_DOCUMENTO[extensionArchivo(ev.nombre)] || '';
+  if(!ev.nombre) ev.nombre = ev.tipo === 'documento' ? ('Documento ' + ((i || 0) + 1)) : ('Evidencia ' + ((i || 0) + 1));
+  return ev;
+}
+function etiquetaDoc(ev){
+  const ext = extensionArchivo(ev.nombre);
+  if(ext === 'pdf') return 'PDF';
+  if(ext === 'doc' || ext === 'docx') return 'Word';
+  if(ext === 'xls' || ext === 'xlsx') return 'Excel';
+  return 'Documento';
+}
+function nombreArchivoEvidencia(ev, slug, fecha, i){
+  if(ev.tipo === 'documento') return slug + '-' + String(fecha || '').split('T')[0] + '-ev' + (i + 1) + '-' + sanitizarNombreArchivo(ev.nombre);
+  return slug + '-' + String(fecha || '').split('T')[0] + '-ev' + (i + 1) + '.jpg';
+}
+function htmlEvidencia(e, i){
+  const ev = normalizarEvidencia(e, i);
+  if(ev.tipo === 'documento'){
+    return '<a class="doc-evidencia" href="' + esc(ev.url || '#') + '" target="_blank" rel="noopener"><span class="doc-etiqueta">' + esc(etiquetaDoc(ev)) + '</span><span><strong>' + esc(ev.nombre) + '</strong>' + (ev.tamano ? '<br><span class="muted">' + esc(formatoTamano(ev.tamano)) + '</span>' : '') + (ev.pie ? '<br><span class="muted">' + esc(ev.pie) + '</span>' : '') + '</span></a>';
+  }
+  return '<img ' + srcEvidencia(ev.url) + ' alt="' + esc(ev.pie || 'Evidencia ' + (i + 1)) + '" title="' + esc(ev.pie || '') + '">';
+}
+/* M1: identificador de cliente para el bloqueo por cliente (el backend
+   guarda los intentos por este id, no globales). Se genera una vez y
+   queda en localStorage; no es una credencial. */
+function idCliente(){
+  let id = localStorage.getItem('bitacoras_cliente');
+  if(!id){ id = 'cli-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('bitacoras_cliente', id); }
+  return id;
+}
+function avisar(msg, tipo){ const d = document.createElement('div'); d.className = 'aviso ' + (tipo || ''); d.textContent = msg; $('#vista-' + vistaActual).prepend(d); setTimeout(() => d.remove(), 6000); }
+
+/* ---------- Persistencia ---------- */
+let avisoTamanoMostrado = false;
+function guardar(){
+  /* A7: con Apps Script, las evidencias (imágenes y documentos) viven en Drive (subirEvidencia) y en
+     localStorage solo se guarda su URL. Un data: base64 (~150-250 KB por
+     foto) llenaría el límite de ~5 MB con 20-30 fotos, así que aquí se
+     guarda una copia ligera sin base64; el estado en memoria no se toca. */
+  let aGuardar = estado;
+  if(TIENE_APPS_SCRIPT){
+    aGuardar = JSON.parse(JSON.stringify(estado));
+    aGuardar.sesiones.forEach(s => (s.evidencias || []).forEach(e => {
+      if(e.url && String(e.url).startsWith('data:')) e.url = '';
+    }));
+  }
+  let texto = '';
+  try { texto = JSON.stringify(aGuardar); } catch(e){ avisar('No se pudo guardar en localStorage: ' + e.message, 'rojo'); return; }
+  /* A7: medir el tamaño real y avisar antes de llenarse (umbral 4 MB). */
+  if(texto.length > 4000000 && !avisoTamanoMostrado){
+    avisoTamanoMostrado = true;
+    avisar('El respaldo local ya pesa ' + (texto.length / 1048576).toFixed(1) + ' MB (límite ~5 MB). Exporta el respaldo JSON y borra evidencias viejas para no perder datos.', 'rojo');
+  }
+  try { localStorage.setItem(CONFIG.claveLocal, texto); }
+  catch(e){
+    /* Si aun así no cabe, reintentar solo con texto (sin evidencias). */
+    try {
+      const ligero = JSON.parse(texto);
+      ligero.sesiones.forEach(s => { s.evidencias = []; });
+      localStorage.setItem(CONFIG.claveLocal, JSON.stringify(ligero));
+      avisar('localStorage lleno: se guardó el texto sin las evidencias. Exporta el respaldo JSON.', 'rojo');
+    } catch(e2){ avisar('No se pudo guardar en localStorage: ' + e.message, 'rojo'); }
+  }
+}
+function cargarLocal(){
+  try {
+    const raw = localStorage.getItem(CONFIG.claveLocal);
+    if(raw){ const d = JSON.parse(raw); if(d && Array.isArray(d.sesiones)){ estado = Object.assign(estado, migrarEstado(d)); return true; } }
+  } catch(e){ console.warn('localStorage inválido', e); }
+  return false;
+}
+/* ---------- Modelo único de datos (A1, diccionario) ----------
+   Los nombres del BACKEND mandan en página, backend, hojas y formatos;
+   ya no hay traducción parcial. Ver README, sección «Diccionario único».
+   Sesión: {id, slug, fecha, titulo, tipo, texto, asistentes, acuerdos,
+     evidencias:[{url, pie, nombre, mime, tipo, tamano}], campos, plantilla_version}
+   Pendiente: {id, sesion_id, slug, texto, responsable, fecha_compromiso,
+     prioridad, estado, fecha_cierre, minuta_origen, notas}
+     estado: 'Pendiente' | 'En proceso' | 'Cerrado' (nunca 'Hecho')
+   Hito: {id, slug, titulo, fecha, descripcion, estado, fecha_cierre}
+     estado: 'Pendiente' | 'En curso' | 'Cerrado' (nunca 'completado')
+   Evidencia: {url, pie, nombre, mime, tipo, tamano, agregada_en} — tipo 'imagen' o
+     'documento' (v2: también PDF, Word y Excel, máx. 10 MB por archivo);
+     url es la URL de Drive o, en modo local, el data: base64; nunca se
+     llama dataUrl. Las viejas {url, pie} se normalizan al leer.
+   Formato: {nombre, formato_version, secciones:[{titulo, campos}]} */
+function sesionParaBackend(s){
+  return { id: s.id, fecha: s.fecha || '', titulo: s.titulo || '', tipo: s.tipo || '',
+    texto: s.texto || '', asistentes: s.asistentes || [], acuerdos: s.acuerdos || [],
+    campos: s.campos || {}, plantilla_version: s.plantilla_version || 1,
+    evidencias: (s.evidencias || []).map((e, i) => { const ev = normalizarEvidencia(e, i); return { url: ev.url, pie: ev.pie, nombre: ev.nombre, mime: ev.mime, tipo: ev.tipo, tamano: ev.tamano, agregada_en: ev.agregada_en }; }) };
+}
+function sesionDesdeBackend(b, slug){
+  if(!b) return null;
+  const s = sesionParaBackend(b); s.slug = slug;
+  s.fecha = normalizarFechaISO(s.fecha);
+  return s;
+}
+function pendienteParaBackend(p){
+  return { id: p.id, sesion_id: p.sesion_id || '', texto: p.texto || '',
+    responsable: p.responsable || '', fecha_compromiso: p.fecha_compromiso || '',
+    prioridad: p.prioridad || 'Media', estado: p.estado || 'Pendiente',
+    fecha_cierre: p.fecha_cierre || '', minuta_origen: p.minuta_origen || '',
+    notas: p.notas || '' };
+}
+function pendienteDesdeBackend(b, slug){
+  if(!b) return null;
+  const p = pendienteParaBackend(b); p.slug = slug; p.fecha_cierre = b.fecha_cierre || null; p.notas = b.notas || ''; return p;
+}
+function hitoParaBackend(h){
+  return { id: h.id, titulo: h.titulo || '', fecha: h.fecha || '',
+    descripcion: h.descripcion || '', estado: h.estado || 'Pendiente',
+    fecha_cierre: h.fecha_cierre || '' };
+}
+function hitoDesdeBackend(b, slug){
+  if(!b) return null;
+  const h = hitoParaBackend(b); h.slug = slug; return h;
+}
+function bitacoraParaBackend(slug){
+  return { slug: slug,
+    sesiones: estado.sesiones.filter(s => s.slug === slug).map(sesionParaBackend),
+    pendientes: estado.pendientes.filter(p => p.slug === slug).map(pendienteParaBackend),
+    hitos: estado.hitos.filter(h => h.slug === slug).map(hitoParaBackend),
+    puntaje: estado.puntaje.filter(x => x.slug === slug) };
+}
+/* Sincroniza la bitácora completa de un proyecto con Drive (acción
+   'guardar'). Se usa al editar o borrar, porque el backend no tiene
+   acción de actualizar/borrar por id: guardarSesion_ solo agrega. */
+async function sincronizarBitacora(slug){
+  if(!TIENE_APPS_SCRIPT || !sesionAutenticada()) return null;
+  try {
+    return await llamar('guardar', { slug: slug, bitacora: bitacoraParaBackend(slug) });
+  } catch(e){ console.warn('No se pudo sincronizar con Drive:', e); return null; }
+}
+async function cargarDatos(){
+  /* Auditoría v2 Paso 7f: sin sesión NO se cargan ni se muestran los datos
+     locales (folios/montos de Control de Facturas incluidos). En modo
+     local (sin Apps Script) sí se usan, porque no hay sesión que pedir. */
+  const conSesion = !TIENE_APPS_SCRIPT || sesionAutenticada();
+  const tenia = conSesion ? cargarLocal() : false;
+  if(TIENE_APPS_SCRIPT && sesionAutenticada()){
+    try {
+      // Paso 7e: lectura por POST con el token en el body, no en la URL.
+      const d = await llamar('leer', {});
+      if(d && d.datos && Array.isArray(d.datos.proyectos)){
+        const sesiones = [], pendientes = [], hitos = [], puntaje = [];
+        d.datos.proyectos.forEach(pr => {
+          const b = pr.bitacora || {};
+          (b.sesiones || []).forEach(s => { const m = sesionDesdeBackend(s, pr.slug); if(m) sesiones.push(m); });
+          (b.pendientes || []).forEach(p => { const m = pendienteDesdeBackend(p, pr.slug); if(m) pendientes.push(m); });
+          (b.hitos || []).forEach(h => { const m = hitoDesdeBackend(h, pr.slug); if(m) hitos.push(m); });
+          (b.puntaje || []).forEach(x => puntaje.push(Object.assign({ slug: pr.slug }, x)));
+        });
+        /* Paso 1: conservar lo marcado sin_sync: cargarDatos no lo pisa
+           con lo de Drive, porque lo no sincronizado se perdería. */
+        const conservar = (locales, remotos) => locales.filter(x => x.sin_sync && !remotos.some(r => r.id === x.id));
+        const sS = conservar(estado.sesiones, sesiones), sP = conservar(estado.pendientes, pendientes), sH = conservar(estado.hitos, hitos);
+        estado.sesiones = sesiones.concat(sS); estado.pendientes = pendientes.concat(sP); estado.hitos = hitos.concat(sH);
+        estado.puntaje = puntaje;
+        if(d.datos.configCiclo) estado.configCiclo = normalizarConfigCiclo(d.datos.configCiclo, estado.proyectos);
+        estado.proyectos = d.datos.proyectos
+          .filter(p => !esProyectoInicialOculto(p.slug))
+          .map(p => ({ slug: p.slug, hashtag: p.hashtag, nombre: p.nombre,
+            color: p.color || '#002663', folio: p.folio || '',
+            campos: p.campos_propios || [] }));
+        estado.configCiclo = normalizarFolios(estado.proyectos, estado.configCiclo);
+        if(conSesion) guardar();
+      }
+    } catch(e){ avisar('No se pudo leer de Apps Script; se usan los datos locales. (' + e.message + ')', 'rojo'); }
+  }
+  estado.configCiclo = normalizarFolios(estado.proyectos, estado.configCiclo);
+  if(conSesion) guardar();
+}
+/* Auditoría v2, Paso 1: helper para escrituras. Lanza error si el backend
+   responde ok:false; si el token venció, cierra la sesión local. Quien
+   llama marca el registro como sin_sync y avisa en rojo. */
+async function llamar(accion, datos){
+  const r = await enviarAppsScript(accion, datos);
+  if(r && r.ok === false){
+    if(/Token/i.test(r.error || '')){ sessionStorage.removeItem('bitacoras_token'); refrescarSesionUI(); }
+    throw new Error(r.error || 'Error desconocido');
+  }
+  return r;
+}
+async function enviarAppsScript(accion, datos){
+  if(!TIENE_APPS_SCRIPT) return null;
+  // C1: Content-Type text/plain = fetch simple, sin preflight CORS
+  // (Apps Script no responde al preflight de application/json).
+  // C2: el token viaja en el body en TODAS las acciones salvo login y ping.
+  const body = Object.assign({ accion }, datos || {});
+  if(accion !== 'login' && accion !== 'ping'){
+    body.token = sessionStorage.getItem('bitacoras_token') || '';
+  }
+  const r = await fetch(CONFIG.appsScriptUrl, { method:'POST', headers:{ 'Content-Type':'text/plain' }, body: JSON.stringify(body) });
+  return r.json();
+}
+
+/* ---------- Limpieza de ejemplos heredados y folios (v4) ---------- */
+/* Los ids antiguos solo permiten limpiar simulaciones guardadas antes de
+   quitar la precarga; los registros nuevos nunca se marcan como ejemplo. */
+const IDS_EJEMPLO_SIMULACION = ['estadistica-2-2026-11-17-001', 'estadistica-1-2026-11-17-001', 'estadistica-2-2026-11-18-1'];
+function esSesionEjemplo(s){ return !!s && (s.ejemplo === true || IDS_EJEMPLO_SIMULACION.includes(s.id) || /sesión de ejemplo/i.test(s.titulo || '')); }
+function esPendienteEjemplo(p){ return !!p && (p.ejemplo === true || IDS_EJEMPLO_SIMULACION.includes(p.sesion_id) || IDS_EJEMPLO_SIMULACION.includes(p.id)); }
+function esHitoEjemplo(h){ return !!h && (h.ejemplo === true || /ejemplo/i.test(h.titulo || '')); }
+function esPuntajeEjemplo(x){ return !!x && x.ejemplo === true; }
+function contarEjemplo(){
+  return { sesiones: estado.sesiones.filter(esSesionEjemplo),
+    pendientes: estado.pendientes.filter(p => esPendienteEjemplo(p) || estado.sesiones.some(s => esSesionEjemplo(s) && s.id === p.sesion_id)),
+    hitos: estado.hitos.filter(esHitoEjemplo), puntaje: estado.puntaje.filter(esPuntajeEjemplo) };
+}
+/* Borra SOLO los datos de ejemplo (dummy), en local y en Drive si lo hay.
+   Pide dos confirmaciones con advertencia explícita; los datos reales no
+   se tocan. Tras borrar, ejemploBorrado=true impide que se vuelva a
+   sembrar el ejemplo en esa sesión (el dashboard queda en blanco). */
+async function borrarDatosEjemplo(){
+  const d = contarEjemplo();
+  const total = d.sesiones.length + d.pendientes.length + d.hitos.length + d.puntaje.length;
+  if(!total) return { ok: false, mensaje: 'No hay datos de ejemplo para borrar.' };
+  const resumen = d.sesiones.length + ' sesión(es), ' + d.pendientes.length + ' pendiente(s), ' + d.hitos.length + ' hito(s), ' + d.puntaje.length + ' registro(s) de puntaje';
+  if(!confirm('ADVERTENCIA: esto borra SOLO los datos de ejemplo (' + resumen + '). Tus datos reales NO se tocan. ¿Borrar los datos de ejemplo?')) return { ok: false, mensaje: 'Cancelado por el usuario.' };
+  if(!confirm('Confirmación final: los datos de ejemplo se eliminan y el dashboard queda en blanco. ¿Seguro?')) return { ok: false, mensaje: 'Cancelado por el usuario.' };
+  const slugs = [...new Set([].concat(d.sesiones.map(s => s.slug), d.pendientes.map(p => p.slug), d.hitos.map(h => h.slug), d.puntaje.map(x => x.slug)).filter(Boolean))];
+  const idsSes = new Set(d.sesiones.map(s => s.id));
+  if(TIENE_APPS_SCRIPT && sesionAutenticada()){
+    for(const s of d.sesiones){ try { await llamar('eliminarSesion', { slug: s.slug, id: s.id }); } catch(e){ /* puede no existir en Drive: se limpia igual en local */ } }
+    for(const h of d.hitos){ try { await llamar('eliminarHito', { slug: h.slug, id: h.id }); } catch(e){} }
+  }
+  estado.sesiones = estado.sesiones.filter(s => !esSesionEjemplo(s));
+  estado.pendientes = estado.pendientes.filter(p => !esPendienteEjemplo(p) && !idsSes.has(p.sesion_id));
+  estado.hitos = estado.hitos.filter(h => !esHitoEjemplo(h));
+  estado.puntaje = estado.puntaje.filter(x => !esPuntajeEjemplo(x));
+  if(TIENE_APPS_SCRIPT && sesionAutenticada()){
+    for(const slug of slugs){ try { await sincronizarBitacora(slug); } catch(e){} }
+  }
+  estado.ejemploBorrado = true;
+  guardar(); renderTodo();
+  return { ok: true, mensaje: 'Datos de ejemplo borrados: ' + resumen + '. El dashboard queda en blanco; tus datos reales no se tocaron.' };
+}
+/* Cambia el ciclo vigente. Valida (solo dígitos, 4-6 caracteres); al
+   cambiar, el contador se reinicia en 01 automáticamente y los folios
+   del ciclo anterior NO cambian. Devuelve {ok, mensaje}. */
+async function cambiarCiclo(nuevo){
+  const c = String(nuevo || '').trim();
+  if(!validarCiclo(c)) return { ok: false, mensaje: 'Ciclo no válido. Usa solo dígitos, de 4 a 6 caracteres (p. ej. 20271).' };
+  if(c === estado.configCiclo.ciclo) return { ok: false, mensaje: 'Ya estás en el ciclo ' + c + '.' };
+  const anterior = estado.configCiclo.ciclo;
+  /* v5: guardar los usados del ciclo que se deja en el historial, para
+     recuperarlos si se vuelve a ese ciclo. */
+  const hist = Object.assign({}, estado.configCiclo.historial || {});
+  hist[anterior] = (estado.configCiclo.usados || []).slice();
+  estado.configCiclo = { ciclo: c, siguiente: 1, usados: [], historial: hist };
+  estado.configCiclo = normalizarFolios(estado.proyectos, estado.configCiclo);
+  if(TIENE_APPS_SCRIPT && sesionAutenticada()){
+    try { await guardarConfigCiclo(); }
+    catch(e){ avisar('Ciclo cambiado en local, pero no se guardó en Drive: ' + e.message, 'rojo'); }
+  }
+  guardar(); renderTodo();
+  return { ok: true, mensaje: 'Ciclo cambiado de ' + anterior + ' a ' + c + '. El contador se reinició en ' + folioDe(c, 1) + '; los folios del ciclo anterior no cambiaron.' };
+}
+async function guardarConfigCiclo(){
+  if(!TIENE_APPS_SCRIPT) return null;
+  return llamar('guardarConfigCiclo', { config: estado.configCiclo, proyectos: estado.proyectos.map(p => ({ slug: p.slug, folio: p.folio || '' })) });
+}
+
+/* ---------- Sesión / Login ---------- */
+function refrescarSesionUI(){
+  const ok = sesionAutenticada();
+  $('#btnLogin').classList.toggle('oculto', !TIENE_APPS_SCRIPT);
+  $('#btnLogin').textContent = ok ? 'Cerrar sesión' : 'Login';
+  $('#btnMantenimiento').classList.toggle('oculto', !ok);
+  $('#avisoSesion').classList.toggle('oculto', ok);
+  $('#btnNuevaSesion').disabled = !ok;
+  $('#btnExportarProyecto').disabled = !ok;
+}
+function abrirLogin(){
+  if(sesionAutenticada()){ if(TIENE_APPS_SCRIPT) enviarAppsScript('cerrarSesion', {}).catch(() => {}); sessionStorage.removeItem('bitacoras_token'); estado.sesiones = []; estado.pendientes = []; estado.hitos = []; estado.puntaje = []; refrescarSesionUI(); renderTodo(); avisar('Sesión cerrada.', 'verde'); return; }
+  abrirModal('<h2>Iniciar sesión</h2><p class="muted">La contraseña se valida en Apps Script. Nunca se guarda en este archivo ni en localStorage.</p>' +
+    '<label>Contraseña</label><input type="password" id="loginPass" autocomplete="current-password">' +
+    '<p id="loginError" class="muted" style="color:var(--rojo)"></p>' +
+    '<div class="fila" style="margin-top:12px"><button class="btn" id="loginEnviar">Entrar</button><button class="btn blanco" id="loginCancelar">Cancelar</button></div>');
+  $('#loginEnviar').onclick = async () => {
+    if(Date.now() < bloqueoHasta){ $('#loginError').textContent = 'Bloqueado temporalmente. Intenta de nuevo en ' + Math.ceil((bloqueoHasta - Date.now())/60000) + ' min.'; return; }
+    const pass = $('#loginPass').value;
+    if(!pass){ $('#loginError').textContent = 'Escribe la contraseña.'; return; }
+    if(!TIENE_APPS_SCRIPT){ $('#loginError').textContent = 'Modo local: configura la URL de Apps Script para validar el login.'; return; }
+    try {
+      const r = await enviarAppsScript('login', { password: pass, cliente: idCliente() });
+      if(r && r.ok && r.token){
+        sessionStorage.setItem('bitacoras_token', r.token); intentosLogin = 0;
+        cerrarModal(); refrescarSesionUI();
+        // C3b: tras el login, cargar los datos de Drive (leer exige token).
+        await cargarDatos(); renderTodo(); avisar('Sesión iniciada.', 'verde');
+      } else { registrarFallo(); $('#loginError').textContent = (r && r.error) || 'Contraseña incorrecta.'; }
+    } catch(e){ $('#loginError').textContent = 'Error al validar: ' + e.message; }
+  };
+  $('#loginCancelar').onclick = cerrarModal;
+}
+function registrarFallo(){
+  intentosLogin++;
+  if(intentosLogin >= CONFIG.maxIntentosLogin){ bloqueoHasta = Date.now() + CONFIG.minutosBloqueo * 60000; intentosLogin = 0; }
+}
+function exigirSesion(){ if(!sesionAutenticada()){ avisar('Inicia sesión para realizar esta acción.', 'rojo'); return false; } return true; }
+
+/* ---------- Modal ---------- */
+function abrirModal(html){ $('#modalContenido').innerHTML = html; $('#modalContenido').setAttribute('role', 'dialog'); $('#modalContenido').setAttribute('aria-modal', 'true'); $('#modalFondo').classList.add('abierto'); }
+document.addEventListener('keydown', e => { if(e.key === 'Escape') cerrarModal(); });
+function cerrarModal(){ $('#modalFondo').classList.remove('abierto'); $('#modalContenido').innerHTML = ''; }
+$('#modalFondo').addEventListener('click', e => { if(e.target.id === 'modalFondo') cerrarModal(); });
+
+/* Paso 10 (M10): un solo filtro de proyecto para las tres vistas.
+   proyectoSel === 'todos' es explícito; nunca se adivina un proyecto. */
+function enAlcance(x){ return proyectoSel === 'todos' || x.slug === proyectoSel; }
+function sumarDias(iso, n){
+  const d = new Date(iso + 'T00:00'); d.setDate(d.getDate() + n);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+/* ---------- Render: proyectos ---------- */
+function pendientesAbiertos(slug){ return estado.pendientes.filter(p => p.slug === slug && p.estado !== 'Cerrado').length; }
+/* Selector de proyecto con buscador (v3): reemplaza la fila de chips.
+   Con muchos proyectos la lista filtra en vivo y no crece la página.
+   proyectoSel === 'todos' es explícito; nunca se adivina un proyecto. */
+let selectorAbierto = false, selIndice = -1;
+function sinAcentos(t){ return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+function opcionesProyecto(){
+  const abiertos = slug => estado.pendientes.filter(p => (!slug || p.slug === slug) && p.estado !== 'Cerrado');
+  const lista = [{ slug: 'todos', color: '#002663', hashtag: '', nombre: 'Todos los proyectos' }].concat(estado.proyectos);
+  return lista.map(pr => {
+    const ab = abiertos(pr.slug === 'todos' ? '' : pr.slug);
+    return { slug: pr.slug, color: pr.color, hashtag: pr.hashtag || '', nombre: pr.nombre, folio: pr.folio || '', abiertos: ab.length, vencidos: ab.filter(p => estadoPendiente(p) === 'Vencido').length };
+  });
+}
+function pintarOpcionesProyecto(){
+  const q = sinAcentos($('#buscadorProyectos').value);
+  const cont = $('#opcionesProyectos'); cont.innerHTML = '';
+  const ops = opcionesProyecto().filter(o => !q || sinAcentos(o.nombre).includes(q) || sinAcentos(o.hashtag).includes(q));
+  if(!ops.length){ cont.innerHTML = '<p class="muted" style="padding:10px 12px">Sin proyectos con ese nombre.</p>'; selIndice = -1; return; }
+  ops.forEach((o, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'sel-opcion' + (o.slug === proyectoSel ? ' activo' : '');
+    b.setAttribute('role', 'option'); b.setAttribute('aria-selected', o.slug === proyectoSel ? 'true' : 'false');
+    b.dataset.slug = o.slug; b.dataset.indice = i;
+    b.innerHTML = `<span class='punto' style='background:${esc(o.color)}'></span><span>${o.folio ? esc(o.folio) + ' · ' : ''}${o.hashtag ? esc(o.hashtag) + ' ' : ''}${esc(o.nombre)}</span>` +
+      (o.abiertos ? `<span class='contador ${o.vencidos ? '' : 'cero'}'>${o.abiertos}</span>` : '');
+    b.onclick = () => elegirProyecto(o.slug);
+    cont.appendChild(b);
+  });
+  if(selIndice >= ops.length) selIndice = ops.length - 1;
+  marcarOpcionProyecto();
+}
+function marcarOpcionProyecto(){
+  $$('#opcionesProyectos .sel-opcion').forEach((el, i) => {
+    el.classList.toggle('resaltado', i === selIndice);
+    if(i === selIndice) el.setAttribute('aria-selected', 'true');
+    else if(el.dataset.slug !== proyectoSel) el.setAttribute('aria-selected', 'false');
+  });
+}
+function elegirProyecto(slug){ proyectoSel = slug; cerrarSelectorProyecto(); renderTodo(); }
+function abrirSelectorProyecto(){
+  selectorAbierto = true;
+  $('#listaProyectos').classList.remove('oculto');
+  $('#btnSelectorProyecto').setAttribute('aria-expanded', 'true');
+  const inp = $('#buscadorProyectos'); inp.value = ''; selIndice = -1;
+  pintarOpcionesProyecto(); inp.focus();
+}
+function cerrarSelectorProyecto(){
+  if(!selectorAbierto) return;
+  selectorAbierto = false; selIndice = -1;
+  $('#listaProyectos').classList.add('oculto');
+  $('#btnSelectorProyecto').setAttribute('aria-expanded', 'false');
+}
+function alternarSelectorProyecto(){ selectorAbierto ? cerrarSelectorProyecto() : abrirSelectorProyecto(); }
+function renderProyectos(){
+  const ops = opcionesProyecto();
+  const act = ops.find(o => o.slug === proyectoSel) || ops[0];
+  if(!act) return;
+  $('#selPunto').style.background = act.color;
+  $('#selTexto').textContent = (act.folio ? act.folio + ' · ' : '') + (act.hashtag ? act.hashtag + ' ' : '') + act.nombre;
+  const c = $('#selContador');
+  if(act.abiertos){ c.textContent = act.abiertos; c.className = 'contador ' + (act.vencidos ? '' : 'cero'); c.style.display = ''; }
+  else { c.textContent = ''; c.style.display = 'none'; }
+  if(selectorAbierto) pintarOpcionesProyecto();
+}
+
+/* Paso 11 U1: fila de resumen (KPIs) — lo urgente primero. */
+function renderResumen(){
+  const hoy = hoyISO(), en7 = sumarDias(hoy, 7);
+  const abiertos = estado.pendientes.filter(enAlcance).filter(p => p.estado !== 'Cerrado');
+  const vencidos = abiertos.filter(p => estadoPendiente(p) === 'Vencido').length;
+  const prox = abiertos.filter(p => p.fecha_compromiso && p.fecha_compromiso >= hoy && p.fecha_compromiso <= en7).length;
+  const hito = estado.hitos.filter(enAlcance).filter(h => h.estado !== 'Cerrado' && h.fecha >= hoy)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
+  const ult = estado.sesiones.filter(enAlcance).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))[0];
+  $('#resumen').innerHTML =
+    `<button class='kpi ${vencidos ? 'alerta' : ''}' data-ir='pendientes'><b>${vencidos}</b><span>Pendientes vencidos</span></button>` +
+    `<button class='kpi' data-ir='pendientes'><b>${prox}</b><span>Vencen en 7 días</span></button>` +
+    `<button class='kpi' data-ir='calendario'><b>${hito ? esc(fechaCorta(hito.fecha)) : '—'}</b><span>${hito ? esc(hito.titulo) : 'Sin hitos próximos'}</span></button>` +
+    `<button class='kpi' data-ir='bitacoras'><b>${ult ? esc(fechaCorta(ult.fecha)) : '—'}</b><span>${ult ? esc(ult.titulo) : 'Sin sesiones'}</span></button>`;
+  $$('#resumen [data-ir]').forEach(b => b.onclick = () => cambiarVista(b.dataset.ir));
+}
+/* Paso 11 U2: columna «Atención» junto a la línea de tiempo. */
+function renderAtencion(){
+  const el = $('#atencion'); if(!el) return;
+  const hoy = hoyISO(), en7 = sumarDias(hoy, 7);
+  const abiertos = estado.pendientes.filter(enAlcance).filter(p => p.estado !== 'Cerrado');
+  const porFecha = (a, b) => String(a.fecha_compromiso).localeCompare(String(b.fecha_compromiso));
+  const venc = abiertos.filter(p => estadoPendiente(p) === 'Vencido').sort(porFecha).slice(0, 5);
+  const prox = abiertos.filter(p => p.fecha_compromiso && p.fecha_compromiso >= hoy && p.fecha_compromiso <= en7).sort(porFecha).slice(0, 5);
+  const hitos = estado.hitos.filter(enAlcance).filter(h => h.estado !== 'Cerrado').sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))).slice(0, 3);
+  const li = (t, extra) => `<li>${esc(t)} <span class='muted'>${esc(extra)}</span></li>`;
+  const bloque = (titulo, items, clase) => `<h3 class='${clase || ''}' style='margin-top:10px'>${titulo}</h3>` +
+    (items.length ? `<ul style='margin-left:18px'>${items.join('')}</ul>` : `<p class='muted'>Nada por ahora.</p>`);
+  el.innerHTML = '<h2>Atención</h2>' +
+    bloque('Vencidos', venc.map(p => li(p.texto, (p.responsable || 'sin responsable') + ' · ' + fechaCorta(p.fecha_compromiso))), 'rojo') +
+    bloque('Próximos 7 días', prox.map(p => li(p.texto, (p.responsable || 'sin responsable') + ' · ' + fechaCorta(p.fecha_compromiso)))) +
+    bloque('Hitos abiertos', hitos.map(h => li(h.titulo, fechaCorta(h.fecha))));
+}
+/* Paso 11 U4: indicador de conexión en el header. */
+function renderEstadoModo(){
+  const el = $('#estadoModo'); if(!el) return;
+  const sinSync = [].concat(estado.sesiones, estado.pendientes, estado.hitos).filter(x => x.sin_sync).length;
+  const t = !TIENE_APPS_SCRIPT ? '● Local' : (!sesionAutenticada() ? '● Sin sesión' : (sinSync ? '● ' + sinSync + ' sin sincronizar' : '● Sincronizado'));
+  el.textContent = t;
+}
+
+/* ---------- Render: bitácoras ---------- */
+async function borrarSesion(s){
+  if(!exigirSesion()) return;
+  if(!confirm('¿Eliminar la sesión «' + s.titulo + '»? También se eliminan sus pendientes asociados.')) return;
+  if(TIENE_APPS_SCRIPT){
+    try { await llamar('eliminarSesion', { slug: s.slug, id: s.id }); }
+    catch(e){ avisar('No se pudo borrar en Drive: ' + e.message, 'rojo'); return; }
+  }
+  estado.sesiones = estado.sesiones.filter(x => x.id !== s.id);
+  estado.pendientes = estado.pendientes.filter(x => x.sesion_id !== s.id);
+  guardar(); renderTodo();
+}
+/* Vista Tabla de Bitácoras (v2): misma lista y mismo agrupamiento por
+   semana que las tarjetas, en una tabla por semana. */
+function renderTablaBitacoras(list, cont){
+  function lunesDe(iso){
+    const d = new Date(String(iso).slice(0, 10) + 'T00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  const porSemana = {};
+  list.forEach(s => { const sem = lunesDe(s.fecha); (porSemana[sem] = porSemana[sem] || []).push(s); });
+  Object.keys(porSemana).sort().reverse().forEach(sem => {
+    const hh = document.createElement('h3'); hh.className = 'semana'; hh.textContent = 'Semana del ' + fechaCorta(sem); cont.appendChild(hh);
+    const wrap = document.createElement('div'); wrap.className = 'tabla-scroll';
+    wrap.innerHTML = '<table><thead><tr><th>Fecha</th><th>Proyecto</th><th>Título</th><th>Tipo</th><th>Acuerdos</th><th>Pendientes</th><th>Evidencias</th><th>Acciones</th></tr></thead><tbody>' +
+      porSemana[sem].map(s => {
+        const p = estado.proyectos.find(x => x.slug === s.slug) || {};
+        const nPend = estado.pendientes.filter(x => x.sesion_id === s.id).length;
+        return '<tr data-sesion-id="' + esc(s.id) + '"><td>' + esc(fechaHoraBonita(s.fecha)) + '</td><td>' + esc(p.hashtag || '') + ' ' + esc(p.nombre || '') + (p.folio ? '<br><span class="muted">Folio ' + esc(p.folio) + '</span>' : '') + '</td>' +
+          '<td><strong>' + esc(s.titulo) + '</strong>' + (s.sin_sync ? ' <span class="etiqueta" style="color:var(--rojo)">Sin sincronizar</span>' : '') + '</td>' +
+          '<td>' + esc(s.tipo || 'Sesión') + '</td><td>' + (s.acuerdos || []).length + '</td><td>' + nPend + '</td><td>' + (s.evidencias || []).length + '</td>' +
+          '<td><div class="fila" style="flex-wrap:nowrap"><button class="btn chico blanco" data-editar-tabla>Editar</button><button class="btn chico blanco" style="color:var(--rojo)" data-eliminar-tabla>Eliminar</button></div></td></tr>';
+      }).join('') + '</tbody></table>';
+    wrap.querySelectorAll('tr[data-sesion-id]').forEach(tr => {
+      const s = list.find(x => x.id === tr.dataset.sesionId); if(!s) return;
+      tr.querySelector('[data-editar-tabla]').onclick = () => { if(exigirSesion()) abrirFormSesion(s); };
+      tr.querySelector('[data-eliminar-tabla]').onclick = () => borrarSesion(s);
+    });
+    cont.appendChild(wrap);
+  });
+}
+function sesionesFiltradas(){
+  let list = estado.sesiones.slice().sort((a,b) => String(b.fecha).localeCompare(String(a.fecha)));
+  if(proyectoSel !== 'todos') list = list.filter(s => s.slug === proyectoSel);
+  if(busqueda){
+    const q = busqueda.toLowerCase();
+    list = list.filter(s => [s.titulo, s.texto, (s.asistentes||[]).join(' '), (s.acuerdos||[]).map(a => typeof a === 'string' ? a : a.texto).join(' ')].join(' ').toLowerCase().includes(q));
+  }
+  return list;
+}
+function renderBitacoras(){
+  const pr = estado.proyectos.find(p => p.slug === proyectoSel);
+  $('#tituloProyecto').textContent = pr ? pr.hashtag + ' ' + pr.nombre + (pr.folio ? ' · Folio ' + pr.folio : '') : 'Todas las bitácoras';
+  renderPuntaje();
+  renderHitos();
+  const list = sesionesFiltradas();
+  const cont = $('#lineaTiempo'); cont.innerHTML = '';
+  sincronizarToggleBit();
+  if(!list.length){ cont.innerHTML = '<p class="muted">No hay sesiones. Usa «+ Nueva sesión» para crear la primera.</p>'; return; }
+  if(vistaBitacoras === 'tabla'){ renderTablaBitacoras(list, cont); return; }
+  function lunesDe(iso){
+    const d = new Date(String(iso).slice(0, 10) + 'T00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  let semanaAnterior = '';
+  list.forEach(s => {
+    const sem = lunesDe(s.fecha);
+    if(sem !== semanaAnterior){ const hh = document.createElement('h3'); hh.className = 'semana'; hh.textContent = 'Semana del ' + fechaCorta(sem); cont.appendChild(hh); semanaAnterior = sem; }
+    const p = estado.proyectos.find(x => x.slug === s.slug) || {};
+    const nPend = estado.pendientes.filter(x => x.sesion_id === s.id).length;
+    const div = document.createElement('article'); div.className = 'tarjeta';
+    div.innerHTML =
+      '<details><summary style="cursor:pointer">' +
+      '<span class="fecha">' + esc(fechaHoraBonita(s.fecha)) + '</span> ' +
+      '<strong>' + esc(s.titulo) + '</strong> ' +
+      '<span class="etiqueta">' + esc(p.hashtag || '') + '</span>' + (p.folio ? '<span class="etiqueta">Folio ' + esc(p.folio) + '</span>' : '') + '<span class="etiqueta">' + esc(s.tipo || 'Sesión') + '</span>' + (s.sin_sync ? '<span class="etiqueta" style="color:var(--rojo)">Sin sincronizar</span>' : '') +
+      ' <span class="muted">' + (s.acuerdos || []).length + ' acuerdos · ' + nPend + ' pendientes · ' + (s.evidencias || []).length + ' evidencias</span>' +
+      '</summary>' +
+      '<p style="margin-top:8px">' + esc(s.texto || '') + '</p>' +
+      (s.asistentes && s.asistentes.length ? '<p class="muted">Asistentes: ' + esc(s.asistentes.join(', ')) + '</p>' : '') +
+      '<p class="muted">Evidencias: ' + (s.evidencias||[]).length + ' · Pendientes: ' + nPend + '</p>' +
+      '<div class="miniaturas">' + (s.evidencias||[]).map((e,i) => htmlEvidencia(e, i)).join('') + '</div>' +
+      '<div style="margin-top:10px"><strong>Acuerdos</strong>' + ((s.acuerdos||[]).length ? '<ul style="margin:6px 0 6px 18px">' + s.acuerdos.map((a,i) => '<li>' + esc(typeof a === 'string' ? a : a.texto) + ' <button class="btn chico blanco" data-acuerdo="' + i + '">→ Pendiente</button></li>').join('') + '</ul>' : '<p class="muted">Sin acuerdos.</p>') + '</div>' +
+      '<details class="menu" style="margin-top:8px"><summary>⋯</summary><div class="fila" style="margin-top:6px"><button class="btn chico blanco" data-editar>Editar</button><button class="btn chico blanco" style="color:var(--rojo)" data-eliminar>Eliminar</button></div></details></details>';
+    div.querySelectorAll('img').forEach(img => img.onclick = () => abrirModal('<img src="' + img.src + '" alt="Evidencia ampliada"><p class="muted">' + esc(img.title) + '</p><button class="btn blanco" onclick="document.getElementById(\'modalFondo\').classList.remove(\'abierto\')">Cerrar</button>'));
+    div.querySelectorAll('[data-acuerdo]').forEach(btn => btn.onclick = async () => {
+      if(!exigirSesion()) return;
+      const a = s.acuerdos[parseInt(btn.dataset.acuerdo, 10)];
+      /* D11: no duplicar: si ya existe un pendiente con ese mismo texto en
+         esta sesión, no se crea otro (el backend también lo comprueba). */
+      const textoAcuerdo = typeof a === 'string' ? a : a.texto;
+      const textoNorm = String(textoAcuerdo || '').trim().toLowerCase();
+      if(estado.pendientes.some(x => x.sesion_id === s.id && String(x.texto || '').trim().toLowerCase() === textoNorm)){
+        avisar('Ese pendiente ya existía en esta sesión.', ''); return;
+      }
+      /* A3: si el acuerdo no trae fecha, el pendiente queda SIN fecha (''), no se inventa la de hoy. */
+      const pend = { id: uid(s.slug + '-pend'), sesion_id: s.id, slug: s.slug, texto: textoAcuerdo, responsable: '', fecha_compromiso: '', prioridad:'Media', estado:'Pendiente', fecha_cierre:null, minuta_origen: s.titulo, notas:'' };
+      estado.pendientes.push(pend);
+      // C3: guardar el pendiente en Drive (guardarPendiente), no solo en local.
+      if(TIENE_APPS_SCRIPT){
+        try { const r = await llamar('guardarPendiente', { slug: s.slug, pendiente: pendienteParaBackend(pend) }); if(r && r.id) pend.id = r.id; delete pend.sin_sync; }
+        catch(e){ pend.sin_sync = true; avisar('No se guardó en Drive: ' + e.message + '. Queda solo en este navegador.', 'rojo'); }
+      }
+      guardar(); renderTodo(); if(!pend.sin_sync) avisar('Pendiente creado desde el acuerdo.', 'verde');
+    });
+    cargarMiniaturas(div);
+    div.querySelector('[data-editar]').onclick = () => { if(exigirSesion()) abrirFormSesion(s); };
+    div.querySelector('[data-eliminar]').onclick = async () => {
+      if(!exigirSesion()) return;
+      if(confirm('¿Eliminar la sesión «' + s.titulo + '»? También se eliminan sus pendientes asociados.')){
+        if(TIENE_APPS_SCRIPT){
+          try { await llamar('eliminarSesion', { slug: s.slug, id: s.id }); }
+          catch(e){ avisar('No se pudo borrar en Drive: ' + e.message, 'rojo'); return; }
+        }
+        estado.sesiones = estado.sesiones.filter(x => x.id !== s.id);
+        estado.pendientes = estado.pendientes.filter(x => x.sesion_id !== s.id);
+        guardar(); renderTodo();
+      }
+    };
+    cont.appendChild(div);
+  });
+}
+
+/* ---------- Hitos ---------- */
+function renderHitos(){
+  const lista = estado.hitos.filter(h => proyectoSel === 'todos' || h.slug === proyectoSel).sort((a,b) => String(a.fecha).localeCompare(String(b.fecha)));
+  const hechos = lista.filter(h => h.estado === 'Cerrado').length;
+  const pct = lista.length ? Math.round(hechos / lista.length * 100) : 0;
+  const prH = estado.proyectos.find(x => x.slug === proyectoSel);
+  if(!lista.length){
+    $('#panelHitos').innerHTML = '<div class="fila"><h3 style="flex:2">Hitos</h3><span class="muted">Sin hitos</span><button class="btn chico dorado" id="btnNuevoHito">+ Hito</button></div>';
+    $('#btnNuevoHito').onclick = () => { if(exigirSesion()) abrirFormHito(); };
+    return;
+  }
+  $('#panelHitos').innerHTML = '<details open><summary style="cursor:pointer"><strong>Hitos ' + (prH ? '· ' + esc(prH.hashtag + ' ' + prH.nombre) : '') + '</strong> <span class="muted">' + hechos + ' de ' + lista.length + ' completados (' + pct + '%)</span></summary>' +
+    '<div class="fila" style="margin-top:8px"><button class="btn chico dorado" id="btnNuevoHito">+ Hito</button></div>' +
+    '<div class="barra"><div style="width:' + pct + '%"></div></div>' +
+    (lista.length ? '<ul style="margin-left:18px">' + lista.map(h => '<li><span class="etiqueta hito">◆ ' + esc(fechaCorta(h.fecha)) + '</span> <strong>' + esc(h.titulo) + '</strong> — ' + esc(h.estado) + (h.descripcion ? ' · ' + esc(h.descripcion) : '') +
+      ' <button class="btn chico blanco" data-hito-editar="' + esc(h.id) + '">Editar</button>' +
+      (h.estado !== 'Cerrado' ? ' <button class="btn chico dorado" data-hito-completar="' + esc(h.id) + '">Completar</button>' : '') +
+      ' <button class="btn chico peligro" data-hito-borrar="' + esc(h.id) + '">Borrar</button></li>').join('') + '</ul>' : '<p class="muted">Sin hitos todavía.</p>') + '</details>';
+  /* M6: editar / completar / borrar hito (antes no se podía ni completar). */
+  $$('#panelHitos [data-hito-completar]').forEach(b => b.onclick = async () => {
+    if(!exigirSesion()) return;
+    const h = estado.hitos.find(x => x.id === b.dataset.hitoCompletar); if(!h) return;
+    h.estado = 'Cerrado'; h.fecha_cierre = hoyISO(); guardar();
+    if(TIENE_APPS_SCRIPT){ try { await llamar('editarHito', { slug: h.slug, hito: hitoParaBackend(h) }); delete h.sin_sync; } catch(e){ h.sin_sync = true; avisar('No se guardó en Drive: ' + e.message, 'rojo'); } }
+    guardar(); renderTodo(); if(!h.sin_sync) avisar('Hito marcado como completado.', 'verde');
+  });
+  $$('#panelHitos [data-hito-borrar]').forEach(b => b.onclick = async () => {
+    if(!exigirSesion()) return;
+    const h = estado.hitos.find(x => x.id === b.dataset.hitoBorrar); if(!h) return;
+    if(!confirm('¿Borrar el hito «' + h.titulo + '»?')) return;
+    estado.hitos = estado.hitos.filter(x => x.id !== h.id); guardar();
+    if(TIENE_APPS_SCRIPT){ try { await llamar('eliminarHito', { slug: h.slug, id: h.id }); } catch(e){ avisar('No se pudo borrar en Drive: ' + e.message, 'rojo'); return; } }
+    renderTodo();
+  });
+  $$('#panelHitos [data-hito-editar]').forEach(b => b.onclick = () => {
+    if(!exigirSesion()) return;
+    const h = estado.hitos.find(x => x.id === b.dataset.hitoEditar); if(!h) return;
+    abrirModal('<h2>Editar hito</h2>' +
+      '<label>Título</label><input id="hTitulo" value="' + esc(h.titulo) + '">' +
+      '<label>Fecha</label><input type="date" id="hFecha" value="' + esc(h.fecha || '') + '">' +
+      '<label>Descripción</label><textarea id="hDesc" rows="2">' + esc(h.descripcion || '') + '</textarea>' +
+      '<label>Estado</label><select id="hEstado">' + ['Pendiente','En curso','Cerrado'].map(e2 => '<option' + (h.estado === e2 ? ' selected' : '') + '>' + e2 + '</option>').join('') + '</select>' +
+      '<div class="fila" style="margin-top:12px"><button class="btn" id="hGuardar">Guardar cambios</button><button class="btn blanco" id="hCancelar">Cancelar</button></div>');
+    $('#hCancelar').onclick = cerrarModal;
+    $('#hGuardar').onclick = async () => {
+      h.titulo = $('#hTitulo').value.trim() || h.titulo; h.fecha = $('#hFecha').value || h.fecha;
+      h.descripcion = $('#hDesc').value.trim(); h.estado = $('#hEstado').value;
+      if(h.estado === 'Cerrado' && !h.fecha_cierre) h.fecha_cierre = hoyISO();
+      if(h.estado !== 'Cerrado') h.fecha_cierre = h.fecha_cierre || '';
+      guardar();
+      if(TIENE_APPS_SCRIPT){ try { await llamar('editarHito', { slug: h.slug, hito: hitoParaBackend(h) }); delete h.sin_sync; } catch(e){ h.sin_sync = true; avisar('No se guardó en Drive: ' + e.message, 'rojo'); } }
+      cerrarModal(); renderTodo(); if(!h.sin_sync) avisar('Hito actualizado.', 'verde');
+    };
+  });
+  $('#btnNuevoHito').onclick = () => { if(exigirSesion()) abrirFormHito(); };
+}
+function abrirFormHito(){
+    abrirModal('<h2>Nuevo hito</h2>' +
+      '<label>Proyecto</label><select id="hProyecto">' + estado.proyectos.map(p => '<option value="' + esc(p.slug) + '"' + (p.slug === proyectoSel ? ' selected' : '') + '>' + esc(p.hashtag) + ' ' + esc(p.nombre) + '</option>').join('') + '</select>' +
+      '<label>Título</label><input id="hTitulo"><label>Fecha</label><input type="date" id="hFecha" value="' + hoyISO() + '">' +
+      '<label>Descripción</label><textarea id="hDesc" rows="2"></textarea>' +
+      '<label>Estado</label><select id="hEstado"><option>Pendiente</option><option>En curso</option><option>Cerrado</option></select>' +
+      '<div class="fila" style="margin-top:12px"><button class="btn" id="hGuardar">Guardar hito</button><button class="btn blanco" id="hCancelar">Cancelar</button></div>');
+    $('#hCancelar').onclick = cerrarModal;
+    $('#hGuardar').onclick = async () => {
+      const t = $('#hTitulo').value.trim(); if(!t){ alert('Escribe el título del hito.'); return; }
+      const hito = { id: uid('hito'), slug: $('#hProyecto').value, titulo: t, fecha: $('#hFecha').value || hoyISO(), descripcion: $('#hDesc').value.trim(), estado: $('#hEstado').value };
+      estado.hitos.push(hito);
+      // C3: guardar el hito en Drive (guardarHito).
+      if(TIENE_APPS_SCRIPT){
+        try { const r = await llamar('guardarHito', { slug: hito.slug, hito: hitoParaBackend(hito) }); if(r && r.id) hito.id = r.id; delete hito.sin_sync; }
+        catch(e){ hito.sin_sync = true; avisar('No se guardó en Drive: ' + e.message + '. Queda solo en este navegador.', 'rojo'); }
+      }
+      guardar(); cerrarModal(); renderTodo();
+    };
+}
+
+/* ---------- Formulario Nueva / Editar sesión ---------- */
+let evidenciasTemp = [];
+let plantillaActiva = null;
+const PRECARGAS_TEXTO = {
+  general: '#acuerdos\n\n#ejercicios\n',
+  acuerdos: '#acuerdos\n',
+  ejercicios: '#ejercicios\n',
+  seguimiento: '#avance\n\n#pendientes\n\n#acuerdos\n'
+};
+function acuerdosATexto(acuerdos){
+  return (acuerdos || []).map(a => typeof a === 'string' ? a : (a && a.texto) || '').filter(Boolean).join('\n');
+}
+function acuerdosDesdeTexto(texto){
+  return String(texto || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+}
+/* M8: carga la plantilla del proyecto (leerProyecto devuelve bitacora +
+   plantilla + formato). Si no hay Apps Script o no hay sesión, null. */
+async function cargarPlantilla(slug){
+  plantillaActiva = null;
+  if(!TIENE_APPS_SCRIPT || !sesionAutenticada() || !slug) return null;
+  try {
+    const d = await enviarAppsScript('leerProyecto', { slug });
+    if(d && d.ok && d.datos && d.datos.plantilla){ plantillaActiva = d.datos.plantilla; return plantillaActiva; }
+  } catch(e){ console.warn('No se pudo cargar la plantilla:', e); }
+  return null;
+}
+async function comprimirImagen(file){
+  // Comprime a máx. 1200 px con canvas antes de guardar.
+  const bmp = await createImageBitmap(file);
+  const escala = Math.min(1, 1200 / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bmp.width * escala); canvas.height = Math.round(bmp.height * escala);
+  canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.85);
+}
+async function abrirFormSesion(sesion){
+  if(!exigirSesion()) return;
+  /* M8: al crear (no al editar), prellenar desde la plantilla del proyecto. */
+  plantillaActiva = null;
+  let plantilla = null;
+  if(!sesion){
+    plantilla = await cargarPlantilla(proyectoSel !== 'todos' ? proyectoSel : '');
+  }
+  const s = sesion || { slug: proyectoSel !== 'todos' ? proyectoSel : '', fecha: ahoraLocalISO(), tipo:'Sesión', titulo:'', texto:(plantilla && plantilla.sesion && plantilla.sesion.texto) || '', asistentes:[], acuerdos:[], evidencias:[], campos: {}, plantilla_version: (plantilla && plantilla.plantilla_version) || 1 };
+  evidenciasTemp = (s.evidencias || []).slice();
+  abrirModal('<h2>' + (sesion ? 'Editar sesión' : 'Nueva sesión') + '</h2>' +
+    '<h3>Datos básicos</h3>' +
+    '<label>Proyecto</label><select id="sProyecto">' + '<option value="">— elige proyecto —</option>' + estado.proyectos.map(p => '<option value="' + esc(p.slug) + '"' + (p.slug === s.slug ? ' selected' : '') + '>' + esc(p.hashtag) + ' ' + esc(p.nombre) + '</option>').join('') + '</select>' +
+    '<label>Título</label><input id="sTitulo" value="' + esc(s.titulo) + '">' +
+    '<label>Tipo</label><select id="sTipo">' + ['Reunión','Sesión','Online','Avance','Nota'].map(t => '<option' + (s.tipo === t ? ' selected' : '') + '>' + t + '</option>').join('') + '</select>' +
+    '<label>Fecha y hora</label><input type="datetime-local" id="sFecha" value="' + esc(s.fecha) + '">' +
+    '<h3 style="margin-top:14px">Contenido</h3>' +
+    '<label>Asistentes (separados por coma)</label><input id="sAsistentes" value="' + esc((s.asistentes||[]).join(', ')) + '">' +
+    '<label for="sPlantilla">Prellenado opcional</label><select id="sPlantilla"><option value="">Sin prellenado</option><option value="general">General</option><option value="acuerdos">Acuerdos</option><option value="ejercicios">Ejercicios</option><option value="seguimiento">Seguimiento</option></select>' +
+    '<label for="sTexto">Texto / detalles</label><textarea id="sTexto" rows="7" placeholder="Escribe aquí el contenido de la bitácora. Puedes editar el prellenado.">' + esc(s.texto) + '</textarea>' +
+    '<h3 style="margin-top:14px">Acuerdos</h3><label for="sAcuerdos">Un acuerdo por línea; puedes convertir cualquiera en pendiente.</label><textarea id="sAcuerdos" rows="4" placeholder="Escribe un acuerdo por línea">' + esc(acuerdosATexto(s.acuerdos)) + '</textarea>' +
+    '<h3 style="margin-top:14px">Evidencias</h3>' +
+    '<label>Imágenes y documentos (PDF, Word, Excel) — máx. 10 MB por archivo; las imágenes se comprimen a máx. 1200 px</label><input type="file" id="sEvidencias" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" multiple>' +
+    '<div class="miniaturas" id="sMiniaturas"></div>' +
+    '<div class="fila" style="margin-top:12px"><button class="btn" id="sGuardar">Guardar sesión</button><button class="btn blanco" id="sCancelar">Cancelar</button></div>');
+  $('#sPlantilla').onchange = () => {
+    if(!$('#sPlantilla').value) return;
+    const textoActual = $('#sTexto').value;
+    const textoNuevo = PRECARGAS_TEXTO[$('#sPlantilla').value] || '';
+    if(textoActual.trim() && !confirm('¿Reemplazar el texto actual con el prellenado seleccionado?')){
+      $('#sPlantilla').value = '';
+      return;
+    }
+    $('#sTexto').value = textoNuevo;
+  };
+  if(sesion) $('#sProyecto').disabled = true;
+  const pintarMiniaturas = () => { evidenciasTemp = evidenciasTemp.map((e,i) => normalizarEvidencia(e, i)); $('#sMiniaturas').innerHTML = evidenciasTemp.map((e,i) => '<figure style="text-align:center">' + (e.tipo === 'documento' ? htmlEvidencia(e, i) : '<img ' + srcEvidencia(e.url) + ' alt="Evidencia">') + '<figcaption><input placeholder="Pie opcional" value="' + esc(e.pie || '') + '" data-pie="' + i + '" style="width:90px;font-size:12px;padding:2px"></figcaption></figure>').join(''); cargarMiniaturas($('#sMiniaturas')); };
+  pintarMiniaturas();
+  $('#sProyecto').onchange = async () => {
+    const p2 = estado.proyectos.find(p => p.slug === $('#sProyecto').value);
+    if(!p2) return;
+    const pl = await cargarPlantilla(p2.slug);
+    if(pl && pl.sesion && pl.sesion.texto && !$('#sTexto').value.trim()) $('#sTexto').value = pl.sesion.texto;
+  };
+  $('#sEvidencias').onchange = async e => {
+    for(const f of e.target.files){
+      if(f.size > MAX_EVIDENCIA_BYTES){ alert('«' + f.name + '» pesa más de 10 MB y no se puede subir como evidencia.'); continue; }
+      if(esImagenArchivo(f)){
+        try { evidenciasTemp.push({ url: await comprimirImagen(f), pie:'', nombre: f.name, mime: 'image/jpeg', tipo: 'imagen', tamano: f.size, agregada_en: new Date().toISOString() }); }
+        catch(err){ alert('No se pudo procesar «' + f.name + '». Usa JPG o PNG.'); }
+      } else {
+        const mime = mimeDocumento(f);
+        if(!mime){ alert('«' + f.name + '» no es un formato aceptado. Solo imágenes, PDF, Word o Excel.'); continue; }
+        try { evidenciasTemp.push({ url: await leerArchivoDataURL(f), pie:'', nombre: f.name, mime, tipo: 'documento', tamano: f.size, agregada_en: new Date().toISOString() }); }
+        catch(err){ alert('No se pudo leer «' + f.name + '».'); }
+      }
+    }
+    pintarMiniaturas();
+  };
+  $('#sCancelar').onclick = cerrarModal;
+  $('#sGuardar').onclick = async () => {
+    const titulo = $('#sTitulo').value.trim(); if(!titulo){ alert('Escribe el título.'); return; }
+    const acuerdos = acuerdosDesdeTexto($('#sAcuerdos').value);
+    $$('#sMiniaturas [data-pie]').forEach(inp => { evidenciasTemp[parseInt(inp.dataset.pie,10)].pie = inp.value.trim(); });
+    const datos = { slug: sesion ? sesion.slug : $('#sProyecto').value, titulo, tipo: $('#sTipo').value, fecha: $('#sFecha').value || ahoraLocalISO(), asistentes: $('#sAsistentes').value.split(',').map(x => x.trim()).filter(Boolean), texto: $('#sTexto').value.trim(), acuerdos, evidencias: evidenciasTemp, campos: (sesion && sesion.campos) || {}, plantilla_version: (plantillaActiva && plantillaActiva.plantilla_version) || (sesion && sesion.plantilla_version) || 1 };
+    if(!datos.slug){ alert('Elige un proyecto antes de guardar.'); return; }
+    // C4: subirEvidencia usa los nombres del backend {slug, nombre, base64, mime}.
+    /* A7: con Apps Script la imagen se sube a Drive y en el estado solo
+       queda su URL; el base64 NO se guarda en localStorage (ver guardar()). */
+    if(TIENE_APPS_SCRIPT){
+      $('#sGuardar').disabled = true;
+      for(let i = 0; i < evidenciasTemp.length; i++){
+        const ev = evidenciasTemp[i];
+        if(!ev.url || !String(ev.url).startsWith('data:')) continue;
+        try {
+          const evN = normalizarEvidencia(ev, i);
+          const r = await llamar('subirEvidencia', { slug: datos.slug, nombre: nombreArchivoEvidencia(evN, datos.slug, datos.fecha, i), base64: ev.url, mime: evN.mime || (evN.tipo === 'documento' ? 'application/octet-stream' : 'image/jpeg') });
+          if(!r || !r.url) throw new Error((r && r.error) || 'El servidor no devolvió el enlace del archivo.');
+          ev.url = r.url; if(r.nombre) ev.nombre = r.nombre;
+        } catch(e){
+          $('#sGuardar').disabled = false;
+          avisar('No se pudo subir «' + ev.nombre + '»: ' + e.message + '. La sesión no se guardó y el archivo sigue adjunto en el formulario.', 'rojo');
+          return;
+        }
+      }
+    }
+    datos.evidencias = evidenciasTemp;
+    if(sesion){
+      Object.assign(sesion, datos);
+      if(TIENE_APPS_SCRIPT){
+        try { await llamar('editarSesion', { slug: sesion.slug, sesion: sesionParaBackend(sesion) }); delete sesion.sin_sync; }
+        catch(e){ sesion.sin_sync = true; avisar('No se guardó en Drive: ' + e.message, 'rojo'); }
+      }
+      guardar();
+    } else {
+      const nueva = Object.assign({ id: uid(datos.slug + '-' + datos.fecha.split('T')[0].replace(/-/g,'')) }, datos);
+      estado.sesiones.push(nueva);
+      if(TIENE_APPS_SCRIPT){
+        try { const r = await llamar('guardarSesion', { slug: datos.slug, sesion: sesionParaBackend(nueva) }); if(r && r.id) nueva.id = r.id; delete nueva.sin_sync; guardar(); }
+        catch(e){ nueva.sin_sync = true; avisar('No se guardó en Drive: ' + e.message + '. Queda solo en este navegador.', 'rojo'); }
+      }
+      guardar();
+    }
+    cerrarModal(); renderTodo(); if(!(sesion ? sesion.sin_sync : estado.sesiones.some(x => x.sin_sync))) avisar('Sesión guardada.', 'verde');
+  };
+}
+
+/* ---------- Puntaje (M7) ---------- */
+function renderPuntaje(){
+  const lista = estado.puntaje.filter(x => proyectoSel === 'todos' || x.slug === proyectoSel);
+  const total = lista.reduce((a, x) => a + (Number(x.puntos) || 0), 0);
+  const el = $('#panelPuntaje');
+  if(!el) return;
+  const porRubro = ['I','II','III','IV','V','VI'].map(r => {
+    const l = lista.filter(x => x.rubro === r);
+    return { rubro: r, n: l.length, pts: l.reduce((a, x) => a + (Number(x.puntos) || 0), 0) };
+  });
+  el.innerHTML = '<h3>Puntaje registrado</h3>' +
+    (lista.length
+      ? '<p class="muted">' + lista.length + ' actividad(es) · ' + total + ' puntos</p>' +
+        '<p class="muted">' + porRubro.filter(r => r.n).map(r => 'Rubro ' + r.rubro + ': ' + r.n + ' · ' + r.pts + ' pts').join(' · ') + '</p><ul style="margin-left:18px">' +
+        lista.map(x => '<li><strong>Rubro ' + esc(x.rubro || '') + '</strong> — ' + esc(x.actividad || '') + (x.glosario_id ? ' (' + esc(x.glosario_id) + ')' : '') + ' · Nivel ' + esc(x.nivel || '') + ' · ' + esc(String(x.puntos || '')) + ' pts' + (x.periodo ? ' · ' + esc(x.periodo) : '') + '</li>').join('') + '</ul>'
+      : '<p class="muted">Sin puntaje · <button class="btn chico dorado" onclick="abrirFormPuntaje()">Registrar</button></p>');
+}
+/* ---------- Glosario de puntaje v2 (ayuda al elegir la actividad) ---------- */
+let GLOSARIO_CACHE = null, GLOSARIO_SEL = null;
+async function cargarGlosarioPuntaje(){
+  if(GLOSARIO_CACHE) return GLOSARIO_CACHE;
+  try{
+    const r = await fetch('protocolo-puntaje-cch-v2.json');
+    if(!r.ok) return null;
+    const j = await r.json();
+    GLOSARIO_CACHE = ((j.protocolo_equivalencias_2020 || {}).glosario_completo) || [];
+    return GLOSARIO_CACHE;
+  }catch(e){ return null; }
+}
+function poblarGlosario(rubro){
+  const dl = $('#listaGlosario'); if(!dl || !GLOSARIO_CACHE) return;
+  dl.innerHTML = GLOSARIO_CACHE.filter(x => (x.rubros || []).includes(rubro))
+    .map(x => '<option value="' + esc(x.name) + '">').join('');
+}
+function ayudaGlosario(){
+  const el = $('#pAyudaGlosario'); if(!el) return;
+  const nombre = ($('#pActividad').value || '').trim();
+  const x = (GLOSARIO_CACHE || []).find(g => g.name === nombre);
+  GLOSARIO_SEL = x || null;
+  if(!x){ el.textContent = 'Escribe o elige una actividad del glosario CCH 2020; al elegirla se muestra su definición, sede y si es digital.'; return; }
+  $('#pNivel').value = x.level; $('#pPuntos').value = x.points;
+  el.textContent = x.id + ' · Nivel ' + x.level + ' (' + x.points + ' pts)' + (x.isDigital ? ' · Digital' : '') +
+    ' · Sede: ' + x.venue + ' — ' + x.definition;
+}
+function abrirFormPuntaje(){
+  if(!exigirSesion()) return;
+  const puntosPorNivel = { A: 25, B: 50, C: 150 };
+  abrirModal('<h2>Registrar actividad de puntaje</h2><p class="muted">Protocolo de Equivalencias CCH 2020. Los puntos se ponen solos según el nivel (A=25, B=50, C=150); se pueden corregir a mano.</p>' +
+    '<label>Proyecto</label><select id="pProyecto">' + estado.proyectos.map(p => '<option value="' + esc(p.slug) + '"' + (p.slug === proyectoSel ? ' selected' : '') + '>' + esc(p.hashtag) + ' ' + esc(p.nombre) + '</option>').join('') + '</select>' +
+    '<label>Rubro</label><select id="pRubro"><option value="I">I — Apoyo a la Docencia</option><option value="II">II — Investigación</option><option value="III">III — Formación de Profesores</option><option value="IV">IV — Dirección de Grupos</option><option value="V">V — Difusión y Extensión</option><option value="VI">VI — Participación Honoraria</option></select>' +
+    '<label>Actividad</label><input id="pActividad" list="listaGlosario" placeholder="Ej.: Paquete didáctico">' +
+    '<datalist id="listaGlosario"></datalist>' +
+    '<p class="muted" id="pAyudaGlosario">Escribe o elige una actividad del glosario CCH 2020; al elegirla se muestra su definición, sede y si es digital.</p>' +
+    '<div class="fila"><div><label>Nivel</label><select id="pNivel"><option>A</option><option>B</option><option>C</option></select></div><div><label>Puntos</label><input type="number" id="pPuntos" value="25"></div></div>' +
+    '<label>Alcance</label><input id="pAlcance" placeholder="Local / general / nacional…">' +
+    '<label>Constancia / dictamen</label><input id="pConstancia" placeholder="Folio o dictamen que lo acredita">' +
+    '<div class="fila"><div><label>Periodo</label><input id="pPeriodo" placeholder="2026-1"></div><div><label>Categoría objetivo</label><input id="pCategoria" placeholder="Asociado A, Titular B…"></div></div>' +
+    '<div class="fila" style="margin-top:12px"><button class="btn" id="pGuardar">Guardar puntaje</button><button class="btn blanco" id="pCancelar">Cancelar</button></div>');
+  $('#pNivel').onchange = () => { $('#pPuntos').value = puntosPorNivel[$('#pNivel').value] || ''; };
+  $('#pRubro').onchange = () => poblarGlosario($('#pRubro').value);
+  $('#pActividad').addEventListener('input', ayudaGlosario);
+  cargarGlosarioPuntaje().then(() => { poblarGlosario($('#pRubro').value); });
+  $('#pCancelar').onclick = cerrarModal;
+  $('#pGuardar').onclick = async () => {
+    const actividad = $('#pActividad').value.trim();
+    if(!actividad){ alert('Escribe la actividad.'); return; }
+    const reg = { id: uid('puntaje'), slug: $('#pProyecto').value, rubro: $('#pRubro').value, actividad: actividad,
+      glosario_id: (GLOSARIO_SEL && GLOSARIO_SEL.id) || '',
+      nivel: $('#pNivel').value, puntos: Number($('#pPuntos').value) || 0, alcance: $('#pAlcance').value.trim(),
+      constancia: $('#pConstancia').value.trim(), dictamen: '', periodo: $('#pPeriodo').value.trim(),
+      categoria_objetivo: $('#pCategoria').value.trim() };
+    estado.puntaje.push(reg); guardar();
+    if(TIENE_APPS_SCRIPT){
+      try { const r = await llamar('registrarPuntaje', { slug: reg.slug, puntaje: reg }); if(r && r.id) reg.id = r.id; delete reg.sin_sync; guardar(); }
+      catch(e){ reg.sin_sync = true; avisar('No se guardó en Drive: ' + e.message + '. Queda solo en este navegador.', 'rojo'); }
+    }
+    cerrarModal(); renderTodo(); if(!reg.sin_sync) avisar('Actividad de puntaje registrada (' + reg.puntos + ' pts).', 'verde');
+  };
+}
+
+/* ---------- Calendario ---------- */
+function estadoPendiente(p){
+  if(p.estado === 'Cerrado') return 'Cerrado';
+  /* A3: un pendiente sin fecha_compromiso nunca es 'Vencido'. */
+  if(p.fecha_compromiso && p.fecha_compromiso < hoyISO()) return 'Vencido';
+  return p.estado || 'Pendiente';
+}
+function renderCalendario(){
+  const E = { sesiones: estado.sesiones.filter(enAlcance), hitos: estado.hitos.filter(enAlcance), pendientes: estado.pendientes.filter(enAlcance) };
+  const y = calCursor.getFullYear(), m = calCursor.getMonth();
+  $('#calTitulo').textContent = MESES[m][0].toUpperCase() + MESES[m].slice(1) + ' ' + y;
+  const grid = $('#calGrid'); grid.innerHTML = '';
+  ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].forEach(d => { const c = document.createElement('div'); c.className = 'cab'; c.textContent = d; grid.appendChild(c); });
+  const primerDia = new Date(y, m, 1).getDay();
+  const diasMes = new Date(y, m + 1, 0).getDate();
+  for(let i = 0; i < primerDia; i++) grid.appendChild(document.createElement('div'));
+  for(let d = 1; d <= diasMes; d++){
+    const iso = y + '-' + String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const ses = E.sesiones.filter(s => s.fecha.startsWith(iso));
+    const hit = E.hitos.filter(h => h.fecha === iso);
+    const ven = E.pendientes.filter(p => p.fecha_compromiso === iso && estadoPendiente(p) === 'Vencido');
+    const pen = E.pendientes.filter(p => p.fecha_compromiso === iso && p.estado !== 'Cerrado' && estadoPendiente(p) !== 'Vencido');
+    const cel = document.createElement('button');
+    cel.type = 'button';
+    cel.className = 'dia' + (iso === hoyISO() ? ' hoy' : '') + (diaSel === iso ? ' seleccionado' : '');
+    cel.setAttribute('aria-label', 'Día ' + iso);
+    cel.innerHTML = '<strong>' + d + '</strong>' +
+      (ses.length ? '<div class="marca">' + [...new Set(ses.map(s => (estado.proyectos.find(x => x.slug === s.slug) || {}).color || '#002663'))].map(c => '<span class="punto" style="background:' + esc(c) + ';display:inline-block;width:8px;height:8px"></span>').join(' ') + ' ' + ses.length + ' sesión' + (ses.length > 1 ? 'es' : '') + '</div>' : '') +
+      (hit.length ? '<div class="marca" style="color:var(--dorado)">◆ ' + hit.length + ' hito' + (hit.length > 1 ? 's' : '') + '</div>' : '') +
+      (pen.length ? '<div class="marca">• ' + pen.length + ' pendiente' + (pen.length > 1 ? 's' : '') + '</div>' : '') +
+      (ven.length ? '<div class="marca" style="color:var(--rojo)">⚠ ' + ven.length + ' vencido' + (ven.length > 1 ? 's' : '') + '</div>' : '');
+    cel.onclick = () => { diaSel = iso; renderCalendario(); };
+    grid.appendChild(cel);
+  }
+  // Detalle del día
+  const det = $('#detalleDia');
+  if(!diaSel){ det.innerHTML = '<h3>Selecciona un día</h3><p class="muted">Haz clic en un día del calendario.</p>'; }
+  else {
+    const ses = E.sesiones.filter(s => s.fecha.startsWith(diaSel));
+    const hit = E.hitos.filter(h => h.fecha === diaSel);
+    const pen = E.pendientes.filter(p => p.fecha_compromiso === diaSel);
+    det.innerHTML = '<h3>' + esc(fechaCorta(diaSel)) + '</h3>' +
+      '<p><strong>Sesiones:</strong> ' + (ses.length ? ses.map(s => esc(s.titulo)).join('; ') : 'ninguna') + '</p>' +
+      '<p><strong>Hitos:</strong> ' + (hit.length ? hit.map(h => '◆ ' + esc(h.titulo)).join('; ') : 'ninguno') + '</p>' +
+      '<p><strong>Pendientes:</strong> ' + (pen.length ? pen.map(p => esc(p.texto) + ' — ' + esc(p.responsable)).join('; ') : 'ninguno') + '</p>';
+  }
+  // Próximos 7 días
+  const prox = [];
+  for(let i = 0; i < 7; i++){
+    const d = new Date(); d.setDate(d.getDate() + i);
+    const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    E.hitos.filter(h => h.fecha === iso).forEach(h => prox.push('◆ ' + fechaCorta(iso) + ' — Hito: ' + h.titulo));
+    E.pendientes.filter(p => p.fecha_compromiso === iso && p.estado !== 'Cerrado').forEach(p => prox.push(fechaCorta(iso) + ' — Pendiente: ' + p.texto + ' (' + (p.responsable || 'sin responsable') + ')'));
+    E.sesiones.filter(s => s.fecha.startsWith(iso)).forEach(s => prox.push(fechaCorta(iso) + ' — Sesión: ' + s.titulo));
+  }
+  $('#proximos7').innerHTML = '<h3>Próximos 7 días</h3>' + (prox.length ? '<ul style="margin-left:18px">' + prox.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '<p class="muted">Sin eventos en los próximos 7 días.</p>');
+  const ag = $('#agendaCal');
+  if(ag){
+    const mes = E.sesiones.filter(s => s.fecha.startsWith(y + '-' + String(m+1).padStart(2,'0')))
+      .concat(E.hitos.filter(h => h.fecha.startsWith(y + '-' + String(m+1).padStart(2,'0'))).map(h => ({ fecha: h.fecha, titulo: '◆ Hito: ' + h.titulo })))
+      .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+    ag.innerHTML = '<h3>Agenda — ' + esc(MESES[m]) + ' ' + y + '</h3>' + (mes.length ? '<ul style="margin-left:18px">' + mes.map(s => '<li>' + esc(fechaCorta(s.fecha)) + ' — ' + esc(s.titulo) + '</li>').join('') + '</ul>' : '<p class="muted">Sin sesiones ni hitos este mes.</p>');
+  }
+}
+
+/* ---------- Pendientes ---------- */
+function grupoPend(p){
+  if(p.estado === 'Cerrado') return '5 Cerrados';
+  if(!p.fecha_compromiso) return '4 Sin fecha';
+  const hoy = hoyISO();
+  if(p.fecha_compromiso < hoy) return '1 Vencidos';
+  if(p.fecha_compromiso <= sumarDias(hoy, 7)) return '2 Esta semana';
+  return '3 Después';
+}
+/* Tarjeta de pendiente (vista Tarjeta, v2): mismo contenido y mismos
+   controles que la tabla (checkbox Hecho y selector de estado). */
+function tarjetaPendiente(p){
+  const st = estadoPendiente(p);
+  const pr = estado.proyectos.find(x => x.slug === p.slug) || {};
+  return '<article class="pend-tarjeta' + (st === 'Vencido' ? ' vencido' : '') + '">' +
+    '<div class="fila" style="justify-content:space-between"><strong>' + esc(p.texto) + '</strong>' +
+    '<label class="muted" style="margin:0;display:flex;gap:6px;align-items:center;flex:0 0 auto"><input type="checkbox" data-hecho="' + p.id + '"' + (p.estado === 'Cerrado' ? ' checked' : '') + ' aria-label="Marcar hecho" style="width:auto"> Hecho</label></div>' +
+    '<p class="muted">' + esc(pr.hashtag || '') + ' ' + esc(pr.nombre || '') + (pr.folio ? ' · Folio ' + esc(pr.folio) : '') + '</p>' +
+    '<p>Responsable: <strong>' + esc(p.responsable || 'sin responsable') + '</strong></p>' +
+    '<p>Fecha compromiso: <strong>' + esc(fechaCorta(p.fecha_compromiso) || 'sin fecha') + '</strong>' + (st === 'Vencido' ? ' <span style="color:var(--rojo)">Vencido</span>' : '') + (p.fecha_cierre ? ' · cierre ' + esc(fechaCorta(p.fecha_cierre)) : '') + '</p>' +
+    '<p>Prioridad: ' + esc(p.prioridad || 'Media') + ' · Minuta: <a href="#" data-sesion="' + esc(p.sesion_id || '') + '">' + esc(p.minuta_origen || '') + '</a></p>' +
+    '<label>Estado</label><select data-estado="' + p.id + '" aria-label="Estado del pendiente">' + ['Pendiente','En proceso','Cerrado'].map(e2 => '<option' + (p.estado === e2 ? ' selected' : '') + '>' + e2 + '</option>').join('') + '</select>' +
+    '</article>';
+}
+function renderPendientes(){
+  const prP = estado.proyectos.find(p => p.slug === proyectoSel);
+  $('#tituloPendientes').textContent = 'Pendientes' + (prP ? ' · ' + prP.hashtag + (prP.folio ? ' · Folio ' + prP.folio : '') : '');
+  $('#btnQuitarFiltro').classList.toggle('oculto', proyectoSel === 'todos');
+  sincronizarTogglePend();
+  let list = estado.pendientes.filter(enAlcance).slice();
+  if(busqueda){ const q = busqueda.toLowerCase(); list = list.filter(p => ((p.texto || '') + ' ' + (p.responsable || '') + ' ' + (p.minuta_origen || '')).toLowerCase().includes(q)); }
+  if($('#filtroPendEstado').value) list = list.filter(p => estadoPendiente(p) === $('#filtroPendEstado').value);
+  if($('#filtroPendResponsable').value) list = list.filter(p => (p.responsable || '').toLowerCase().includes($('#filtroPendResponsable').value.toLowerCase()));
+  if($('#filtroSoloVencidos').checked) list = list.filter(p => estadoPendiente(p) === 'Vencido');
+  const filtrados = estado.pendientes.filter(enAlcance);
+  const hechos = filtrados.filter(p => p.estado === 'Cerrado').length;
+  $('#resumenPendientes').textContent = hechos + ' de ' + filtrados.length + ' hechos (' + (filtrados.length ? Math.round(hechos / filtrados.length * 100) : 0) + '%). Mostrando ' + list.length + '.';
+  const cont = $('#listaPendientes'); cont.innerHTML = '';
+  if(!list.length){ cont.innerHTML = '<p class="muted">No hay pendientes con esos filtros.</p>'; return; }
+  const grupos = {};
+  list.forEach(p => { const g = grupoPend(p); (grupos[g] = grupos[g] || []).push(p); });
+  Object.keys(grupos).sort().forEach(g => {
+    const items = grupos[g].sort((a, b) => String(a.fecha_compromiso || '').localeCompare(String(b.fecha_compromiso || '')));
+    const nombre = g.slice(2);
+    const bloque = document.createElement('div'); bloque.className = 'tarjeta';
+    let cuerpo = '';
+    if(vistaPendientes === 'tarjeta'){
+      cuerpo = '<div class="pend-tarjetas">' + items.map(p => tarjetaPendiente(p)).join('') + '</div>';
+    } else {
+      cuerpo = '<div class="tabla-scroll"><table><thead><tr><th></th><th>Acción</th><th>Responsable</th><th>Fecha compromiso</th><th>Prioridad</th><th>Estado</th><th>Minuta origen</th></tr></thead><tbody>' +
+        items.map(p => { const st = estadoPendiente(p); return '<tr class="' + (st === 'Vencido' ? 'vencido' : '') + '">' +
+          '<td><input type="checkbox" data-hecho="' + p.id + '"' + (p.estado === 'Cerrado' ? ' checked' : '') + ' aria-label="Marcar hecho"></td>' +
+          '<td>' + esc(p.texto) + '</td><td>' + esc(p.responsable) + '</td><td>' + esc(fechaCorta(p.fecha_compromiso) || 'sin fecha') + '</td>' +
+          '<td>' + esc(p.prioridad || 'Media') + '</td><td><select data-estado="' + p.id + '" aria-label="Estado del pendiente">' + ['Pendiente','En proceso','Cerrado'].map(e2 => '<option' + (p.estado === e2 ? ' selected' : '') + '>' + e2 + '</option>').join('') + '</select>' + (st === 'Vencido' ? ' <span style="color:var(--rojo)">Vencido</span>' : '') + (p.fecha_cierre ? ' (' + esc(fechaCorta(p.fecha_cierre)) + ')' : '') + '</td>' +
+          '<td class="muted"><a href="#" data-sesion="' + esc(p.sesion_id || '') + '">' + esc(p.minuta_origen || '') + '</a></td></tr>'; }).join('') + '</tbody></table></div>';
+    }
+    if(nombre === 'Cerrados'){
+      bloque.innerHTML = '<details><summary style="cursor:pointer"><strong>' + esc(nombre) + ' (' + items.length + ')</strong></summary>' + cuerpo + '</details>';
+    } else {
+      bloque.innerHTML = '<h3>' + esc(nombre) + ' (' + items.length + ')</h3>' + cuerpo;
+    }
+    cont.appendChild(bloque);
+  });
+  cont.querySelectorAll('[data-sesion]').forEach(a => a.onclick = ev2 => { ev2.preventDefault(); if(a.dataset.sesion) cambiarVista('bitacoras'); });
+  cont.querySelectorAll('[data-hecho]').forEach(cb => cb.onchange = async () => {
+    if(!exigirSesion()){ cb.checked = !cb.checked; return; }
+    const p = estado.pendientes.find(x => x.id === cb.dataset.hecho);
+    if(p){
+      p.estado = cb.checked ? 'Cerrado' : 'Pendiente'; p.fecha_cierre = cb.checked ? hoyISO() : null;
+      guardar();
+      if(TIENE_APPS_SCRIPT){
+        try { await llamar('cerrarPendiente', { slug: p.slug, id: p.id, estado: p.estado }); delete p.sin_sync; }
+        catch(e){ p.sin_sync = true; avisar('No se guardó en Drive: ' + e.message, 'rojo'); }
+      }
+      renderTodo();
+    }
+  });
+  cont.querySelectorAll('[data-estado]').forEach(sel2 => sel2.onchange = async () => {
+    if(!exigirSesion()) return;
+    const p = estado.pendientes.find(x => x.id === sel2.dataset.estado); if(!p) return;
+    p.estado = sel2.value; p.fecha_cierre = sel2.value === 'Cerrado' ? hoyISO() : null; guardar();
+    if(TIENE_APPS_SCRIPT){
+      try { await llamar('cerrarPendiente', { slug: p.slug, id: p.id, estado: p.estado }); delete p.sin_sync; }
+      catch(e){ p.sin_sync = true; avisar('No se guardó en Drive: ' + e.message, 'rojo'); }
+    }
+    renderTodo();
+  });
+}
+
+/* ---------- Exportar ---------- */
+function datosInforme(){
+  const sesiones = proyectoSel === 'todos' ? estado.sesiones : estado.sesiones.filter(s => s.slug === proyectoSel);
+  const pendientes = proyectoSel === 'todos' ? estado.pendientes : estado.pendientes.filter(p => p.slug === proyectoSel);
+  const hitos = proyectoSel === 'todos' ? estado.hitos : estado.hitos.filter(h => h.slug === proyectoSel);
+  return { sesiones, pendientes, hitos };
+}
+function formatoActivo(){
+  if(proyectoSel !== 'todos' && estado.formatos[proyectoSel]) return normalizarFormato(estado.formatos[proyectoSel]);
+  return normalizarFormato(FORMATO_DEFECTO);
+}
+function sesionesCronologicas(sesiones){
+  return (sesiones || []).map((s, i) => ({ sesion:s, indice:i }))
+    .sort((a, b) => String(a.sesion.fecha || '').localeCompare(String(b.sesion.fecha || '')) || a.indice - b.indice)
+    .map(x => x.sesion);
+}
+function evidenciasEnOrden(sesion){
+  const items = (sesion.evidencias || []).map((e, indice) => ({ evidencia:normalizarEvidencia(e, indice), indice }));
+  if(items.every(x => x.evidencia.agregada_en)){
+    items.sort((a, b) => String(a.evidencia.agregada_en).localeCompare(String(b.evidencia.agregada_en)) || a.indice - b.indice);
+  }
+  return items.map(x => x.evidencia);
+}
+async function prepararEvidenciasInforme(sesiones){
+  if(!TIENE_APPS_SCRIPT) return;
+  let errores = 0;
+  for(const s of sesiones || []){
+    for(const ev of evidenciasEnOrden(s)){
+      if(ev.tipo !== 'imagen' || !ev.url || ev.url.startsWith('data:')) continue;
+      const id = idDrive(ev.url);
+      if(!id || CACHE_EV[id]) continue;
+      try {
+        const r = await llamar('verEvidencia', { id });
+        if(!r || !r.base64) throw new Error('El backend no devolvió la imagen.');
+        CACHE_EV[id] = 'data:' + (r.mime || ev.mime || 'image/jpeg') + ';base64,' + r.base64;
+      } catch(e){ errores++; }
+    }
+  }
+  if(errores) avisar('No se pudieron incrustar ' + errores + ' imagen(es); el informe conservará sus enlaces de Drive.', 'rojo');
+}
+function informeHTML(){
+  const d = datosInforme(); const f = formatoActivo();
+  const pr = estado.proyectos.find(p => p.slug === proyectoSel);
+  const titulo = 'Informe de bitácoras — ' + (pr ? pr.hashtag + ' ' + pr.nombre + (pr.folio ? ' (Folio ' + pr.folio + ')' : '') : 'Todos los proyectos');
+  let cuerpo = '<h1 style="color:#002663">' + esc(titulo) + '</h1><p>Fecha: ' + esc(fechaCorta(hoyISO())) + ' · Ciclo vigente: ' + esc(estado.configCiclo.ciclo) + (pr && pr.folio ? ' · Folio del proyecto: ' + esc(pr.folio) : '') + ' · Sesiones: ' + d.sesiones.length + ' · Pendientes: ' + d.pendientes.length + ' · Hitos: ' + d.hitos.length + '</p>';
+  cuerpo += '<p><em>Formato aplicado: ' + esc(f.nombre || 'Información') + ' v' + esc(String(f.formato_version || 1)) + '</em></p>';
+  const ETIQ = { fecha:'Fecha', titulo:'Título', tipo:'Tipo', texto:'Texto', asistentes:'Asistentes', acuerdos:'Acuerdos', pendientes:'Pendientes', hitos:'Hitos', evidencias:'Evidencias', bitacoras:'Contenido de las bitácoras' };
+  function htmlEvidencias(s){
+    return evidenciasEnOrden(s).map(ev => {
+      const id = idDrive(ev.url);
+      const url = id && CACHE_EV[id] ? CACHE_EV[id] : (ev.url || '');
+      if(ev.tipo === 'documento'){
+        const nombre = url ? '<a href="' + esc(url) + '">' + esc(ev.nombre) + '</a>' : esc(ev.nombre);
+        return '<p>[' + esc(etiquetaDoc(ev)) + '] ' + nombre + (ev.tamano ? ' (' + esc(formatoTamano(ev.tamano)) + ')' : '') + (ev.pie ? ' — ' + esc(ev.pie) : '') + '</p>';
+      }
+      const imagen = url ? '<img src="' + esc(url) + '" alt="' + esc(ev.pie || ev.nombre || 'Evidencia') + '" style="max-width:560px;height:auto;display:block;margin:8px 0">' : '';
+      const enlace = (url && !url.startsWith('data:')) ? '<a href="' + esc(url) + '">Ver en Drive</a>' : '';
+      return '<div>' + imagen + (ev.pie ? '<p>' + esc(ev.pie) + '</p>' : '') + enlace + '</div>';
+    }).join('');
+  }
+  function bitacorasPorSesion(){
+    return sesionesCronologicas(d.sesiones).map(s => {
+      const acuerdos = (s.acuerdos || []).map(a => typeof a === 'string' ? a : (a && a.texto) || '').filter(Boolean);
+      return '<article style="page-break-inside:avoid;margin:18px 0">' +
+        '<h3>' + esc(fechaHoraBonita(s.fecha)) + ' — ' + esc(s.titulo || '') + '</h3>' +
+        '<p><strong>Tipo:</strong> ' + esc(s.tipo || '') + '</p>' +
+        (s.asistentes && s.asistentes.length ? '<p><strong>Asistentes:</strong> ' + esc(s.asistentes.join(', ')) + '</p>' : '') +
+        '<p>' + esc(s.texto || '').replace(/\n/g, '<br>') + '</p>' +
+        (acuerdos.length ? '<p><strong>Acuerdos:</strong></p><ul>' + acuerdos.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul>' : '') +
+        htmlEvidencias(s) + '</article>';
+    }).join('');
+  }
+  function valorCampo(campo){
+    if(campo === 'fecha') return sesionesCronologicas(d.sesiones).map(s => esc(fechaHoraBonita(s.fecha))).join('<br>');
+    if(campo === 'titulo') return sesionesCronologicas(d.sesiones).map(s => esc(s.titulo)).join('<br>');
+    if(campo === 'tipo') return sesionesCronologicas(d.sesiones).map(s => esc(s.tipo || '')).join('<br>');
+    if(campo === 'texto') return sesionesCronologicas(d.sesiones).map(s => esc(s.texto || '').replace(/\n/g, '<br>')).join('<br><br>');
+    if(campo === 'asistentes') return sesionesCronologicas(d.sesiones).map(s => esc((s.asistentes || []).join(', '))).join('<br>');
+    if(campo === 'acuerdos') return sesionesCronologicas(d.sesiones).flatMap(s => s.acuerdos || []).map(a => '<li>' + esc(typeof a === 'string' ? a : (a && a.texto) || '') + '</li>').join('');
+    if(campo === 'bitacoras') return bitacorasPorSesion();
+    if(campo === 'pendientes') return '<table border="1" cellspacing="0" cellpadding="6"><tr><th>Acción</th><th>Responsable</th><th>Fecha compromiso</th><th>Estado</th></tr>' + d.pendientes.map(p => '<tr><td>' + esc(p.texto) + '</td><td>' + esc(p.responsable || '') + '</td><td>' + esc(fechaCorta(p.fecha_compromiso) || 'sin fecha') + '</td><td>' + esc(estadoPendiente(p)) + '</td></tr>').join('') + '</table>';
+    if(campo === 'hitos') return d.hitos.map(h => '<li>◆ ' + esc(h.titulo) + ' — ' + esc(fechaCorta(h.fecha)) + ' — ' + esc(h.estado) + '</li>').join('');
+    if(campo === 'evidencias') return sesionesCronologicas(d.sesiones).map(s => htmlEvidencias(s)).join('');
+    return '';
+  }
+  f.secciones.forEach(sec => {
+    const tituloSec = sec.titulo || '';
+    cuerpo += '<h2 style="color:#002663">' + esc(tituloSec) + '</h2>';
+    (sec.campos || []).forEach(campo => {
+      const v = valorCampo(campo);
+      if(!v) return;
+      if(campo === 'acuerdos' || campo === 'hitos') cuerpo += '<ul>' + v + '</ul>';
+      else if(campo === 'pendientes' || campo === 'bitacoras' || campo === 'evidencias') cuerpo += v;
+      else cuerpo += '<p><strong>' + esc(ETIQ[campo] || campo) + ':</strong> ' + v + '</p>';
+    });
+  });
+  return { titulo, cuerpo };
+}
+function descargar(nombre, contenido, tipo){
+  const blob = new Blob([contenido], { type: tipo });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+function textoABase64(str){ return btoa(unescape(encodeURIComponent(str))); }
+async function exportar(tipo){
+  if(!exigirSesion()) return;
+  const d = datosInforme();
+  if(['pdf','word','docs'].includes(tipo)) await prepararEvidenciasInforme(d.sesiones);
+  const inf = informeHTML();
+  if(tipo === 'pdf'){
+    const w = window.open('', '_blank');
+    if(!w){ avisar('El navegador bloqueó la ventana emergente.', 'rojo'); return; }
+    w.document.write('<html><head><title>' + esc(inf.titulo) + '</title><style>body{font-family:Arial,sans-serif;margin:40px}h1,h2{color:#002663}table{border-collapse:collapse}th{background:#002663;color:#fff}td,th{border:1px solid #ccc;padding:6px}</style></head><body>' + inf.cuerpo + '</body></html>');
+    w.document.close(); w.focus(); setTimeout(() => w.print(), 600);
+  } else if(tipo === 'word'){
+    const doc = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>' + esc(inf.titulo) + '</title></head><body>' + inf.cuerpo + '</body></html>';
+    /* D7: con Apps Script, el Word se SUBE a Drive (<slug>/Informes/) y
+       sobrescribe el archivo del mismo nombre (acción subirInforme).
+       Sin conexión o si la subida falla, se descarga en el navegador. */
+    if(proyectoSel === 'todos'){ descargar('informe-todos.doc', doc, 'application/msword'); avisar('Word descargado en el navegador (informe de todos los proyectos, no se sube a un solo proyecto).', 'verde'); return; }
+    const slug = proyectoSel;
+    const nombre = 'informe-' + slug + '.doc';
+    if(TIENE_APPS_SCRIPT){
+      try {
+        const r = await enviarAppsScript('subirInforme', { slug: slug, nombre: nombre, base64: textoABase64(doc), mime: 'application/msword' });
+        if(r && r.ok){ avisar('Informe Word guardado en Drive (' + slug + '/Informes/' + nombre + (r.sobrescrito ? ', sobrescribió el anterior' : '') + ').', 'verde'); return; }
+        console.warn('No se pudo subir el Word a Drive:', r && r.error);
+      } catch(e){ console.warn('No se pudo subir el Word a Drive:', e); }
+    }
+    descargar(nombre, doc, 'application/msword');
+    avisar('Word descargado en el navegador (no se pudo guardar en Drive).', 'verde');
+  } else if(tipo === 'docs'){
+    const w = window.open('', '_blank');
+    if(!w){ avisar('El navegador bloqueó la ventana emergente.', 'rojo'); return; }
+    w.document.write('<html><head><meta charset="utf-8"><title>Copiar a Google Docs</title></head><body><p>Copia el texto siguiente y pégalo en Google Docs:</p><hr>' + inf.cuerpo + '</body></html>');
+    w.document.close();
+  } else if(tipo === 'texto'){
+    let md = '# ' + inf.titulo + '\n\nFecha: ' + fechaCorta(hoyISO()) + '\n\n';
+    d.sesiones.forEach(s => { md += '## ' + s.titulo + '\n' + fechaHoraBonita(s.fecha) + ' · ' + (s.tipo || '') + '\n\n' + (s.texto || '') + '\n\nAsistentes: ' + (s.asistentes||[]).join(', ') + '\n\n'; });
+    md += '## Pendientes\n' + d.pendientes.map(p => '- [ ] ' + p.texto + ' — ' + (p.responsable || '') + ' — ' + (fechaCorta(p.fecha_compromiso) || 'sin fecha') + ' — ' + estadoPendiente(p)).join('\n');
+    descargar('informe-bitacoras.md', md, 'text/markdown');
+  } else if(tipo === 'csv'){
+    const filas = [['Acción','Responsable','Fecha compromiso','Estado','Minuta origen','Notas']];
+    d.pendientes.forEach(p => filas.push([p.texto, p.responsable || '', p.fecha_compromiso || '', estadoPendiente(p), p.minuta_origen || '', p.notas || '']));
+    const csv = filas.map(r => r.map(c => '"' + String(c || '').replace(/"/g, '""') + '"').join(',')).join('\n');
+    descargar('pendientes.csv', csv, 'text/csv');
+  } else if(tipo === 'json'){
+    descargar('respaldo-bitacoras.json', JSON.stringify(estado, null, 2), 'application/json');
+  }
+}
+
+/* ---------- Mantenimiento ---------- */
+function abrirMantenimiento(){
+  if(!exigirSesion()) return;
+  const estructura = ['Bitacoras/', 'INDICE-bitacoras.json'].concat(estado.proyectos.flatMap(p => [p.slug + '/bitacora.json', p.slug + '/ficha.md', p.slug + '/plantilla-sesion.json', p.slug + '/formato-exportacion.json', p.slug + '/Evidencias/'])).concat(['Hojas: Bitacoras', 'Hojas: Sesiones', 'Hojas: Pendientes', 'Hojas: Hitos', 'Hojas: Puntaje']);
+  abrirModal('<h2>Mantenimiento</h2>' +
+    '<p class="muted">Solo con sesión iniciada. ' + (TIENE_APPS_SCRIPT ? 'Conectado a Apps Script.' : 'Modo local: las acciones de Drive se muestran como lista, no se ejecutan.') + '</p>' +
+    '<h3 style="margin-top:16px">Agregar proyecto</h3>' +
+    '<p class="muted">El proyecto se guardará en este navegador' + (TIENE_APPS_SCRIPT ? ' y su carpeta se creará junto a la hoja de cálculo' : '') + '.</p>' +
+    '<label for="mProyectoNombre">Nombre del proyecto</label><input id="mProyectoNombre" maxlength="100" placeholder="p. ej. Nuevo proyecto">' +
+    '<div class="grid2"><div><label for="mProyectoHashtag">Hashtag generado</label><input id="mProyectoHashtag" readonly aria-label="Hashtag generado automáticamente"></div>' +
+    '<div><label for="mProyectoCarpeta">Carpeta del proyecto</label><input id="mProyectoCarpeta" readonly aria-label="Nombre generado para la carpeta"></div></div>' +
+    '<label for="mProyectoColor">Color</label><input id="mProyectoColor" type="color" value="#002663">' +
+    '<div class="fila" style="margin-top:8px"><button class="btn dorado" id="mAgregarProyecto">Agregar proyecto</button></div>' +
+    '<div class="fila" style="margin-top:12px"><button class="btn" id="mCrear">Crear estructura desde cero</button><button class="btn" id="mVerificar">Verificar estructura</button><button class="btn" id="mRespaldar">Respaldar</button></div>' +
+    '<div class="fila" style="margin-top:12px"><button class="btn blanco" id="mFormato">Cargar formato JSON</button>' +
+    '<button class="btn blanco" id="mImportar">Importar respaldo JSON</button>' +
+    '<button class="btn peligro" id="mBorrar">Borrar copia local</button></div>' +
+    '<h3 style="margin-top:16px">Datos de ejemplo anteriores</h3>' +
+    '<p class="muted">Borra SOLO registros antiguos marcados como ejemplo. Los datos reales NO se tocan; ya no se generan ejemplos automáticamente.</p>' +
+    '<div class="fila" style="margin-top:8px"><button class="btn blanco" id="mBorrarEjemplo">Borrar datos de ejemplo</button></div>' +
+    '<h3 style="margin-top:16px">Ciclo y folios de proyecto</h3>' +
+    '<p class="muted">Ciclo vigente: <strong id="mCicloActual"></strong> · Siguiente folio: <strong id="mSiguienteFolio"></strong></p>' +
+    '<div id="mFolios" style="margin-top:6px"></div>' +
+    '<label>Nuevo ciclo (solo dígitos, 4 a 6 caracteres)</label><input id="mNuevoCiclo" inputmode="numeric" placeholder="p. ej. 20272">' +
+    '<p class="muted">Al cambiar el ciclo, el contador se reinicia automáticamente en 01. Los folios del ciclo anterior NO cambian y los números ya asignados en un ciclo nunca se reutilizan.</p>' +
+    '<div class="fila" style="margin-top:8px"><button class="btn" id="mCambiarCiclo">Cambiar ciclo</button></div>' +
+    '<div id="mResultado" style="margin-top:12px"></div>' +
+    '<h3 style="margin-top:16px">Cambiar contraseña web</h3>' +
+    '<label>Contraseña actual</label><input type="password" id="mActual"><label>Nueva contraseña</label><input type="password" id="mNueva">' +
+    '<div class="fila" style="margin-top:8px"><button class="btn" id="mCambiar">Cambiar contraseña</button><button class="btn blanco" id="mCerrar">Cerrar</button></div>');
+  $('#mCerrar').onclick = cerrarModal;
+  const actualizarProyecto = () => {
+    const nombreSlug = slugNombreProyecto($('#mProyectoNombre').value);
+    $('#mProyectoHashtag').value = nombreSlug ? hashtagProyecto(nombreSlug) : '';
+    $('#mProyectoCarpeta').value = slugCompletoProyecto($('#mProyectoNombre').value);
+  };
+  $('#mProyectoNombre').addEventListener('input', actualizarProyecto);
+  $('#mAgregarProyecto').onclick = agregarProyectoDesdeInterfaz;
+  $('#mFormato').onclick = () => { cerrarModal(); if(exigirSesion()) $('#inputFormato').click(); };
+  $('#mImportar').onclick = () => { cerrarModal(); if(exigirSesion()) $('#inputImportar').click(); };
+  $('#mBorrar').onclick = () => { cerrarModal(); borrarLocal(); };
+  const pintarCiclo = () => {
+    const c = estado.configCiclo;
+    const el = $('#mCicloActual'); if(!el) return;
+    el.textContent = c.ciclo; $('#mSiguienteFolio').textContent = folioDe(c.ciclo, c.siguiente);
+    $('#mFolios').innerHTML = '<ul style="margin-left:18px">' + estado.proyectos.map(pr => '<li>' + esc(pr.hashtag || '') + ' ' + esc(pr.nombre) + ' — Folio <strong>' + esc(pr.folio || 'sin folio') + '</strong></li>').join('') + '</ul>';
+  };
+  pintarCiclo();
+  $('#mBorrarEjemplo').onclick = async () => {
+    const r = await borrarDatosEjemplo();
+    const res = $('#mResultado'); if(res) res.innerHTML = '<p class="aviso ' + (r.ok ? 'verde' : 'rojo') + '">' + esc(r.mensaje) + '</p>';
+    if(r.ok){ pintarCiclo(); }
+  };
+  $('#mCambiarCiclo').onclick = async () => {
+    const nuevo = $('#mNuevoCiclo').value.trim();
+    if(!nuevo){ alert('Escribe el nuevo ciclo.'); return; }
+    if(!confirm('Vas a cambiar el ciclo a ' + nuevo + '. El contador se reiniciará en ' + nuevo + '-01 y los folios del ciclo anterior NO cambiarán. ¿Continuar?')) return;
+    const r = await cambiarCiclo(nuevo);
+    const res = $('#mResultado'); if(res) res.innerHTML = '<p class="aviso ' + (r.ok ? 'verde' : 'rojo') + '">' + esc(r.mensaje) + '</p>';
+    if(r.ok){ $('#mNuevoCiclo').value = ''; pintarCiclo(); }
+  };
+  $('#mCrear').onclick = async () => {
+    if(TIENE_APPS_SCRIPT){ try { const r = await llamar('crearEstructura', {}); $('#mResultado').innerHTML = '<p class="aviso verde">Estructura creada en Drive: ' + esc(JSON.stringify(r)) + '</p>'; return; } catch(e){ $('#mResultado').innerHTML = '<p class="aviso rojo">Error: ' + esc(e.message) + '</p>'; return; } }
+    $('#mResultado').innerHTML = '<p><strong>Modo local — se crearían:</strong></p><ul style="margin-left:18px">' + estructura.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+  };
+  $('#mVerificar').onclick = async () => {
+    if(TIENE_APPS_SCRIPT){
+      /* M12: llamar de verdad a verificarEstructura (POST) y mostrar faltantes. */
+      try {
+        const d = await enviarAppsScript('verificarEstructura', {});
+        if(!d || d.ok === false){ $('#mResultado').innerHTML = '<p class="aviso rojo">No se pudo verificar: ' + esc((d && d.error) || 'error desconocido') + '</p>'; return; }
+        const res = d.resultado || {};
+        $('#mResultado').innerHTML = (res.faltantes && res.faltantes.length)
+          ? '<p><strong>Faltan ' + res.faltantes.length + ' elemento(s):</strong></p><ul style="margin-left:18px">' + res.faltantes.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul><p class="muted">Usa «Crear estructura desde cero» para completarlos.</p>'
+          : '<p class="aviso verde">Estructura completa en Drive.</p>';
+      } catch(e){ $('#mResultado').innerHTML = '<p class="aviso rojo">Error al verificar: ' + esc(e.message) + '</p>'; }
+      return;
+    }
+    const claves = ['proyectos','sesiones','pendientes','hitos','formatos','puntaje'];
+    $('#mResultado').innerHTML = '<ul style="margin-left:18px">' + claves.map(k => '<li>' + k + ': ' + (estado[k] ? (Array.isArray(estado[k]) ? estado[k].length + ' registro(s)' : 'presente') : 'FALTA') + '</li>').join('') + '</ul><p class="muted">localStorage clave «' + CONFIG.claveLocal + '»: ' + (localStorage.getItem(CONFIG.claveLocal) ? 'existe' : 'no existe') + '</p>';
+  };
+  $('#mRespaldar').onclick = () => { descargar('respaldo-bitacoras.json', JSON.stringify(estado, null, 2), 'application/json'); };
+  $('#mCambiar').onclick = async () => {
+    const actual = $('#mActual').value, nueva = $('#mNueva').value;
+    if(!actual || !nueva){ alert('Escribe la contraseña actual y la nueva.'); return; }
+    if(!TIENE_APPS_SCRIPT){ alert('Modo local: el cambio de contraseña requiere Apps Script configurado.'); return; }
+    if(nueva.length < 12){ alert('La contraseña nueva debe tener al menos 12 caracteres.'); return; }
+    // C4: cambiarPassword usa los nombres del backend: {passwordActual, passwordNueva}.
+    try { const r = await llamar('cambiarPassword', { passwordActual: actual, passwordNueva: nueva }); alert('Contraseña cambiada. Inicia sesión de nuevo.'); sessionStorage.removeItem('bitacoras_token'); refrescarSesionUI(); cerrarModal(); }
+    catch(e){ alert('No se pudo cambiar la contraseña: ' + e.message); }
+  };
+}
+
+function slugProyecto(nombre, limite){
+  return String(nombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, limite || 60).replace(/-$/g, '');
+}
+function hashtagProyecto(slug){
+  return '#' + slug.split('-').filter(Boolean).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('');
+}
+function slugNombreProyecto(nombre){
+  const ciclo = validarCiclo(estado.configCiclo.ciclo) ? estado.configCiclo.ciclo : CICLO_DEFECTO;
+  return slugProyecto(nombre, Math.min(49, 60 - ciclo.length - 1));
+}
+function slugCompletoProyecto(nombre){
+  const ciclo = validarCiclo(estado.configCiclo.ciclo) ? estado.configCiclo.ciclo : CICLO_DEFECTO;
+  const base = slugNombreProyecto(nombre);
+  return base ? ciclo + '-' + base : '';
+}
+async function agregarProyectoDesdeInterfaz(){
+  if(!exigirSesion()) return;
+  const nombre = $('#mProyectoNombre').value.trim();
+  const nombreSlug = slugNombreProyecto(nombre);
+  const slug = slugCompletoProyecto(nombre);
+  const hashtag = hashtagProyecto(nombreSlug);
+  const color = $('#mProyectoColor').value;
+  const resultado = $('#mResultado');
+  if(!nombre || !slug){ resultado.innerHTML = '<p class="aviso rojo">Escribe un nombre con letras o números para el proyecto.</p>'; return; }
+  if(estado.proyectos.some(p => p.slug === slug || String(p.hashtag || '').toLowerCase() === hashtag.toLowerCase())){
+    resultado.innerHTML = '<p class="aviso rojo">Ya existe un proyecto con ese nombre o hashtag.</p>'; return;
+  }
+  const proyecto = { slug, hashtag, nombre, color, campos: [] };
+  const boton = $('#mAgregarProyecto');
+  boton.disabled = true;
+  try {
+    if(TIENE_APPS_SCRIPT){
+      const r = await llamar('crearProyecto', { proyecto });
+      if(!r || !r.proyecto) throw new Error('El servidor no devolvió los datos del proyecto.');
+      Object.assign(proyecto, { folio: r.proyecto.folio || '', campos: r.proyecto.campos_propios || [] });
+      if(r.configCiclo) estado.configCiclo = normalizarConfigCiclo(r.configCiclo, estado.proyectos.concat(proyecto));
+    }
+    estado.proyectos = estado.proyectos.concat(proyecto);
+    estado.configCiclo = normalizarFolios(estado.proyectos, estado.configCiclo);
+    guardar();
+    proyectoSel = proyecto.slug;
+    renderTodo();
+    cerrarModal();
+    abrirSelectorProyecto();
+    avisar('Proyecto ' + nombre + ' agregado con el folio ' + (proyecto.folio || 'sin folio') + '.', 'verde');
+  } catch(e){
+    resultado.innerHTML = '<p class="aviso rojo">No se pudo agregar el proyecto: ' + esc(e.message) + '</p>';
+  } finally {
+    const botonActual = $('#mAgregarProyecto');
+    if(botonActual) botonActual.disabled = false;
+  }
+}
+
+/* ---------- Vistas y render general ---------- */
+function renderTodo(){
+  renderProyectos(); renderResumen(); renderAtencion(); renderEstadoModo(); renderBitacoras(); renderCalendario(); renderPendientes();
+}
+function cambiarVista(v){
+  vistaActual = v;
+  $$('.tabs button').forEach(b => { b.classList.toggle('activa', b.dataset.vista === v); b.setAttribute('aria-selected', b.dataset.vista === v ? 'true' : 'false'); });
+  ['bitacoras','calendario','pendientes','puntaje'].forEach(x => $('#vista-' + x).classList.toggle('oculto', x !== v));
+  if(v === 'calendario') renderCalendario();
+  if(v === 'pendientes') renderPendientes();
+  if(v === 'puntaje') renderPuntaje();
+}
+
+/* ---------- Eventos ---------- */
+$$('.tabs button').forEach(b => b.onclick = () => cambiarVista(b.dataset.vista));
+/* Selector de proyecto con buscador (v3). */
+$('#btnSelectorProyecto').onclick = e => { e.stopPropagation(); alternarSelectorProyecto(); };
+$('#buscadorProyectos').addEventListener('input', () => { selIndice = -1; pintarOpcionesProyecto(); });
+$('#buscadorProyectos').addEventListener('keydown', e => {
+  const n = $$('#opcionesProyectos .sel-opcion').length;
+  if(e.key === 'ArrowDown'){ e.preventDefault(); selIndice = n ? (selIndice + 1) % n : -1; marcarOpcionProyecto(); }
+  else if(e.key === 'ArrowUp'){ e.preventDefault(); selIndice = n ? (selIndice - 1 + n) % n : -1; marcarOpcionProyecto(); }
+  else if(e.key === 'Enter'){ e.preventDefault(); const el = $$('#opcionesProyectos .sel-opcion')[selIndice >= 0 ? selIndice : 0]; if(el) elegirProyecto(el.dataset.slug); }
+  else if(e.key === 'Escape'){ e.preventDefault(); cerrarSelectorProyecto(); $('#btnSelectorProyecto').focus(); }
+});
+document.addEventListener('click', e => { if(selectorAbierto && !e.target.closest('#selectorProyecto')) cerrarSelectorProyecto(); });
+/* Interruptor Tarjeta/Tabla (v2): cambia la vista y la guarda. */
+$('#btnVistaBitTarjeta').onclick = () => { vistaBitacoras = 'tarjeta'; guardarVista('bitacoras_vista_bitacoras', 'tarjeta'); renderBitacoras(); };
+$('#btnVistaBitTabla').onclick = () => { vistaBitacoras = 'tabla'; guardarVista('bitacoras_vista_bitacoras', 'tabla'); renderBitacoras(); };
+$('#btnVistaPendTarjeta').onclick = () => { vistaPendientes = 'tarjeta'; guardarVista('bitacoras_vista_pendientes', 'tarjeta'); renderPendientes(); };
+$('#btnVistaPendTabla').onclick = () => { vistaPendientes = 'tabla'; guardarVista('bitacoras_vista_pendientes', 'tabla'); renderPendientes(); };
+$('#btnLogin').onclick = abrirLogin;
+$('#btnMantenimiento').onclick = abrirMantenimiento;
+$('#btnNuevaSesion').onclick = () => abrirFormSesion(null);
+$('#btnPuntaje').onclick = () => abrirFormPuntaje();
+$('#btnExportarProyecto').onclick = () => $('#panelExportar').classList.toggle('oculto');
+$$('#panelExportar [data-export]').forEach(b => b.onclick = () => exportar(b.dataset.export));
+$('#calAnt').onclick = () => { calCursor.setMonth(calCursor.getMonth() - 1); renderCalendario(); };
+$('#calSig').onclick = () => { calCursor.setMonth(calCursor.getMonth() + 1); renderCalendario(); };
+$('#calHoy').onclick = () => { calCursor = new Date(); calCursor.setDate(1); diaSel = hoyISO(); renderCalendario(); };
+$('#buscador').addEventListener('input', e => { busqueda = e.target.value.trim(); if(vistaActual === 'bitacoras') renderBitacoras(); if(vistaActual === 'pendientes') renderPendientes(); });
+['filtroPendEstado','filtroPendResponsable','filtroSoloVencidos'].forEach(id => $('#' + id).addEventListener('input', renderPendientes));
+$('#btnQuitarFiltro').onclick = () => { proyectoSel = 'todos'; renderTodo(); };
+$('#btnNuevaFlotante').onclick = () => abrirFormSesion(null);
+$('#inputFormato').addEventListener('change', async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if(!j || !j.secciones || !Array.isArray(j.secciones) || !j.secciones.length){ alert('El JSON está vacío o no tiene secciones. Se seguirá usando el formato simple por defecto.'); return; }
+    if(proyectoSel === 'todos'){ alert('Selecciona un proyecto primero.'); return; }
+    const slug = proyectoSel;
+    /* A4: normalizar al cargar: acepta titulo/nombre y formato_version/version. */
+    const jNorm = normalizarFormato(j);
+    const vAnterior = (estado.formatos[slug] && estado.formatos[slug].formato_version) || 0;
+    jNorm.formato_version = vAnterior + 1;
+    estado.formatos[slug] = jNorm;
+    // C4: guardarFormato usa el nombre del backend: {slug, formato}.
+    if(TIENE_APPS_SCRIPT){ try { const r = await llamar('guardarFormato', { slug: slug, formato: jNorm }); if(r && r.formato_version){ jNorm.formato_version = r.formato_version; } } catch(err){ avisar('No se guardó el formato en Drive: ' + err.message, 'rojo'); } }
+    guardar(); avisar('Formato cargado para ' + slug + ' (v' + jNorm.formato_version + '). El informe usará sus campos y orden.', 'verde');
+  } catch(err){ alert('JSON no válido: ' + err.message); }
+  e.target.value = '';
+});
+$('#inputImportar').addEventListener('change', async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if(!j || !Array.isArray(j.sesiones)) throw new Error('El respaldo no tiene la estructura esperada.');
+    if(confirm('Reemplaza los datos locales y los de Drive (se crea un respaldo previo en Drive). ¿Importar este respaldo?')){ estado = Object.assign({ proyectos: PROYECTOS_BASE, sesiones:[], pendientes:[], hitos:[], formatos:{}, puntaje:[], configCiclo: configCicloPorDefecto(), ejemploBorrado: false }, migrarEstado(j)); guardar(); if(TIENE_APPS_SCRIPT){ for(const pr of estado.proyectos){ try { await llamar('guardar', { slug: pr.slug, bitacora: bitacoraParaBackend(pr.slug) }); } catch(e){ avisar('No se pudo subir ' + pr.slug + ': ' + e.message, 'rojo'); } } } renderTodo(); avisar('Respaldo importado.', 'verde'); }
+  } catch(err){ alert('No se pudo importar: ' + err.message); }
+  e.target.value = '';
+});
+function borrarLocal(){
+  if(!exigirSesion()) return;
+  if(!confirm('Esto borra la copia de este navegador; los datos de Drive no se tocan. ¿Borrar la copia local (sesiones, pendientes e hitos)?')) return;
+  if(!confirm('Confirmación final: esta acción no se puede deshacer. ¿Seguro?')) return;
+  estado = { proyectos: PROYECTOS_BASE, sesiones: [], pendientes: [], hitos: [], formatos: {}, puntaje: [], configCiclo: configCicloPorDefecto(), ejemploBorrado: false };
+  localStorage.removeItem(CONFIG.claveLocal); renderTodo(); avisar('Todos los datos fueron borrados.', 'rojo');
+}
+
+/* ---------- Inicio ---------- */
+refrescarSesionUI();
+/* M4: validar el token contra el backend antes de cargar los datos;
+   si el backend lo rechaza, la sesión se cierra y solo queda lo local. */
+validarSesion().then(() => cargarDatos().then(renderTodo));
+</script>
+</body>
+</html>

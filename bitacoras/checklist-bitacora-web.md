@@ -491,3 +491,13 @@ Bitacoras/
 - **Alcance:** lectura completa de los cambios en `index.html` (1782 líneas) y `Codigo.gs` (1769 líneas), `node --check` OK en ambos, pruebas jsdom `prueba-auditoria-v5.js` 35/35 (modo local, Apps Script simulado, persistencia), 0 errores de ventana; suites anteriores sin regresiones (v4 53/53, v3 30/30, documentos, selector 24/24).
 - **Resultado: 0 hallazgos Alta.** 1 Media (V5-1, corregida: historial de usados por ciclo), 4 Baja (V5-2 a V5-5, pendientes con motivo). Informe completo en `AUDITORIA-validacion-v5.md`.
 - **Pendiente contra Apps Script real:** escritura/lectura de `config-ciclo.json` y folios en el índice, borrado real de la sesión de ejemplo en Drive, y prueba visual en Chromium real (390/1440 px).
+
+## Token de servicio para Muse (v6, 2026-11-19)
+
+- `MUSE_SERVICE_TOKEN_HASH` guarda solo `hashConSal_()` del token; el token generado se muestra una sola vez en el log y nunca se incorpora al HTML, JSON o documentación.
+- `generarTokenServicioMuse()` emite dos UUID unidos; generar otro reemplaza al anterior. `fijarTokenServicioMuse()` es alternativa temporal y su valor debe borrarse del código después de ejecutarla. `revocarTokenServicioMuse()` elimina la propiedad inmediatamente.
+- `verificarToken_()` distingue `sesion` y `servicio`. El token de sesión mantiene vigencia de 6 horas y época; el de servicio no caduca por tiempo ni depende de la época.
+- Alcance permitido: `leer`, `leerProyecto`, `guardarSesion`, `guardarPendiente`, `cerrarPendiente`, `guardarHito`, `subirEvidencia`, `crearProyecto`, `guardar`, `verEvidencia`, `registrarPuntaje`.
+- Todo lo demás se rechaza para el token de servicio antes de ejecutar la acción, incluyendo login/cambio de contraseña, `crearEstructura`, `guardarConfigCiclo`, `verificarEstructura` y las acciones dedicadas para editar o borrar. La sesión web normal no usa el token de servicio.
+- En `guardar`, Muse sincroniza sin borrar: agrega o fusiona por ID, conserva registros/elementos omitidos y no reemplaza valores anteriores con propiedades ausentes, nulas o vacías. Los registros sin ID o colecciones con tipo inválido se rechazan.
+- `#nuevaBitacora` por WhatsApp solo propone: requiere autorización explícita del usuario aunque Muse tenga el token.

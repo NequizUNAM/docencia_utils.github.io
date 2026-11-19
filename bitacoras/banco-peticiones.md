@@ -3,7 +3,7 @@
 **Reglas generales (2026-11-17)**
 - Todos los hashtags van en CamelCase, sin espacios y **sin acentos**: `#nuevaBitacora`, no `#nuevaBitácora`.
 - El primer hashtag del mensaje manda: si es un proyecto (`#Estadistica2`), se escribe ahí; si es un comando (`#nuevaBitacora`), se hace lo que dice el comando.
-- **Un proyecto nuevo NUNCA se crea solo.** `#nuevaBitacora` solo prepara la propuesta; Nequiz la autoriza y entonces se crea.
+- **Un proyecto nuevo NUNCA se crea solo.** `#nuevaBitacora` prepara la propuesta; Nequiz debe autorizarla explícitamente. Tener token de servicio no cuenta como autorización.
 - Si falta el hashtag de proyecto o no está en el índice, Muse pregunta; no adivina.
 - Cada comando devuelve una confirmación con lo que se guardó y su ID.
 
@@ -11,7 +11,7 @@
 
 | Comando | Qué hace | Sintaxis | Ejemplo |
 |---|---|---|---|
-| `#nuevaBitacora` | Prepara un proyecto nuevo: propone hashtag, slug, carpeta en Drive, ficha y plantilla. **No crea nada hasta que Nequiz diga sí.** | `#nuevaBitacora NombreEnCamelCase` | `#nuevaBitacora ControlDeCalidad` |
+| `#nuevaBitacora` | Prepara un proyecto nuevo: propone hashtag, slug, carpeta en Drive, ficha y plantilla. Aunque Muse use token de servicio, **no crea nada hasta que Nequiz lo autorice explícitamente**. | `#nuevaBitacora NombreEnCamelCase` | `#nuevaBitacora ControlDeCalidad` |
 | `#listarBitacoras` | Lista todos los proyectos con su hashtag, slug y pendientes abiertos. | `#listarBitacoras` | `#listarBitacoras` |
 | `#verBitacora` | Muestra el resumen de un proyecto: sesiones, pendientes abiertos y próximos hitos. | `#verBitacora #Proyecto` | `#verBitacora #Estadistica2` |
 | `#archivarBitacora` | Pide archivar un proyecto. Solo se archiva con confirmación de Nequiz. | `#archivarBitacora #Proyecto` | `#archivarBitacora #MoodleDgtic` |

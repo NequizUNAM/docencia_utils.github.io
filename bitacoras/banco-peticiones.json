@@ -4,7 +4,7 @@
   "reglas": [
     "CamelCase sin espacios y sin acentos",
     "El primer hashtag manda: proyecto o comando",
-    "Un proyecto nuevo nunca se crea solo: #nuevaBitacora solo prepara la propuesta y Nequiz autoriza",
+    "Un proyecto nuevo nunca se crea solo: #nuevaBitacora prepara la propuesta y requiere autorizacion explicita de Nequiz, aunque Muse tenga token de servicio",
     "Si falta el hashtag de proyecto o no esta en el indice, preguntar; no adivinar"
   ],
   "comandos": [
@@ -12,7 +12,7 @@
       "comando": "#nuevaBitacora",
       "categoria": "Proyectos",
       "requiere_autorizacion": true,
-      "que_hace": "Prepara un proyecto nuevo: propone hashtag, slug, carpeta en Drive, ficha y plantilla. No crea nada hasta que Nequiz diga si.",
+      "que_hace": "Prepara un proyecto nuevo: propone hashtag, slug, carpeta en Drive, ficha y plantilla. El token de servicio no sustituye la autorizacion explicita de Nequiz.",
       "sintaxis": "#nuevaBitacora NombreEnCamelCase",
       "ejemplo": "#nuevaBitacora ControlDeCalidad"
     },

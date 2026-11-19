@@ -15,13 +15,13 @@ Resumen del programa en [`README.md`](README.md). El checklist de decisiones (27
 
 1. Abre [Google Drive](https://drive.google.com) con tu cuenta de Google.
 2. Crea una carpeta llamada **`Bitacoras`** en la raíz de tu Drive.
-3. Dentro de `Bitacoras/`, NO crees una carpeta `Evidencias/` global (D3): cada proyecto tiene su propia carpeta `<slug>/Evidencias/` (por ejemplo `Bitacoras/estadistica-2/Evidencias/`). Se crean solas con Mantenimiento → «Crear estructura desde cero», o con la acción `crearEstructura` de Apps Script; si las creas a mano, crea una por proyecto.
+3. No crees carpetas de proyectos a mano ni una carpeta `Evidencias/` global. Cada proyecto nuevo y su carpeta `Evidencias/` se generan desde **Mantenimiento → Agregar proyecto**.
 4. Sube a `Bitacoras/` estos archivos de esta entrega:
-   - `INDICE-bitacoras.json` → en `Bitacoras/`
+   - `INDICE-bitacoras.json` → en `Bitacoras/` (plantilla vacía; la aplicación actualiza los proyectos automáticamente)
    - `banco-peticiones.json` → en `Bitacoras/` (referencia; no lo edita la página)
-   - Las 6 plantillas de `plantillas/` → **una en cada carpeta de proyecto** (D2): `estadistica-1-plantilla-sesion.json` en `Bitacoras/estadistica-1/`, `estadistica-2-plantilla-sesion.json` en `Bitacoras/estadistica-2/`, y así con `cch-page`, `control-facturas`, `asistencia-cch` y `moodle-dgtic` (cada una como `<slug>/plantilla-sesion.json`).
-   - `formato-por-defecto.json` → como formato inicial de cada proyecto, en `<slug>/formato-exportacion.json` (uno por proyecto; si ya existe uno, no lo sobrescribas).
-5. **No crees un `bitacoras.json` único en `Bitacoras/`** (D1): el código nunca lee ese archivo. Cada proyecto tiene su propio `<slug>/bitacora.json` (por ejemplo `Bitacoras/estadistica-2/bitacora.json`), que se crea solo con Mantenimiento → «Crear estructura desde cero» o con la acción `crearEstructura`. El índice central es `INDICE-bitacoras.json` y las bitácoras viven por proyecto.
+   - Las seis plantillas de `plantillas/` son heredadas y opcionales; no es necesario crear proyectos ni carpetas para ellas.
+   - `formato-por-defecto.json` es opcional; se aplica cuando se genera un informe sin formato propio.
+5. El índice puede iniciar sin proyectos. La página crea el registro del proyecto, su `bitacora.json`, ficha, plantilla, formato y `Evidencias/` al usar **Agregar proyecto**; no crees un `bitacoras.json` global.
 6. Crea **una hoja de cálculo por cada una** de estas 5 hojas (la hoja `Firmas` ya no existe: las firmas diarias se quitaron del programa) (pueden estar en un solo libro o en libros separados; lo recomendado es un solo libro llamado `Bitacoras`):
    - `Bitacoras`
    - `Sesiones`
@@ -30,7 +30,7 @@ Resumen del programa en [`README.md`](README.md). El checklist de decisiones (27
    - `Puntaje`
    
    Cada hoja lleva sus columnas según `../guia-configuracion-appsheet.md` (mismas hojas para la web y para AppSheet). No hace falta llenarlas: se llenan solas al usar la página.
-7. El ID de la carpeta de `Bitacoras/` sigue configurándose en Apps Script. Los proyectos iniciales se localizan bajo esa raíz; para los proyectos nuevos, el ID de carpeta generado se registra en `INDICE-bitacoras.json`. No es necesario copiar IDs manualmente.
+7. El ID de la carpeta de `Bitacoras/` sigue configurándose en Apps Script. El ID de cada carpeta de proyecto nueva se registra automáticamente en `INDICE-bitacoras.json`; no es necesario copiar IDs manualmente.
 
 > **Nota (M11):** los archivos que se suben a Drive (evidencias e informes Word) son **privados del dueño** por defecto: sus enlaces `/view` solo los abre la cuenta propietaria. Si alguien más debe ver las fotos o los informes, comparte con esa persona la carpeta `<slug>/Evidencias/` o `<slug>/Informes/` desde Drive. No se cambian permisos automáticamente.
 
@@ -106,11 +106,11 @@ Con la página publicada y la URL de Apps Script puesta:
 
 1. Abre la página en tu navegador (la URL de GitHub Pages del paso 2).
 2. Haz **login** con la contraseña del paso 5. Comprueba que sin la contraseña no entras a mantenimiento. (C5: la lectura de Drive también exige sesión; sin login la página solo muestra los datos locales.)
-3. Crea una **sesión** en un proyecto (por ejemplo `#Estadistica2`). La fecha debe venir en la fecha actual por defecto.
-4. **Sincronizar:** recarga la página y comprueba que la sesión sigue ahí (al iniciar sesión la página lee los datos de Drive); abre Drive y comprueba que `<slug>/bitacora.json` y las hojas se actualizaron.
+3. En **Mantenimiento → Agregar proyecto**, crea un proyecto de prueba. Debe aparecer seleccionado y en el selector; comprueba en Drive la carpeta `<ciclo>-<nombre>` junto a la hoja de cálculo.
+4. Crea una sesión en ese proyecto y recarga la página. Debe seguir visible; comprueba que su `bitacora.json`, la carpeta `Evidencias/` y las hojas se actualizaron.
 5. Haz la lista completa de pruebas del apartado **«Cómo probar la v1»** de `README.md` (acuerdo → pendiente, marcar hecho, calendario, exportar JSON/CSV, login bloqueado sin sesión y modo local sin URL).
 
-Si algo falla, anota en qué paso, con qué proyecto y qué mensaje apareció, y revisa primero que la URL `/exec` del paso 3 sea la del despliegue vigente y que esté pegada solo en `CONFIG.appsScriptUrl`.
+Si algo falla, anota en qué paso, con qué proyecto y qué mensaje apareció. Confirma que el nuevo `index.html` está publicado en GitHub Pages y que `Codigo.gs` está implementado como nueva versión; la URL `/exec` debe seguir pegada en `CONFIG.appsScriptUrl`.
 
 ---
 
@@ -156,13 +156,57 @@ Si algo falla, anota en qué paso, con qué proyecto y qué mensaje apareció, y
 - Con Apps Script, se registra en `INDICE-bitacoras.json` y se crea en Drive
   junto a la hoja de cálculo una carpeta `<ciclo>-<nombre-normalizado>` con
   su bitácora vacía, ficha, plantilla, formato y `Evidencias/`. Los proyectos
-  existentes no se mueven. La sesión acepta el tipo `Online`, captura acuerdos
+  heredados se ocultan, pero sus archivos no se borran. La sesión acepta el tipo `Online`, captura acuerdos
   en un cuadro de texto y permite elegir entre cuatro prellenados editables
   para el cuadro de contenido de siete filas.
   No se edita el índice manualmente. Para habilitarlo en una instalación
-  existente, actualiza `Codigo.gs` y publica una nueva versión del despliegue
-  existente (se conserva la URL `/exec`).
+  existente, publica el nuevo `index.html` en GitHub Pages y actualiza
+  `Codigo.gs` como una nueva versión del despliegue existente (se conserva
+  la URL `/exec`). Después, recarga la página sin caché.
 
 - El reporte Word usa «Información» como formato predeterminado. Después
   presenta las bitácoras por fecha, con el contenido antes de sus evidencias;
   las imágenes se ordenan por fecha de agregado cuando ese dato está disponible.
+
+## 11) Token de servicio para Muse
+
+Este token permite a Muse llamar al Web App sin la contraseña web. Es una
+credencial de portador: quien lo tenga puede ejecutar las acciones permitidas
+abajo. No lo pegues en esta guía, en un chat, ni en ningún archivo del repo.
+
+1. Copia el `Codigo.gs` actualizado a tu proyecto de Apps Script y guarda.
+2. Ve a **Deploy → Manage deployments → Edit** en la implementación existente,
+   selecciona **New version** y despliega. La URL `/exec` no cambia.
+3. En el editor de Apps Script, selecciona `generarTokenServicioMuse` en la
+   lista de funciones y pulsa **Run / Ejecutar**. Autoriza los permisos si
+   Google lo solicita.
+4. Abre **View → Logs** (o los registros de ejecución) y copia el token que
+   aparece en el mensaje de `generarTokenServicioMuse`. Se muestra una sola
+   vez; no puede recuperarse del proyecto. Si se pierde, genera uno nuevo.
+5. Entrega el token a Muse únicamente por el mecanismo seguro de secretos
+   configurado para el asistente; **nunca por chat ni en una petición normal
+   de WhatsApp**.
+6. Para revocarlo, selecciona `revocarTokenServicioMuse` en el editor y pulsa
+   **Run / Ejecutar**. La revocación es inmediata. Generar otro token también
+   reemplaza e invalida el anterior.
+7. El token de servicio solo puede ejecutar:
+   `leer`, `leerProyecto`, `guardarSesion`, `guardarPendiente`,
+   `cerrarPendiente`, `guardarHito`, `subirEvidencia`, `crearProyecto`,
+   `guardar`, `verEvidencia` y `registrarPuntaje`.
+   No puede ejecutar `login`, `cambiarPassword`, `crearEstructura`,
+   `guardarConfigCiclo`, `verificarEstructura`, ni acciones de edición o
+   borrado fuera de la lista permitida. La acción `guardar` fusiona registros
+   por `id`: los nuevos se agregan y los existentes se actualizan preservando
+   propiedades y elementos no enviados; los valores omitidos, nulos o vacíos
+   tampoco borran el valor previo. Si se omite una sesión, pendiente, hito o
+   puntaje, se conserva en Drive. Para
+   eliminar datos se requiere la sesión web normal; el token de Muse no puede
+   hacerlo. La sincronización rechaza las colecciones que no sean arreglos o
+   los registros que no incluyan `id`.
+
+La página web no utiliza este token: su login continúa usando tokens de sesión
+con vigencia de **6 horas**. El token de servicio no caduca por tiempo ni se
+invalida al cambiar la contraseña web; solo se invalida al revocarlo o
+reemplazarlo. Como alternativa avanzada, `fijarTokenServicioMuse()` permite
+definir un token propio; después de ejecutarla, borra inmediatamente el valor
+temporal del código.

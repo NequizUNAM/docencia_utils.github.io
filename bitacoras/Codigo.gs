@@ -29,13 +29,19 @@
  *     desde el editor de Apps Script (ver pasos de despliegue al final).
  *     Esa función lleva el placeholder TU_CONTRASENA_AQUI y hay que
  *     BORRARLA (o su línea) después de usarla.
- *   - Colores de proyecto (M14): un solo catálogo, el de index.html
- *     (PROYECTOS aquí y PROYECTOS_BASE en la página coinciden).
+ *   - Los proyectos activos se cargan desde INDICE-bitacoras.json.
  *   - El token de sesión es un string aleatorio (UUID) guardado en
  *     CacheService con expiración de 6 horas. Todas las acciones de
  *     escritura Y DE LECTURA de datos exigen un token válido, salvo
  *     login, ping y el HTML mínimo de estado (C5, corregido 2026-11-18).
  *     Auditoría v2 Paso 7e: el token ya NO viaja en la URL; en POST va en el body.
+ *   - El token de servicio Muse solo puede ejecutar leer, leerProyecto,
+ *     guardarSesion, guardarPendiente, cerrarPendiente, guardarHito,
+ *     subirEvidencia, crearProyecto, guardar, verEvidencia y
+ *     registrarPuntaje. Nunca puede ejecutar login, cambiarPassword,
+ *     crearEstructura, guardarConfigCiclo, verificarEstructura ni acciones
+ *     de borrado/edición fuera de esa lista. Su acción guardar fusiona por id
+ *     y conserva los registros omitidos; el token no puede borrar datos.
  *   - Tras 5 intentos fallidos de login, el login se bloquea 5 minutos
  *     SOLO para ese cliente (M1): el bloqueo se guarda por identificador
  *     de cliente, no global, para que un visitante no pueda bloquear al
@@ -48,13 +54,8 @@
  *   - CUENTAS_AUTORIZADAS_APPSHEET es solo un placeholder: Nequiz pone
  *     ahí los correos autorizados para AppSheet. No hay correos reales aquí.
  *
- * PROYECTOS iniciales
- *   estadistica-1    #Estadistica1      Estadística 1
- *   estadistica-2    #Estadistica2      Estadística 2
- *   cch-page         #CchPage           CCH-Page
- *   control-facturas #ControlFacturas   Control de Facturas
- *   asistencia-cch   #AsistenciaCch     Asistencia CCH
- *   moodle-dgtic     #MoodleDgtic       Moodle DGTIC
+ * Los seis proyectos de demostración heredados se ocultan, pero sus
+ * carpetas y bitácoras se conservan.
  *
  * ACCIONES GET  (doGet, auditoría v2 Paso 7e: las lecturas de datos ya NO
  *   van por GET — el token en la URL quedaba en historial y logs —, van
@@ -64,10 +65,11 @@
  *   Sin acción: devuelve un HTML mínimo de estado.
  *
  * ACCIONES POST (doPost, JSON en el body: {accion, token, ...})
- *   login, guardar, guardarSesion, guardarPendiente, cerrarPendiente,
- *   guardarHito, editarHito, eliminarHito, subirEvidencia, subirInforme,
- *   guardarFormato, crearEstructura, cambiarPassword, registrarPuntaje,
- *   validarSesion, verificarAppSheet
+ *   login, leer, leerProyecto, crearProyecto, guardar, guardarSesion,
+ *   guardarPendiente, cerrarPendiente, guardarHito, editarHito,
+ *   eliminarHito, subirEvidencia, subirInforme, guardarFormato,
+ *   crearEstructura, cambiarPassword, registrarPuntaje, validarSesion,
+ *   verificarAppSheet
  *
  * NOTA SOBRE CORS: ContentService (TextOutput) de Apps Script no expone
  * un método setHeader para fijar cabeceras propias. El Web App desplegado
@@ -102,6 +104,7 @@ var CONFIG = {
   // se calcula el hash: SHA-256(sal + ':' + contraseña). Se genera sola
   // la primera vez que se fija o se verifica una contraseña.
   PASS_SALT_KEY: 'WEB_PASS_SALT',
+  MUSE_SERVICE_TOKEN_HASH_KEY: 'MUSE_SERVICE_TOKEN_HASH',
 
   // Seguridad de sesión / login.
   TOKEN_HORAS: 6,          // Vigencia del token de sesión (CacheService).
@@ -110,46 +113,45 @@ var CONFIG = {
   ZONA_HORARIA: 'America/Mexico_City'
 };
 
-/**
- * Catálogo de proyectos. El primer hashtag en CamelCase identifica el
- * proyecto (ver INDICE-bitacoras.json). Si el hashtag falta o no está
- * aquí, la página debe preguntar; nunca adivinar.
- * `campos_propios`: campos que solo tiene ese proyecto, además de la
- * base común (id, fecha, titulo, tipo, texto, asistentes, acuerdos,
- * pendientes, hitos, evidencias).
- */
-var PROYECTOS = [
-  {
-    slug: 'estadistica-1', folio: '20271-01', hashtag: '#Estadistica1', nombre: 'Estadística 1',
-    color: '#0B7285', estado: 'Activo',
-    campos_propios: ['unidad', 'tema', 'ejercicios']
-  },
-  {
-    slug: 'estadistica-2', folio: '20271-02', hashtag: '#Estadistica2', nombre: 'Estadística 2',
-    color: '#002663', estado: 'Activo',
-    campos_propios: ['unidad', 'tema', 'ejercicios']
-  },
-  {
-    slug: 'cch-page', folio: '20271-03', hashtag: '#CchPage', nombre: 'CCH-Page',
-    color: '#7C3AED', estado: 'Activo',
-    campos_propios: ['grupo', 'parcial', 'version']
-  },
-  {
-    slug: 'control-facturas', folio: '20271-04', hashtag: '#ControlFacturas', nombre: 'Control de Facturas',
-    color: '#15803D', estado: 'Activo',
-    campos_propios: ['folio', 'monto', 'fecha_pago', 'sat']
-  },
-  {
-    slug: 'asistencia-cch', folio: '20271-05', hashtag: '#AsistenciaCch', nombre: 'Asistencia CCH',
-    color: '#C2410C', estado: 'Activo',
-    campos_propios: ['turno', 'grupo', 'fecha_sesion']
-  },
-  {
-    slug: 'moodle-dgtic', folio: '20271-06', hashtag: '#MoodleDgtic', nombre: 'Moodle DGTIC',
-    color: '#B45309', estado: 'Activo',
-    campos_propios: ['curso', 'plataforma', 'tipo']
-  }
+var MUSE_SERVICE_ALLOWED_ACTIONS = [
+  'leer', 'leerProyecto', 'guardarSesion', 'guardarPendiente',
+  'cerrarPendiente', 'guardarHito', 'subirEvidencia', 'crearProyecto',
+  'guardar', 'verEvidencia', 'registrarPuntaje'
 ];
+
+/** Solo se conserva como filtro de migración, no como catálogo activo. */
+var PROYECTOS_INICIALES_OCULTOS = {
+  'estadistica-1': true, 'estadistica-2': true, 'cch-page': true,
+  'control-facturas': true, 'asistencia-cch': true, 'moodle-dgtic': true
+};
+var PROYECTOS = [];
+
+function esProyectoInicialOculto_(proyecto) {
+  return !!proyecto && !!PROYECTOS_INICIALES_OCULTOS[proyecto.slug];
+}
+
+function indiceVisible_(indice) {
+  if (!indice || !Array.isArray(indice.projects)) return indice;
+  return Object.assign({}, indice, {
+    projects: indice.projects.filter(function (p) { return !esProyectoInicialOculto_(p); })
+  });
+}
+
+function archivarProyectosIniciales_(indice) {
+  var proyectos = Array.isArray(indice.projects) ? indice.projects : [];
+  var archivados = Array.isArray(indice.archived_projects) ? indice.archived_projects : [];
+  var slugsArchivados = {};
+  archivados.forEach(function (p) { if (p && p.slug) slugsArchivados[p.slug] = true; });
+  proyectos.forEach(function (p) {
+    if (esProyectoInicialOculto_(p) && !slugsArchivados[p.slug]) {
+      archivados.push(p);
+      slugsArchivados[p.slug] = true;
+    }
+  });
+  indice.projects = proyectos.filter(function (p) { return !esProyectoInicialOculto_(p); });
+  indice.archived_projects = archivados;
+  return archivados;
+}
 
 /**
  * Correos autorizados para leer/escribir vía AppSheet.
@@ -265,6 +267,11 @@ function doPost(e) {
       datos = JSON.parse(e.postData.contents);
     }
     var accion = datos.accion || '';
+    var tipoToken = datos.token ? verificarToken_(datos.token) : null;
+
+    if (tipoToken === 'servicio' && MUSE_SERVICE_ALLOWED_ACTIONS.indexOf(accion) === -1) {
+      return responder_({ ok: false, error: 'Acción no permitida con token de servicio' });
+    }
 
     // --- Acciones públicas (sin token) ---
     if (accion === 'login') {
@@ -278,7 +285,7 @@ function doPost(e) {
     }
 
     // --- El resto exige token válido ---
-    if (!verificarToken_(datos.token || '')) {
+    if (!tipoToken) {
       return responder_({ ok: false, error: 'Token inválido o expirado. Inicia sesión de nuevo.' });
     }
 
@@ -313,7 +320,8 @@ function doPost(e) {
     }
     try {
       switch (accion) {
-        case 'guardar':          return responder_(guardarBitacora_(datos));
+        case 'guardar':          return responder_(tipoToken === 'servicio'
+          ? guardarBitacoraServicio_(datos) : guardarBitacora_(datos));
         case 'guardarSesion':    return responder_(guardarSesion_(datos));
         case 'editarSesion':     return responder_(editarSesion_(datos));
         case 'eliminarSesion':   return responder_(eliminarSesion_(datos));
@@ -424,10 +432,7 @@ function login_(password, cliente) {
   return { ok: true, token: token, expira_horas: CONFIG.TOKEN_HORAS };
 }
 
-/**
- * Verifica un token de sesión en CacheService (vigencia: TOKEN_HORAS).
- * Devuelve true si existe y no ha expirado.
- */
+/** Época de sesión; el token de servicio no depende de esta época. */
 /* Paso 7d: época de sesión. Todos los tokens guardan la época vigente;
    al cambiar la contraseña la época cambia y los tokens viejos dejan de
    valer, aunque no hayan expirado (6 h). */
@@ -440,8 +445,12 @@ function limpiarBloqueos() {
   return 'Bloqueo global de login liberado.';
 }
 function verificarToken_(token) {
-  if (!token) return false;
-  return CacheService.getScriptCache().get('sesion_' + token) === epoca_();
+  if (!token) return null;
+  var hashServicio = PropertiesService.getScriptProperties()
+    .getProperty(CONFIG.MUSE_SERVICE_TOKEN_HASH_KEY);
+  if (hashServicio && hashConSal_(token) === hashServicio) return 'servicio';
+  if (CacheService.getScriptCache().get('sesion_' + token) === epoca_()) return 'sesion';
+  return null;
 }
 
 /**
@@ -475,6 +484,41 @@ function fijarPasswordWebTemporal() {
   var NUEVA_CONTRASENA = 'TU_CONTRASENA_AQUI'; // <-- pon tu contraseña aquí, ejecuta y BORRA
   var resultado = fijarPasswordWeb(NUEVA_CONTRASENA);
   return resultado + ' Recuerda borrar la contraseña de esta función ahora.';
+}
+
+/**
+ * Genera un token de servicio para Muse. El token completo solo se escribe
+ * una vez en Logger; guarda el hash con sal en Script Properties.
+ */
+function generarTokenServicioMuse() {
+  var token = Utilities.getUuid() + '-' + Utilities.getUuid();
+  PropertiesService.getScriptProperties()
+    .setProperty(CONFIG.MUSE_SERVICE_TOKEN_HASH_KEY, hashConSal_(token));
+  Logger.log('Token de servicio Muse (cópialo ahora; no se volverá a mostrar): ' + token);
+  return 'Token generado. Cópialo ahora desde View > Logs y guárdalo de forma segura.';
+}
+
+/**
+ * Alternativa para fijar un token propio. Ejecuta una vez y BORRA del código
+ * el valor del token inmediatamente después.
+ */
+function fijarTokenServicioMuse() {
+  var NUEVO_TOKEN_SERVICIO = 'TU_TOKEN_SERVICIO_AQUI'; // <-- reemplaza, ejecuta una vez y BORRA el token
+  if (!NUEVO_TOKEN_SERVICIO || NUEVO_TOKEN_SERVICIO === 'TU_TOKEN_SERVICIO_AQUI' ||
+      NUEVO_TOKEN_SERVICIO.length < 32) {
+    throw new Error('Define un token de al menos 32 caracteres antes de ejecutarla.');
+  }
+  PropertiesService.getScriptProperties()
+    .setProperty(CONFIG.MUSE_SERVICE_TOKEN_HASH_KEY, hashConSal_(NUEVO_TOKEN_SERVICIO));
+  return 'Token de servicio guardado como hash. BORRA ahora el token de esta función.';
+}
+
+/** Revoca de inmediato el token de servicio guardado en Script Properties. */
+function revocarTokenServicioMuse() {
+  PropertiesService.getScriptProperties()
+    .deleteProperty(CONFIG.MUSE_SERVICE_TOKEN_HASH_KEY);
+  Logger.log('Token de servicio Muse revocado.');
+  return 'Token de servicio Muse revocado.';
 }
 
 /**
@@ -536,9 +580,12 @@ function leerTodo_() {
         }
       }
     }
-    return { slug: p.slug, hashtag: p.hashtag, nombre: p.nombre, folio: folio, bitacora: bit };
+    return { slug: p.slug, hashtag: p.hashtag, nombre: p.nombre,
+      color: p.color || '#002663', campos_propios: p.campos_propios || [],
+      folio: folio, bitacora: bit };
   });
-  return { indice: indice, proyectos: proyectos, configCiclo: configCiclo, actualizado: ahoraISO_() };
+  return { indice: indiceVisible_(indice), proyectos: proyectos,
+    configCiclo: configCiclo, actualizado: ahoraISO_() };
 }
 
 /**
@@ -590,6 +637,78 @@ function guardarBitacora_(datos) {
   asegurarFilaProyecto_(slug);
   return { ok: true, mensaje: 'Bitácora de ' + slug + ' guardada.',
     respaldo: respaldo };
+}
+
+function fusionarValorMuseSinBorrar_(actual, recibido) {
+  if (recibido === null || recibido === undefined || recibido === '') return actual;
+  if (Array.isArray(recibido)) {
+    var elementos = Array.isArray(actual) ? actual.slice() : [];
+    recibido.forEach(function (nuevo) {
+      if (nuevo === null || nuevo === undefined || nuevo === '') return;
+      var indice = -1;
+      if (nuevo && typeof nuevo === 'object' && nuevo.id) {
+        for (var i = 0; i < elementos.length; i++) {
+          if (elementos[i] && elementos[i].id === nuevo.id) {
+            indice = i;
+            break;
+          }
+        }
+      } else {
+        var firma = JSON.stringify(nuevo);
+        for (var j = 0; j < elementos.length; j++) {
+          if (JSON.stringify(elementos[j]) === firma) {
+            indice = j;
+            break;
+          }
+        }
+      }
+      if (indice === -1) elementos.push(fusionarValorMuseSinBorrar_({}, nuevo));
+      else elementos[indice] = fusionarValorMuseSinBorrar_(elementos[indice], nuevo);
+    });
+    return elementos;
+  }
+  if (typeof recibido === 'object') {
+    var propiedades = actual && typeof actual === 'object' && !Array.isArray(actual)
+      ? Object.assign({}, actual) : {};
+    Object.keys(recibido).forEach(function (clave) {
+      var valor = fusionarValorMuseSinBorrar_(propiedades[clave], recibido[clave]);
+      if (valor !== undefined) propiedades[clave] = valor;
+    });
+    return propiedades;
+  }
+  return recibido;
+}
+
+/**
+ * Sincronización Muse no destructiva: fusiona por id y conserva registros,
+ * elementos de arreglos y valores existentes omitidos o vacíos.
+ */
+function guardarBitacoraServicio_(datos) {
+  var slug = datos.slug || '';
+  var entrante = datos.bitacora;
+  if (!proyectoPorSlug_(slug)) return { ok: false, error: 'Slug no reconocido: ' + slug };
+  if (!entrante || typeof entrante !== 'object') {
+    return { ok: false, error: 'Falta el objeto "bitacora" con los datos completos.' };
+  }
+  var colecciones = ['sesiones', 'pendientes', 'hitos', 'puntaje'];
+  for (var v = 0; v < colecciones.length; v++) {
+    var nombreValidar = colecciones[v];
+    if (entrante[nombreValidar] !== undefined && !Array.isArray(entrante[nombreValidar])) {
+      return { ok: false, error: 'La colección "' + nombreValidar + '" debe ser un arreglo.' };
+    }
+    if (Array.isArray(entrante[nombreValidar])) {
+      for (var r = 0; r < entrante[nombreValidar].length; r++) {
+        if (!entrante[nombreValidar][r] || !entrante[nombreValidar][r].id) {
+          return { ok: false, error: 'Cada registro de "' + nombreValidar + '" debe tener id.' };
+        }
+      }
+    }
+  }
+  var carpeta = getOrCreateCarpetaProyecto_(slug);
+  var existente = leerJSON_(carpeta, 'bitacora.json') || bitacoraVacia_(slug);
+  var bitacora = fusionarValorMuseSinBorrar_(existente, entrante);
+  bitacora.slug = slug;
+  return guardarBitacora_({ slug: slug, bitacora: bitacora });
 }
 
 /**
@@ -1222,9 +1341,7 @@ function indicePorDefecto_() {
  * INDICE-bitacoras.json.
  */
 function configCicloPorDefecto_() {
-  return { ciclo: '20271', siguiente: 7,
-    usados: ['20271-01', '20271-02', '20271-03', '20271-04', '20271-05', '20271-06'],
-    historial: {} };
+  return { ciclo: '20271', siguiente: 1, usados: [], historial: {} };
 }
 function validarCiclo_(c) {
   return typeof c === 'string' && /^\d{4,6}$/.test(c);
@@ -1256,6 +1373,16 @@ function normalizarConfigCiclo_(cfg) {
 function leerConfigCiclo_() {
   var root = getRootFolder_();
   var cfg = root ? leerJSON_(root, 'config-ciclo.json') : null;
+  cfg = cfg || configCicloPorDefecto_();
+  if (!Array.isArray(cfg.usados)) cfg.usados = [];
+  var indice = root ? leerJSON_(root, 'INDICE-bitacoras.json') : null;
+  var proyectos = indice
+    ? (indice.projects || []).concat(indice.archived_projects || [])
+    : [];
+  proyectos.forEach(function (p) {
+    if (!esProyectoInicialOculto_(p) || !p.folio) return;
+    if (cfg.usados.indexOf(p.folio) < 0) cfg.usados.push(p.folio);
+  });
   return normalizarConfigCiclo_(cfg);
 }
 /**
@@ -1312,15 +1439,22 @@ function crearProyecto_(datos) {
   var padreProyectos = carpetaPadreHojaCalculo_(libro);
   var indice = leerJSON_(root, 'INDICE-bitacoras.json') || indicePorDefecto_();
   if (!Array.isArray(indice.projects)) indice.projects = [];
+  var proyectosArchivados = archivarProyectosIniciales_(indice);
+  var carpetaEnRaiz = buscarCarpeta_(root, slug);
+  var carpetaEnPadre = buscarCarpeta_(padreProyectos, slug);
   var hashtagNormalizado = hashtag.toLowerCase();
   var duplicado = indice.projects.some(function (p) {
     return p.slug === slug || String(p.hashtag || '').toLowerCase() === hashtagNormalizado;
   });
-  if (duplicado || buscarCarpeta_(root, slug) || buscarCarpeta_(padreProyectos, slug)) {
+  var carpetaEnConflicto = carpetaEnRaiz && !carpetaEnPadre;
+  if (duplicado || carpetaEnConflicto) {
     return { ok: false, error: 'Ya existe un proyecto o carpeta con ese nombre.' };
   }
 
   var config = leerConfigCiclo_();
+  proyectosArchivados.forEach(function (p) {
+    if (p.folio && config.usados.indexOf(p.folio) < 0) config.usados.push(p.folio);
+  });
   indice.projects.forEach(function (p) {
     if (numeroDeFolio_(p.folio, config.ciclo) > 0 && config.usados.indexOf(p.folio) < 0) {
       config.usados.push(p.folio);
@@ -1341,14 +1475,14 @@ function crearProyecto_(datos) {
   };
   indice.projects.push(proyecto);
   indice.updated = ahoraISO_().slice(0, 10);
-  var carpeta = padreProyectos.createFolder(slug);
+  var carpeta = carpetaEnPadre || padreProyectos.createFolder(slug);
   proyecto.drive_folder_id = carpeta.getId();
   escribirJSON_(root, 'INDICE-bitacoras.json', indice, true);
-  escribirJSON_(carpeta, 'bitacora.json', bitacoraVacia_(slug), false);
-  carpeta.createFile('ficha.md', fichaPorDefecto_(proyecto), MimeType.PLAIN_TEXT);
-  escribirJSON_(carpeta, 'plantilla-sesion.json', plantillaPorDefecto_(proyecto), false);
-  escribirJSON_(carpeta, 'formato-exportacion.json', formatoPorDefecto_(slug), false);
-  carpeta.createFolder('Evidencias');
+  if (!buscarArchivo_(carpeta, 'bitacora.json')) escribirJSON_(carpeta, 'bitacora.json', bitacoraVacia_(slug), false);
+  if (!buscarArchivo_(carpeta, 'ficha.md')) carpeta.createFile('ficha.md', fichaPorDefecto_(proyecto), MimeType.PLAIN_TEXT);
+  if (!buscarArchivo_(carpeta, 'plantilla-sesion.json')) escribirJSON_(carpeta, 'plantilla-sesion.json', plantillaPorDefecto_(proyecto), false);
+  if (!buscarArchivo_(carpeta, 'formato-exportacion.json')) escribirJSON_(carpeta, 'formato-exportacion.json', formatoPorDefecto_(slug), false);
+  if (!buscarCarpeta_(carpeta, 'Evidencias')) carpeta.createFolder('Evidencias');
   escribirJSON_(root, 'config-ciclo.json', config, false);
   asegurarFilaProyecto_(slug);
   return { ok: true, proyecto: proyecto, configCiclo: config };
@@ -1527,7 +1661,7 @@ function proyectoPorSlug_(slug) {
   var indice = root ? leerJSON_(root, 'INDICE-bitacoras.json') : null;
   if (indice && Array.isArray(indice.projects)) {
     for (var j = 0; j < indice.projects.length; j++) {
-      if (indice.projects[j].slug === slug) {
+      if (indice.projects[j].slug === slug && !esProyectoInicialOculto_(indice.projects[j])) {
         var proyecto = indice.projects[j];
         return {
           slug: proyecto.slug, folio: proyecto.folio || '',
@@ -1543,7 +1677,7 @@ function proyectoPorSlug_(slug) {
   return null;
 }
 
-/** Une el catálogo inicial con los proyectos añadidos desde la interfaz. */
+/** Devuelve únicamente los proyectos activos registrados en el índice. */
 function proyectosRegistrados_(indice) {
   var root = getRootFolder_();
   var catalogo = indice || (root ? leerJSON_(root, 'INDICE-bitacoras.json') : null);
@@ -1556,6 +1690,7 @@ function proyectosRegistrados_(indice) {
   });
   if (!catalogo || !Array.isArray(catalogo.projects)) return proyectos;
   catalogo.projects.forEach(function (item) {
+    if (esProyectoInicialOculto_(item)) return;
     var proyecto = proyectoPorSlugDesdeIndice_(item);
     var existente = proyectos.findIndex(function (p) { return p.slug === proyecto.slug; });
     if (existente >= 0) proyectos[existente] = Object.assign(proyectos[existente], proyecto);

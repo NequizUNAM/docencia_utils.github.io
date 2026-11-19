@@ -286,22 +286,20 @@ const CONFIG = {
 const TIENE_APPS_SCRIPT = CONFIG.appsScriptUrl && !CONFIG.appsScriptUrl.startsWith('TU_');
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
-/* ---------- Proyectos precargados (§17) ---------- */
-const PROYECTOS_BASE = [
-  { slug:'estadistica-1', hashtag:'#Estadistica1', nombre:'Estadística 1', color:'#0B7285', folio:'20271-01', campos:['unidad','tema','ejercicios'] },
-  { slug:'estadistica-2', hashtag:'#Estadistica2', nombre:'Estadística 2', color:'#002663', folio:'20271-02', campos:['unidad','tema','ejercicios'] },
-  { slug:'cch-page', hashtag:'#CchPage', nombre:'CCH-Page', color:'#7C3AED', folio:'20271-03', campos:['grupo','parcial','version'] },
-  { slug:'control-facturas', hashtag:'#ControlFacturas', nombre:'Control de Facturas', color:'#15803D', folio:'20271-04', campos:['folio','monto','fecha_pago','sat'] },
-  { slug:'asistencia-cch', hashtag:'#AsistenciaCch', nombre:'Asistencia CCH', color:'#C2410C', folio:'20271-05', campos:['turno','grupo','fecha_sesion'] },
-  { slug:'moodle-dgtic', hashtag:'#MoodleDgtic', nombre:'Moodle DGTIC', color:'#B45309', folio:'20271-06', campos:['curso','plataforma','tipo'] }
-];
+/* Se esconden proyectos de demostración heredados sin borrar sus datos de Drive. */
+const PROYECTOS_BASE = [];
+const PROYECTOS_INICIALES_OCULTOS = new Set([
+  'estadistica-1', 'estadistica-2', 'cch-page',
+  'control-facturas', 'asistencia-cch', 'moodle-dgtic'
+]);
+function esProyectoInicialOculto(slug){ return PROYECTOS_INICIALES_OCULTOS.has(slug); }
 /* Folio consecutivo por proyecto (v4): CICLO-NN, p. ej. 20271-01. El ciclo
    se configura en Mantenimiento; al cambiarlo, el contador se reinicia en
    01 y los folios del ciclo anterior NO cambian. El consecutivo es global
    por ciclo (no por proyecto) y un número asignado nunca se reutiliza
    aunque se borre el proyecto (queda el hueco en `usados`). */
 const CICLO_DEFECTO = '20271';
-function configCicloPorDefecto(){ return { ciclo: CICLO_DEFECTO, siguiente: 7, usados: ['20271-01','20271-02','20271-03','20271-04','20271-05','20271-06'], historial: {} }; }
+function configCicloPorDefecto(){ return { ciclo: CICLO_DEFECTO, siguiente: 1, usados: [], historial: {} }; }
 function validarCiclo(c){ return typeof c === 'string' && /^\d{4,6}$/.test(c); }
 function folioDe(ciclo, n){ return ciclo + '-' + String(n).padStart(2, '0'); }
 function numeroDeFolio(folio, ciclo){ const m = /^\d{4,6}-(\d+)$/.exec(String(folio || '')); return (m && String(folio).startsWith(ciclo + '-')) ? parseInt(m[1], 10) : 0; }
@@ -396,6 +394,7 @@ function normalizarFormato(j){
    formatos normalizados. Los datos nuevos ya nacen con el modelo único. */
 function migrarEstado(d){
   if(!d || typeof d !== 'object') return d;
+  if(Array.isArray(d.proyectos)) d.proyectos = d.proyectos.filter(p => !esProyectoInicialOculto(p.slug));
   (d.sesiones || []).forEach(s => {
     if(s.fecha) s.fecha = normalizarFechaISO(s.fecha);
     if(s.proyecto && !s.slug) s.slug = s.proyecto; delete s.proyecto;
@@ -664,9 +663,11 @@ async function cargarDatos(){
         estado.sesiones = sesiones.concat(sS); estado.pendientes = pendientes.concat(sP); estado.hitos = hitos.concat(sH);
         estado.puntaje = puntaje;
         if(d.datos.configCiclo) estado.configCiclo = normalizarConfigCiclo(d.datos.configCiclo, estado.proyectos);
-        if(d.datos.indice && Array.isArray(d.datos.indice.projects)){
-          estado.proyectos = d.datos.indice.projects.map(p => ({ slug: p.slug, hashtag: p.hashtag, nombre: p.nombre, color: (estado.proyectos.find(x => x.slug === p.slug) || {}).color || '#002663', folio: p.folio || (estado.proyectos.find(x => x.slug === p.slug) || {}).folio || '', campos: p.campos_propios || [] }));
-        }
+        estado.proyectos = d.datos.proyectos
+          .filter(p => !esProyectoInicialOculto(p.slug))
+          .map(p => ({ slug: p.slug, hashtag: p.hashtag, nombre: p.nombre,
+            color: p.color || '#002663', folio: p.folio || '',
+            campos: p.campos_propios || [] }));
         estado.configCiclo = normalizarFolios(estado.proyectos, estado.configCiclo);
         if(conSesion) guardar();
       }
@@ -1791,6 +1792,7 @@ async function agregarProyectoDesdeInterfaz(){
     proyectoSel = proyecto.slug;
     renderTodo();
     cerrarModal();
+    abrirSelectorProyecto();
     avisar('Proyecto ' + nombre + ' agregado con el folio ' + (proyecto.folio || 'sin folio') + '.', 'verde');
   } catch(e){
     resultado.innerHTML = '<p class="aviso rojo">No se pudo agregar el proyecto: ' + esc(e.message) + '</p>';
