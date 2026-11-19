@@ -845,7 +845,7 @@ function pintarOpcionesProyecto(){
     b.type = 'button'; b.className = 'sel-opcion' + (o.slug === proyectoSel ? ' activo' : '');
     b.setAttribute('role', 'option'); b.setAttribute('aria-selected', o.slug === proyectoSel ? 'true' : 'false');
     b.dataset.slug = o.slug; b.dataset.indice = i;
-    b.innerHTML = `<span class='punto' style='background:${esc(o.color)}'></span><span>${o.folio ? esc(o.folio) + ' · ' : ''}${o.hashtag ? esc(o.hashtag) + ' ' : ''}${esc(o.nombre)}</span>` +
+    b.innerHTML = `<span class='punto' style='background:${esc(o.color)}'></span><span>${esc(o.hashtag || o.nombre)}</span>` +
       (o.abiertos ? `<span class='contador ${o.vencidos ? '' : 'cero'}'>${o.abiertos}</span>` : '');
     b.onclick = () => elegirProyecto(o.slug);
     cont.appendChild(b);
@@ -880,7 +880,7 @@ function renderProyectos(){
   const act = ops.find(o => o.slug === proyectoSel) || ops[0];
   if(!act) return;
   $('#selPunto').style.background = act.color;
-  $('#selTexto').textContent = (act.folio ? act.folio + ' · ' : '') + (act.hashtag ? act.hashtag + ' ' : '') + act.nombre;
+  $('#selTexto').textContent = act.hashtag || act.nombre;
   const c = $('#selContador');
   if(act.abiertos){ c.textContent = act.abiertos; c.className = 'contador ' + (act.vencidos ? '' : 'cero'); c.style.display = ''; }
   else { c.textContent = ''; c.style.display = 'none'; }
