@@ -30,11 +30,13 @@ Resumen del programa en [`README.md`](README.md). El checklist de decisiones (27
    - `Puntaje`
    
    Cada hoja lleva sus columnas según `../guia-configuracion-appsheet.md` (mismas hojas para la web y para AppSheet). No hace falta llenarlas: se llenan solas al usar la página.
-7. No necesitas anotar ningún ID de Drive (D4): `Codigo.gs` trabaja **por nombre** de carpeta y archivo (`getFoldersByName` / `getFilesByName`), no por ID. No hay constantes de ID donde ponerlos. Si en Drive hay dos carpetas con el mismo nombre, usa la primera que encuentre el código: evita duplicar nombres.
+7. El ID de la carpeta de `Bitacoras/` sigue configurándose en Apps Script. Los proyectos iniciales se localizan bajo esa raíz; para los proyectos nuevos, el ID de carpeta generado se registra en `INDICE-bitacoras.json`. No es necesario copiar IDs manualmente.
 
 > **Nota (M11):** los archivos que se suben a Drive (evidencias e informes Word) son **privados del dueño** por defecto: sus enlaces `/view` solo los abre la cuenta propietaria. Si alguien más debe ver las fotos o los informes, comparte con esa persona la carpeta `<slug>/Evidencias/` o `<slug>/Informes/` desde Drive. No se cambian permisos automáticamente.
 
 > **Nota (v2 — documentos como evidencia):** además de imágenes, cada sesión acepta PDF, Word (`.doc`, `.docx`) y Excel (`.xls`, `.xlsx`) como evidencia, **máx. 10 MB por archivo**. Las imágenes se comprimen a máx. 1200 px (JPG); los documentos se guardan tal cual, con su nombre original, en `<slug>/Evidencias/`. En modo local (sin Apps Script) los documentos quedan como base64 en localStorage: un solo PDF grande puede llenar el límite de ~5 MB, así que en ese modo conviene subirlos a Drive cuanto antes.
+
+> **Proyectos nuevos:** se crean desde Mantenimiento, no requieren editar el índice a mano y su carpeta se crea junto a la hoja de cálculo con nombre `<ciclo>-<nombre-normalizado>` (por ejemplo, `20271-prueba`). Los proyectos existentes se quedan en su ubicación actual bajo `Bitacoras/`. El índice guarda el ID de la carpeta nueva para que Drive pueda localizarla.
 
 ## 2) En GitHub: crear el repo y activar Pages
 
@@ -136,11 +138,31 @@ Si algo falla, anota en qué paso, con qué proyecto y qué mensaje apareció, y
   (acción `guardarConfigCiclo_` en `Codigo.gs`). Sin Apps Script, el ciclo
   solo vive en el navegador (localStorage).
 
-## 9) Borrar los datos de ejemplo (v4)
+## 9) Limpiar datos de ejemplo anteriores (v4)
 
-- En modo local la página siembra una sesión de ejemplo en Estadística 2.
-  Para dejar el dashboard en blanco, entra a **Mantenimiento → Datos de
-  ejemplo → Borrar datos de ejemplo** y confirma dos veces. Borra SOLO los
-  datos de ejemplo (sesión, pendiente, hitos y puntaje marcados como
-  ejemplo), en local y en Drive; tus datos reales no se tocan y el ejemplo
-  no vuelve a aparecer al recargar.
+- La página ya no siembra ejemplos automáticamente. Si quedan registros de
+  pruebas anteriores, entra a **Mantenimiento → Datos de ejemplo anteriores
+  → Borrar datos de ejemplo** y confirma dos veces. Elimina solo registros
+  marcados como ejemplo en este navegador y, con Apps Script, en Drive; no
+  toca registros reales.
+
+## 10) Agregar proyectos desde la página
+
+- Inicia sesión, abre **Mantenimiento** y usa el apartado **Agregar proyecto**.
+  Escribe el nombre, elige un color y pulsa **Agregar proyecto**. El hashtag
+  se genera a partir del nombre y el sistema asigna el siguiente folio.
+- Sin Apps Script, el proyecto se conserva en el `localStorage` de ese
+  navegador; exporta un respaldo JSON para moverlo a otro navegador.
+- Con Apps Script, se registra en `INDICE-bitacoras.json` y se crea en Drive
+  junto a la hoja de cálculo una carpeta `<ciclo>-<nombre-normalizado>` con
+  su bitácora vacía, ficha, plantilla, formato y `Evidencias/`. Los proyectos
+  existentes no se mueven. La sesión acepta el tipo `Online`, captura acuerdos
+  en un cuadro de texto y permite elegir entre cuatro prellenados editables
+  para el cuadro de contenido de siete filas.
+  No se edita el índice manualmente. Para habilitarlo en una instalación
+  existente, actualiza `Codigo.gs` y publica una nueva versión del despliegue
+  existente (se conserva la URL `/exec`).
+
+- El reporte Word usa «Información» como formato predeterminado. Después
+  presenta las bitácoras por fecha, con el contenido antes de sus evidencias;
+  las imágenes se ordenan por fecha de agregado cuando ese dato está disponible.

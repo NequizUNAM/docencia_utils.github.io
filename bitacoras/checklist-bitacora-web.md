@@ -472,10 +472,10 @@ Bitacoras/
 
 ## Borrar datos de ejemplo (v4, 2026-11-18)
 
-- **Qué es dato de ejemplo:** la sesión precargada por `sembrarEjemplo()` (marcada `ejemplo:true`) y las sesiones de `ejemplo-simulacion/` (ids `estadistica-2-2026-11-17-001` y `estadistica-1-2026-11-17-001`). Un dato real nunca lleva `ejemplo:true` ni esos ids.
+- **Qué es dato de ejemplo heredado:** los registros guardados con `ejemplo:true` y las simulaciones antiguas (ids `estadistica-2-2026-11-17-001` y `estadistica-1-2026-11-17-001`). La precarga automática y los JSON de simulación se retiraron; los ids se conservan solo para poder identificar datos viejos.
 - **Botón en Mantenimiento:** «Borrar datos de ejemplo». Pide dos confirmaciones con advertencia explícita («borra SOLO los datos de ejemplo; tus datos reales NO se tocan») y muestra aviso verde con el conteo borrado.
 - **Alcance:** elimina sesiones, pendientes, hitos y puntaje de ejemplo en local y, si hay Apps Script, también en Drive (`eliminarSesion_`/`eliminarHito_` + sincronización por proyecto). Si un registro de ejemplo no existe en Drive, no falla.
-- **Sin re-siembra:** tras borrar, `ejemploBorrado=true` (persistente en localStorage y en el estado) impide que el ejemplo vuelva a sembrarse al recargar; el dashboard queda en blanco. «Borrar copia local» es otra cosa: borra TODO lo local y el ejemplo vuelve a sembrarse como al inicio.
+- **Sin re-siembra:** la página ya no genera registros de demostración al abrirse. «Borrar copia local» borra la copia de este navegador, no los datos de Drive.
 - **Verificación:** `prueba-auditoria-v5.js` (33/33 + A23), 0 errores de ventana. Pendiente: prueba contra Apps Script/Drive real.
 
 ## Folio consecutivo por proyecto: CICLO-NN (v4, 2026-11-18)

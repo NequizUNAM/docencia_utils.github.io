@@ -23,7 +23,7 @@ Cada proyecto tiene su propia bitácora, su propia ficha y su propia carpeta en 
 
 **Regla de direccionamiento (§17 del checklist):** el primer hashtag en CamelCase identifica el proyecto. Si el mensaje no trae hashtag, o trae uno no reconocido, Muse pregunta; **nunca adivina el proyecto**.
 
-Un proyecto nuevo nunca se crea solo: `#nuevaBitacora` solo prepara la propuesta y Nequiz autoriza antes de crear carpeta, ficha y plantilla.
+Los proyectos no se crean mediante comandos de WhatsApp. Para agregarlos, inicia sesión y usa **Mantenimiento → Agregar proyecto**; la página asigna el ciclo y prepara carpeta, ficha, plantilla y formato.
 
 ## Arquitectura
 
@@ -70,6 +70,11 @@ Un proyecto nuevo nunca se crea solo: `#nuevaBitacora` solo prepara la propuesta
 └──────────────────────────────┘
 ```
 
+Las carpetas de los seis proyectos iniciales conservan su ubicación en
+`Bitacoras/`. Los proyectos nuevos se nombran `<ciclo>-<nombre>` (por ejemplo,
+`20271-prueba`) y su carpeta se crea junto a la hoja de cálculo; el índice
+central conserva su ID para encontrarla sin mover proyectos anteriores.
+
 **Lo que NO es la v1:** el bot de WhatsApp Business (Cloud API, número dedicado, webhook) es solo **v2**. En la v1 la captura es por WhatsApp 1 a 1 con Muse.
 
 ## Qué lleva cada carpeta / archivo de la entrega
@@ -95,7 +100,6 @@ La entrega vive en `~/workspace/goals/ordenar-mis-minutas-y-pendientes/files/`. 
 | `plantillas/` | Una plantilla de sesión prellenada por proyecto (`plantilla-sesion.json`, v1): `estadistica-1-`, `estadistica-2-`, `cch-page-`, `control-facturas-`, `asistencia-cch-` y `moodle-dgtic-plantilla-sesion.json`, más `plantillas-mensaje.txt`. Versionadas: si se agrega un campo sube de versión y las sesiones viejas conservan la suya. La plantilla de `#Estadistica2` está aprobada. |
 | `formato-por-defecto.json` | Formato por defecto para cargar un formato específico por proyecto desde la interfaz (JSON por proyecto, se guarda como formato de ese proyecto y se usa al exportar). |
 | `guia-configuracion-appsheet.md` | Guía de AppSheet (§26 del checklist): mismas hojas de Drive para la web y para AppSheet. |
-| `ejemplo-simulacion/` | Simulación de una minuta sin plantilla: `estadistica-1-bitacora-sin-plantilla.json` y `estadistica-2-bitacora.json`. Regla que muestra: si llega un mensaje sin plantilla, se guarda solo lo que hay (fecha de hoy, texto tal cual, imágenes como evidencia sin subtítulos), los campos que faltan quedan en nulo, se crea como mucho un pendiente genérico marcado para detallar, y se pregunta por los grupos, responsables y fechas que falten en vez de inventarlos. |
 
 ### En `files/protocolo-puntaje-cch/`
 
@@ -112,7 +116,7 @@ Protocolo de puntaje CCH 2020 + Instructivo de Horarios 2023, con plantillas por
 
 ### Base común de cada sesión
 
-Toda sesión, en cualquier proyecto, lleva la misma base: `id`, `fecha`, `título`, `tipo`, `texto`, `acuerdos/pendientes`, `hitos`, `evidencias`. Cada proyecto suma además sus campos propios, definidos en su ficha, que Muse lee antes de escribir.
+Toda sesión lleva un cuadro de texto de siete filas para el contenido, acuerdos en texto (uno por línea), asistentes y evidencias. El texto se puede prellenar con cuatro opciones editables: General, Acuerdos, Ejercicios y Seguimiento. Los campos específicos heredados se conservan en registros viejos, pero ya no aparecen en el formulario.
 
 ### Formato de documentos
 
@@ -123,9 +127,11 @@ Máster en texto plano (Markdown/JSON) en Drive y GitHub. Google Docs o Word sol
 - **Login web** con contraseña aparte, guardada como **hash SHA-256 con sal** en Apps Script Properties, **nunca en el HTML** (checklist §25). El bloqueo tras 5 fallos es **por cliente**, no global: un visitante no puede bloquear al dueño (Apps Script no expone la IP; el identificador lo genera la página y viaja en el login; alguien que lo rote podría eludirlo, queda documentado como mitigación, no como garantía). Al cargar, la página valida el token contra el backend (`validarSesion`); el bloqueo de la interfaz por sí solo **no es seguridad**, el backend valida el token en cada llamada.
 - **Escrituras con `LockService`:** dos guardados simultáneos no se pisan en `bitacora.json` ni en las hojas.
 - **Mantenimiento** (§24): crear tablas y hojas de Drive desde cero; «Verificar estructura» llama de verdad a `verificarEstructura` y muestra los faltantes.
+- **Proyectos dinámicos:** en Mantenimiento puedes agregar un proyecto con nombre y color. En modo local queda guardado en este navegador; con Apps Script se registra en Drive junto a la hoja de cálculo, con nombre `<ciclo>-<nombre>` (el folio consecutivo sigue siendo independiente). No hace falta editar `INDICE-bitacoras.json` manualmente. Para activar esta función en la versión publicada, actualiza y vuelve a desplegar `Codigo.gs`.
+- **Sin datos precargados:** la página ya no crea sesiones de demostración al abrirse. Los archivos JSON de simulación también se retiraron; los registros heredados marcados como ejemplo se pueden limpiar desde Mantenimiento.
 - **AppSheet** (§26): acceso controlado desde Apps Script (`CUENTAS_AUTORIZADAS_APPSHEET` + acción `verificarAppSheet`) / cuenta Google; usa las mismas hojas de Drive que la web.
 - **Evidencias e informes privados (M11):** los archivos subidos a Drive son privados del dueño; sus enlaces `/view` solo los abre la cuenta propietaria. Para que alguien más los vea, hay que compartirle la carpeta `<slug>/Evidencias/` o `<slug>/Informes/` desde Drive; el programa no cambia permisos automáticamente.
-- **Colores (M14):** un solo catálogo de colores de proyecto, el de `index.html` (`PROYECTOS_BASE`); `Codigo.gs` (`PROYECTOS`) y `INDICE-bitacoras.json` usan los mismos 6 colores.
+- **Colores (M14):** los 6 proyectos iniciales conservan el catálogo compartido en `index.html` y `Codigo.gs`. Los proyectos nuevos guardan su propio color en el índice central.
 - **`NequizUNAM/CCH-Page` (M13):** el repo de GitHub que aparece como `github_repo` del proyecto `#CchPage` es el repo propio de Nequiz, intencional; no es una URL real ni una credencial, es su proyecto CCH-Page.
 
 ## Pasos que Nequiz hará él en Drive y GitHub (resumen)
@@ -161,7 +167,7 @@ Un solo modelo en página, backend, hojas y formatos; ya no hay traducción parc
 
 | Objeto | Campos | Estados |
 |---|---|---|
-| Sesión | `id, slug, fecha, titulo, tipo, texto, asistentes, acuerdos, evidencias:[{url, pie, nombre, mime, tipo, tamano}], campos, plantilla_version` | — |
+| Sesión | `id, slug, fecha, titulo, tipo, texto, asistentes, acuerdos:[texto], evidencias:[{url, pie, nombre, mime, tipo, tamano, agregada_en}], campos, plantilla_version` | El formulario admite `Online`; cada acuerdo nuevo es solo texto, sin responsable ni fecha. |
 | Pendiente | `id, sesion_id, slug, texto, responsable, fecha_compromiso, prioridad, estado, fecha_cierre, minuta_origen, notas` | `Pendiente` / `En proceso` / `Cerrado` (nunca `Hecho`; `Vencido` es solo un cálculo por fecha, no un estado guardado) |
 | Hito | `id, slug, titulo, fecha, descripcion, estado, fecha_cierre` | `Pendiente` / `En curso` / `Cerrado` (nunca `completado`); la barra de avance cuenta `Cerrado` |
 | Evidencia | `url, pie, nombre, mime, tipo, tamano` | `tipo` es `imagen` o `documento` (v2: también PDF, Word y Excel, máx. 10 MB por archivo); `url` es la URL de Drive o, en modo local, el base64; nunca `dataUrl`. Las evidencias viejas `{url, pie}` se normalizan al leer (en v1 solo había imágenes). En modo local, los documentos quedan como base64 en localStorage y ocupan espacio (~4 MB de aviso, ~5 MB de límite). |
@@ -169,10 +175,11 @@ Un solo modelo en página, backend, hojas y formatos; ya no hay traducción parc
 
 - **A2 — Fecha local:** la fecha por defecto es hora local (`ahoraLocalISO()`, America/Mexico_City); `toISOString()` (UTC) ya no se usa para fechas por defecto.
 - **A3 — Sin fecha inventada:** un acuerdo sin fecha genera un pendiente con `fecha_compromiso` vacío, que se muestra como «sin fecha» y nunca sale como vencido.
-- **A5 — Informe por campos:** cada sección del informe se renderiza según sus `campos`; «Detalle» muestra texto y asistentes, y «Evidencias» muestra la imagen o un enlace a Drive.
+- **A5 — Informe por campos:** cada sección se renderiza según sus `campos`; sin formato propio, usa «Información» y después bitácoras cronológicas con contenido y evidencias.
 - **A6 — Sin crash:** los filtros usan `(p.responsable || '').toLowerCase()`; un responsable nulo ya no rompe la lista.
 - **A7 — localStorage:** con Apps Script, las evidencias (imágenes y documentos) se suben a Drive y en local solo queda su URL; sin Apps Script se mide el tamaño real y se avisa a partir de ~4 MB (límite ~5 MB).
 - **v2 — Documentos como evidencia:** además de imágenes, se aceptan PDF, Word (`.doc`, `.docx`) y Excel (`.xls`, `.xlsx`) como evidencia, máx. 10 MB por archivo. Las imágenes se siguen comprimiendo a máx. 1200 px (JPG); los documentos se guardan tal cual, con su nombre original y su mime real, en `<slug>/Evidencias/`. En la tarjeta y en el informe aparecen como ficha/enlace con su nombre, no como imagen.
+- **Reporte sin plantilla:** empieza con la sección «Información» y después presenta cada bitácora por fecha, con su contenido y evidencias. Las evidencias nuevas se ordenan por el momento en que se adjuntaron; las antiguas, sin marca de tiempo, mantienen su orden original. Las imágenes de Drive se incrustan en Word cuando pueden leerse con la sesión iniciada; no se añadió una dependencia CDN.
 
 ## Correcciones D1–D12 y M1–M15 (2026-11-18)
 
@@ -184,7 +191,7 @@ Decisiones tomadas en los puntos donde la auditoría daba a elegir:
 - **M7 — Puntaje con interfaz:** la página ya tiene el botón «Registrar puntaje» (rubro, actividad, nivel con puntos automáticos A=25 / B=50 / C=150, alcance, constancia, periodo y categoría objetivo) que llama a `registrarPuntaje` y muestra el total en el panel «Puntaje registrado».
 - **M11 — Evidencias privadas:** solo se documenta (ver arriba); no se cambian permisos sin avisar.
 - **M6 — Hitos editables:** cada hito tiene ahora Editar, Completar (estado `Cerrado`) y Borrar, con las acciones `editarHito` / `eliminarHito` en el backend.
-- **M8 — Plantillas:** al abrir «Nueva sesión» la página carga la plantilla del proyecto (`leerProyecto`) y prellena sus campos propios; al cambiar de proyecto, carga la suya.
+- **M8 — Plantillas:** al abrir «Nueva sesión» la página carga el texto inicial de la plantilla del proyecto (`leerProyecto`); los cuatro prellenados disponibles se pueden editar en el mismo cuadro de texto.
 - **M9 — Contador «Todos»:** la clase (color) del contador usa el conteo real de pendientes abiertos, no el 0 de antes.
 - **M10 — Login:** el mensaje de error es el que devuelve el backend (bloqueo, contraseña no fijada, etc.), no siempre «Contraseña incorrecta».
 - **M12 — Verificar:** Mantenimiento → «Verificar estructura» llama a `verificarEstructura` y lista los faltantes.
@@ -212,7 +219,7 @@ Si alguna prueba falla, anotar qué proyecto, qué paso y qué mensaje apareció
 - **Sin URLs reales.** Solo el placeholder `TU_URL_APPS_SCRIPT_AQUI`; la URL real es la `/exec` del despliegue de cada quien.
 - **Sin bot de WhatsApp Business.** No hay número dedicado, ni webhook, ni Cloud API en la v1. Eso es v2. La captura de la v1 es reenviar la minuta a Muse por WhatsApp 1 a 1.
 - **Sin Drive ni GitHub conectados a Muse.** A 2026-11-17 no estaban conectados; Nequiz los configura él con su propia cuenta.
-- **Sin creación automática de proyectos.** Un proyecto nuevo solo se propone con `#nuevaBitacora`; la carpeta, la ficha y la plantilla se crean solo con autorización de Nequiz.
+- **Creación desde la interfaz:** el alta de proyectos se hace en Mantenimiento. El comando `#nuevaBitacora` es una referencia del banco de peticiones y no crea carpetas por sí mismo.
 
 ## Versión
 

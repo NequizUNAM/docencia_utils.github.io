@@ -14,7 +14,8 @@
  *         <slug>/ficha.md
  *         <slug>/plantilla-sesion.json
  *         <slug>/formato-exportacion.json
- *         <slug>/Evidencias/
+ *         <slug>/Evidencias/ (la raíz contiene proyectos iniciales;
+ *         los proyectos nuevos pueden estar junto a la hoja de cálculo)
  *   - Hojas de cálculo: un libro "Bitacoras" con las pestañas
  *     Bitacoras, Sesiones, Pendientes, Hitos y Puntaje.
  *     Las mismas hojas las puede leer AppSheet (ver guia-configuracion-appsheet.md).
@@ -47,7 +48,7 @@
  *   - CUENTAS_AUTORIZADAS_APPSHEET es solo un placeholder: Nequiz pone
  *     ahí los correos autorizados para AppSheet. No hay correos reales aquí.
  *
- * PROYECTOS (6)
+ * PROYECTOS iniciales
  *   estadistica-1    #Estadistica1      Estadística 1
  *   estadistica-2    #Estadistica2      Estadística 2
  *   cch-page         #CchPage           CCH-Page
@@ -240,6 +241,7 @@ function doGet(e) {
  *   subirInforme     {slug, nombre, base64, mime} -> guarda el informe Word
  *                     en <slug>/Informes/, sobrescribiendo el mismo nombre (D7)
  *   guardarFormato   {slug, formato} -> guarda formato-exportacion.json versionado
+ *   crearProyecto   {proyecto} -> registra el proyecto y crea su estructura
  *   guardarConfigCiclo {config, proyectos} -> guarda config-ciclo.json
  *                     (ciclo vigente + siguiente + usados) y los folios en
  *                     INDICE-bitacoras.json (v4, folios CICLO-NN)
@@ -247,7 +249,7 @@ function doGet(e) {
  *   cambiarPassword  {passwordActual, passwordNueva} -> cambia el hash guardado
  *   registrarPuntaje {slug, puntaje} -> guarda actividad en la hoja Puntaje
  *   validarSesion    {} -> {ok, valido:true} si el token sigue vigente (M4)
- *   leer             {} -> índice + bitacora.json de los 6 proyectos (POST, v2)
+ *   leer             {} -> índice + bitacora.json de todos los proyectos (POST, v2)
  *   leerProyecto    {slug} -> bitacora + plantilla + formato (POST, v2)
  *   verificarEstructura {} -> lista de faltantes (POST, v2)
  *   editarSesion     {slug, sesion} -> actualiza por id (v2, Paso 2)
@@ -325,6 +327,7 @@ function doPost(e) {
         case 'subirInforme':     return responder_(subirInforme_(datos));
         case 'guardarFormato':   return responder_(guardarFormato_(datos));
         case 'guardarConfigCiclo': return responder_(guardarConfigCiclo_(datos));
+        case 'crearProyecto':    return responder_(crearProyecto_(datos));
         case 'crearEstructura':  return responder_({ ok: true, accion: 'crearEstructura',
                                        resultado: crearEstructuraDesdeCero() });
         case 'cambiarPassword':  return responder_(cambiarPassword_(datos));
@@ -511,7 +514,7 @@ function verificarCuentaAppSheet_(correo) {
 // LECTURA (doGet)
 // ---------------------------------------------------------------------------
 
-/** Devuelve el índice + el bitacora.json de los 6 proyectos. */
+/** Devuelve el índice + el bitacora.json de todos los proyectos registrados. */
 function leerTodo_() {
   var root = getRootFolder_();
   var indice = null;
@@ -519,7 +522,7 @@ function leerTodo_() {
     indice = leerJSON_(root, 'INDICE-bitacoras.json');
   }
   var configCiclo = leerConfigCiclo_();
-  var proyectos = PROYECTOS.map(function (p) {
+  var proyectos = proyectosRegistrados_(indice).map(function (p) {
     // Paso 8d: leer solo bitacora.json (leerProyecto_ leía 3 archivos por
     // proyecto: bitacora + plantilla + formato; 12 lecturas de sobra).
     var c = getCarpetaProyecto_(p.slug);
@@ -841,20 +844,25 @@ function eliminarSesion_(datos) {
 }
 
 /**
- * verEvidencia — auditoría v2, Paso 3. Devuelve el base64 de una evidencia
- * por su id de Drive, solo si el archivo está dentro de Bitacoras/ (no se
- * sirve ningún archivo fuera de la raíz). La URL /file/d/ID/view es una
- * página HTML y no sirve como <img src>.
+ * verEvidencia — devuelve el base64 de una evidencia si está dentro de
+ * Bitacoras/ o de una carpeta de proyecto registrada. La URL /file/d/ID/view
+ * es una página HTML y no sirve como <img src>.
  */
 function dentroDeRaiz_(archivo) {
   var raiz = getRootFolder_(); if (!raiz) return false;
-  var rid = raiz.getId(), cola = [archivo], vistos = 0;
+  var permitidas = {};
+  permitidas[raiz.getId()] = true;
+  proyectosRegistrados_().forEach(function (p) {
+    var carpeta = getCarpetaProyecto_(p.slug);
+    if (carpeta) permitidas[carpeta.getId()] = true;
+  });
+  var cola = [archivo], vistos = 0;
   while (cola.length && vistos < 20) {
     var x = cola.shift(); vistos++;
     var padres = x.getParents();
     while (padres.hasNext()) {
       var c = padres.next();
-      if (c.getId() === rid) return true;
+      if (permitidas[c.getId()]) return true;
       cola.push(c);
     }
   }
@@ -865,7 +873,7 @@ function verEvidencia_(datos) {
   if (!id) return { ok: false, error: 'Falta el id.' };
   try {
     var f = DriveApp.getFileById(id);
-    if (!dentroDeRaiz_(f)) return { ok: false, error: 'Archivo fuera de Bitacoras/.' };
+    if (!dentroDeRaiz_(f)) return { ok: false, error: 'Archivo fuera de una carpeta de bitácoras registrada.' };
     var blob = f.getBlob();
     return { ok: true, mime: blob.getContentType(), base64: Utilities.base64Encode(blob.getBytes()) };
   } catch (err) { return { ok: false, error: 'No se pudo leer: ' + err.message }; }
@@ -1007,7 +1015,8 @@ function registrarPuntaje_(datos) {
  * crearEstructuraDesdeCero()
  * Crea, SOLO SI NO EXISTE, todo lo necesario:
  *   - Carpeta raíz Bitacoras/ en Drive.
- *   - INDICE-bitacoras.json con los 6 proyectos.
+ *   - INDICE-bitacoras.json con los proyectos iniciales y los proyectos
+ *     ya agregados desde la página.
  *   - Por proyecto: carpeta <slug>/, bitacora.json vacío
  *     {slug, sesiones:[], pendientes:[], hitos:[]},
  *     ficha.md, plantilla-sesion.json (base + campos propios),
@@ -1042,8 +1051,8 @@ function crearEstructuraDesdeCero() {
   }
 
   // --- Por proyecto ---
-  PROYECTOS.forEach(function (p) {
-    var carpeta = buscarCarpeta_(root, p.slug);
+  proyectosRegistrados_().forEach(function (p) {
+    var carpeta = getCarpetaProyecto_(p.slug);
     if (!carpeta) {
       carpeta = root.createFolder(p.slug);
       informe.creado.push('Carpeta: ' + p.slug + '/');
@@ -1108,7 +1117,7 @@ function crearEstructuraDesdeCero() {
     }
   });
   // Fila del proyecto en la hoja Bitacoras (una por proyecto).
-  PROYECTOS.forEach(function (p) { asegurarFilaProyecto_(p.slug); });
+  proyectosRegistrados_().forEach(function (p) { asegurarFilaProyecto_(p.slug); });
   // Una fila de ejemplo en Sesiones y en Pendientes (solo si están vacías
   // aparte del encabezado, para que se vea el formato esperado).
   agregarEjemploSiVacia_('Sesiones', [
@@ -1144,8 +1153,8 @@ function verificarEstructura_() {
   if (!buscarArchivo_(root, 'INDICE-bitacoras.json')) {
     faltantes.push('INDICE-bitacoras.json');
   }
-  PROYECTOS.forEach(function (p) {
-    var carpeta = buscarCarpeta_(root, p.slug);
+  proyectosRegistrados_().forEach(function (p) {
+    var carpeta = getCarpetaProyecto_(p.slug);
     if (!carpeta) {
       faltantes.push('Carpeta: ' + p.slug + '/ (falta todo el proyecto)');
       return;
@@ -1228,7 +1237,7 @@ function normalizarConfigCiclo_(cfg) {
   var c = (cfg && typeof cfg === 'object') ? cfg : {};
   var ciclo = validarCiclo_(c.ciclo) ? c.ciclo : '20271';
   var usados = [];
-  PROYECTOS.forEach(function (p) {
+  proyectosRegistrados_().forEach(function (p) {
     if (numeroDeFolio_(p.folio, ciclo) > 0 && usados.indexOf(p.folio) < 0) usados.push(p.folio);
   });
   (Array.isArray(c.usados) ? c.usados : []).forEach(function (f) {
@@ -1277,6 +1286,74 @@ function guardarConfigCiclo_(datos) {
   return { ok: true, mensaje: 'Ciclo guardado: ' + cfg.ciclo + ', siguiente folio ' + cfg.ciclo + '-' + String(cfg.siguiente).padStart(2, '0') + '.', config: cfg };
 }
 
+/** Registra un proyecto nuevo en el índice y crea su estructura inicial. */
+function crearProyecto_(datos) {
+  var entrada = datos.proyecto || {};
+  var slug = String(entrada.slug || '').trim();
+  var nombre = String(entrada.nombre || '').trim();
+  var hashtag = String(entrada.hashtag || '').trim();
+  var color = String(entrada.color || '').trim();
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 60) {
+    return { ok: false, error: 'El identificador del proyecto no es válido.' };
+  }
+  if (!nombre || nombre.length > 100) {
+    return { ok: false, error: 'El nombre del proyecto es obligatorio y no debe exceder 100 caracteres.' };
+  }
+  if (!/^#[A-Za-z][A-Za-z0-9]*$/.test(hashtag) || hashtag.length > 50) {
+    return { ok: false, error: 'El hashtag debe iniciar con # y contener letras o números.' };
+  }
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
+    return { ok: false, error: 'El color debe ser hexadecimal de seis dígitos.' };
+  }
+
+  var root = getOrCreateFolder_();
+  var libro = getHojaCalculo_(false);
+  if (!libro) return { ok: false, error: 'No se encontró la hoja de cálculo Bitacoras; crea o ubica el libro antes de agregar proyectos.' };
+  var padreProyectos = carpetaPadreHojaCalculo_(libro);
+  var indice = leerJSON_(root, 'INDICE-bitacoras.json') || indicePorDefecto_();
+  if (!Array.isArray(indice.projects)) indice.projects = [];
+  var hashtagNormalizado = hashtag.toLowerCase();
+  var duplicado = indice.projects.some(function (p) {
+    return p.slug === slug || String(p.hashtag || '').toLowerCase() === hashtagNormalizado;
+  });
+  if (duplicado || buscarCarpeta_(root, slug) || buscarCarpeta_(padreProyectos, slug)) {
+    return { ok: false, error: 'Ya existe un proyecto o carpeta con ese nombre.' };
+  }
+
+  var config = leerConfigCiclo_();
+  indice.projects.forEach(function (p) {
+    if (numeroDeFolio_(p.folio, config.ciclo) > 0 && config.usados.indexOf(p.folio) < 0) {
+      config.usados.push(p.folio);
+    }
+  });
+  config = normalizarConfigCiclo_(config);
+  var folio = config.ciclo + '-' + String(config.siguiente).padStart(2, '0');
+  config.usados.push(folio);
+  config.siguiente++;
+
+  var proyecto = {
+    slug: slug, hashtag: hashtag, nombre: nombre, color: color,
+    folio: folio, estado: 'Activo', campos_propios: [],
+    drive_folder: padreProyectos.getName() + '/' + slug + '/',
+    bitacora_json: padreProyectos.getName() + '/' + slug + '/bitacora.json',
+    ficha: padreProyectos.getName() + '/' + slug + '/ficha.md',
+    github_repo: ''
+  };
+  indice.projects.push(proyecto);
+  indice.updated = ahoraISO_().slice(0, 10);
+  var carpeta = padreProyectos.createFolder(slug);
+  proyecto.drive_folder_id = carpeta.getId();
+  escribirJSON_(root, 'INDICE-bitacoras.json', indice, true);
+  escribirJSON_(carpeta, 'bitacora.json', bitacoraVacia_(slug), false);
+  carpeta.createFile('ficha.md', fichaPorDefecto_(proyecto), MimeType.PLAIN_TEXT);
+  escribirJSON_(carpeta, 'plantilla-sesion.json', plantillaPorDefecto_(proyecto), false);
+  escribirJSON_(carpeta, 'formato-exportacion.json', formatoPorDefecto_(slug), false);
+  carpeta.createFolder('Evidencias');
+  escribirJSON_(root, 'config-ciclo.json', config, false);
+  asegurarFilaProyecto_(slug);
+  return { ok: true, proyecto: proyecto, configCiclo: config };
+}
+
 /** Estructura vacía de bitacora.json para un proyecto. */
 function bitacoraVacia_(slug) {
   return { slug: slug, sesiones: [], pendientes: [], hitos: [], puntaje: [] };
@@ -1287,7 +1364,7 @@ function fichaPorDefecto_(p) {
   return '# ' + p.nombre + '\n\n' +
     '- Hashtag: ' + p.hashtag + '\n' +
     '- Slug: ' + p.slug + '\n' +
-    '- Carpeta en Drive: ' + CONFIG.ROOT_FOLDER + '/' + p.slug + '/\n' +
+    '- Carpeta en Drive: ' + (p.drive_folder || CONFIG.ROOT_FOLDER + '/' + p.slug + '/') + '\n' +
     '- Campos propios: ' + p.campos_propios.join(', ') + '\n\n' +
     '## Descripción\n\n' +
     '[Completar: descripción del proyecto, objetivo y responsables.]\n\n' +
@@ -1296,36 +1373,29 @@ function fichaPorDefecto_(p) {
 }
 
 /**
- * plantilla-sesion.json por defecto: base común + campos propios del
- * proyecto (con valores de ejemplo vacíos). Versión 1: si se agrega un
- * campo, la plantilla sube de versión y las sesiones viejas conservan
- * la suya (ver guardarFormato_() para el mismo criterio en formatos).
+ * plantilla-sesion.json por defecto: texto base para la captura y datos
+ * comunes del proyecto. Los registros antiguos conservan sus campos propios.
  */
 function plantillaPorDefecto_(p) {
-  var camposPropios = {};
-  p.campos_propios.forEach(function (campo) { camposPropios[campo] = ''; });
   return {
     plantilla_version: 1,
     hashtag: p.hashtag,
     slug: p.slug,
     nombre: p.nombre,
-    instrucciones: 'Copia esta plantilla, llena los campos vacíos y ' +
-      'pásala a Muse con el hashtag al inicio. Si un campo no aplica, ' +
-      'déjalo en null. No borres campos: si hay un campo nuevo, la ' +
-      'plantilla sube de versión y los registros viejos conservan su versión.',
+    instrucciones: 'Usa el campo texto para capturar el contenido. Puedes ' +
+      'organizarlo con encabezados como #acuerdos y #ejercicios.',
     sesion: {
       id: p.slug + '-AAAA-MM-DD-001',
       fecha: 'AAAA-MM-DD HH:MM (por defecto, la actual al capturar)',
       titulo: '',
-      tipo: 'Reunion | Sesion | Avance | Nota',
+      tipo: 'Reunion | Sesion | Online | Avance | Nota',
       texto: '',
       asistentes: [''],
-      acuerdos: [{ texto: '', responsable: '', fecha_compromiso: 'AAAA-MM-DD',
-        estado: 'Pendiente' }],
+      acuerdos: [''],
       pendientes: [],
       hitos: [{ titulo: '', fecha: 'AAAA-MM-DD', estado: 'Pendiente' }],
       evidencias: [{ archivo: '', descripcion: '' }],
-      campos_propios: camposPropios,
+      campos_propios: {},
       plantilla_version: 1
     }
   };
@@ -1351,22 +1421,22 @@ function formatoPorDefecto_(slug) {
   return {
     formato_version: 1,
     slug: slug,
-    nombre: 'Formato simple por defecto',
-    instrucciones: 'Formato simple por defecto. Se usa cuando el proyecto ' +
-      'no tiene un formato cargado, o cuando su JSON está vacío. No se ' +
+    nombre: 'Información',
+    instrucciones: 'Formato base cuando el proyecto no tiene un formato ' +
+      'cargado o cuando su JSON está vacío. No se ' +
       'inventan campos: si un campo no tiene valor, se muestra vacío o como null.',
     secciones: [
-      { titulo: 'Sesión', campos: ['fecha', 'titulo', 'tipo'] },
-      { titulo: 'Detalle', campos: ['texto', 'asistentes'] },
-      { titulo: 'Acuerdos y pendientes', campos: ['acuerdos', 'pendientes'] },
-      { titulo: 'Hitos', campos: ['hitos'] },
-      { titulo: 'Evidencias', campos: ['evidencias'] }
+      { titulo: 'Información', campos: ['fecha', 'titulo', 'tipo'] },
+      { titulo: 'Contenido de las bitácoras', campos: ['bitacoras'] },
+      { titulo: 'Pendientes', campos: ['pendientes'] },
+      { titulo: 'Hitos', campos: ['hitos'] }
     ],
     campos: [
       { campo: 'fecha', etiqueta: 'Fecha', obligatorio: true },
       { campo: 'titulo', etiqueta: 'Título', obligatorio: true },
       { campo: 'tipo', etiqueta: 'Tipo', obligatorio: false },
       { campo: 'texto', etiqueta: 'Texto', obligatorio: true },
+      { campo: 'bitacoras', etiqueta: 'Contenido de las bitácoras', obligatorio: false },
       { campo: 'asistentes', etiqueta: 'Asistentes', obligatorio: false },
       { campo: 'acuerdos', etiqueta: 'Acuerdos', obligatorio: false },
       { campo: 'pendientes', etiqueta: 'Pendientes', obligatorio: false },
@@ -1448,12 +1518,61 @@ function fechaRespaldo_() {
     'yyyy-MM-dd-HHmm');
 }
 
-/** Busca el proyecto por slug en PROYECTOS; null si no existe. */
+/** Busca el proyecto por slug en el catálogo local o el índice de Drive. */
 function proyectoPorSlug_(slug) {
   for (var i = 0; i < PROYECTOS.length; i++) {
     if (PROYECTOS[i].slug === slug) return PROYECTOS[i];
   }
+  var root = getRootFolder_();
+  var indice = root ? leerJSON_(root, 'INDICE-bitacoras.json') : null;
+  if (indice && Array.isArray(indice.projects)) {
+    for (var j = 0; j < indice.projects.length; j++) {
+      if (indice.projects[j].slug === slug) {
+        var proyecto = indice.projects[j];
+        return {
+          slug: proyecto.slug, folio: proyecto.folio || '',
+          hashtag: proyecto.hashtag || '', nombre: proyecto.nombre || proyecto.slug,
+          color: proyecto.color || '#002663', estado: proyecto.estado || 'Activo',
+          campos_propios: Array.isArray(proyecto.campos_propios) ? proyecto.campos_propios : [],
+          drive_folder: proyecto.drive_folder || '',
+          drive_folder_id: proyecto.drive_folder_id || ''
+        };
+      }
+    }
+  }
   return null;
+}
+
+/** Une el catálogo inicial con los proyectos añadidos desde la interfaz. */
+function proyectosRegistrados_(indice) {
+  var root = getRootFolder_();
+  var catalogo = indice || (root ? leerJSON_(root, 'INDICE-bitacoras.json') : null);
+  var proyectos = PROYECTOS.map(function (p) {
+    return {
+      slug: p.slug, folio: p.folio || '', hashtag: p.hashtag, nombre: p.nombre,
+      color: p.color, estado: p.estado || 'Activo',
+      campos_propios: (p.campos_propios || []).slice()
+    };
+  });
+  if (!catalogo || !Array.isArray(catalogo.projects)) return proyectos;
+  catalogo.projects.forEach(function (item) {
+    var proyecto = proyectoPorSlugDesdeIndice_(item);
+    var existente = proyectos.findIndex(function (p) { return p.slug === proyecto.slug; });
+    if (existente >= 0) proyectos[existente] = Object.assign(proyectos[existente], proyecto);
+    else proyectos.push(proyecto);
+  });
+  return proyectos;
+}
+
+function proyectoPorSlugDesdeIndice_(p) {
+  return {
+    slug: p.slug, folio: p.folio || '', hashtag: p.hashtag || '',
+    nombre: p.nombre || p.slug, color: p.color || '#002663',
+    estado: p.estado || 'Activo',
+    campos_propios: Array.isArray(p.campos_propios) ? p.campos_propios : [],
+    drive_folder: p.drive_folder || '',
+    drive_folder_id: p.drive_folder_id || ''
+  };
 }
 
 /** Carpeta raíz Bitacoras/ en Drive, o null si no existe. */
@@ -1480,14 +1599,26 @@ function getOrCreateSubfolder_(padre, nombre) {
   return carpeta || padre.createFolder(nombre);
 }
 
-/** Carpeta del proyecto <slug>/ dentro de la raíz, o null si no existe. */
+/** Carpeta registrada del proyecto, o la carpeta heredada bajo la raíz. */
 function getCarpetaProyecto_(slug) {
+  var proyecto = proyectoPorSlug_(slug);
+  if (proyecto && proyecto.drive_folder_id) {
+    try { return DriveApp.getFolderById(proyecto.drive_folder_id); }
+    catch (err) {
+      var carpetaAnterior = getRootFolder_();
+      carpetaAnterior = carpetaAnterior ? buscarCarpeta_(carpetaAnterior, slug) : null;
+      if (carpetaAnterior) return carpetaAnterior;
+      throw new Error('No se pudo acceder a la carpeta de ' + slug + ': ' + err.message);
+    }
+  }
   var root = getRootFolder_();
   return root ? buscarCarpeta_(root, slug) : null;
 }
 
-/** Carpeta del proyecto <slug>/; crea la raíz y el proyecto si faltan. */
+/** Carpeta registrada del proyecto; si falta, crea la ruta heredada bajo la raíz. */
 function getOrCreateCarpetaProyecto_(slug) {
+  var carpeta = getCarpetaProyecto_(slug);
+  if (carpeta) return carpeta;
   var root = getOrCreateFolder_();
   return getOrCreateSubfolder_(root, slug);
 }
@@ -1614,6 +1745,14 @@ function getHojaCalculo_(crear) {
   return libro;
 }
 
+/** Carpeta contenedora de la hoja de cálculo; usa la raíz de Drive si no tiene padre. */
+function carpetaPadreHojaCalculo_(libro) {
+  if (!libro) throw new Error('No se encontró la hoja de cálculo Bitacoras.');
+  var archivo = DriveApp.getFileById(libro.getId());
+  var padres = archivo.getParents();
+  return padres.hasNext() ? padres.next() : DriveApp.getRootFolder();
+}
+
 /** Devuelve la pestaña `nombre` (creándola con su encabezado si falta). */
 function getHoja_(nombre) {
   var libro = getHojaCalculo_(true);
@@ -1656,8 +1795,8 @@ function asegurarFilaProyecto_(slug) {
   }
   hoja.appendRow([
     p.slug, p.hashtag, p.nombre, p.color, p.estado,
-    CONFIG.ROOT_FOLDER + '/' + p.slug + '/', 
-    CONFIG.ROOT_FOLDER + '/' + p.slug + '/bitacora.json'
+    p.drive_folder || CONFIG.ROOT_FOLDER + '/' + p.slug + '/',
+    (p.drive_folder || CONFIG.ROOT_FOLDER + '/' + p.slug + '/') + 'bitacora.json'
   ]);
 }
 
@@ -1735,7 +1874,8 @@ function eliminarFilaPorId_(nombre, id) {
  * 3. Crear la estructura en Drive (opcional, también se puede hacer
  *    desde la página con la acción crearEstructura, con token válido):
  *    - Ejecutar crearEstructuraDesdeCero() una vez desde el editor.
- *    - Crea Bitacoras/, el índice, las carpetas de los 6 proyectos,
+ *    - Crea Bitacoras/, el índice y las carpetas de todos los proyectos
+ *      registrados,
  *      sus bitacora.json, ficha.md, plantilla-sesion.json,
  *      formato-exportacion.json y Evidencias/,
  *      y el libro "Bitacoras" con sus 5 pestañas y encabezados.
