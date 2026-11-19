@@ -2,7 +2,7 @@
 
 **Versión:** v6 — 2026-11-19 (token de servicio limitado para Muse)
 **Para:** Nequiz (CCH-UNAM)
-**Carpeta del programa:** `~/workspace/goals/ordenar-mis-minutas-y-pendientes/files/programa-bitacoras-v1/`
+**Carpeta del programa:** `./bitacoras/`
 
 ## Qué es el programa
 
@@ -51,18 +51,21 @@ Desde la página, agrega proyectos en **Mantenimiento → Agregar proyecto**. Po
 │  Google Drive                │
 │  Carpeta Bitacoras/          │
 │  ├─ INDICE-bitacoras.json    │  Índice central
-│  ├─ <slug>/bitacora.json     │  Datos de cada proyecto (JSON)
-│  ├─ <slug>/Evidencias/       │  Imágenes y documentos de evidencia (PDF, Word, Excel; máx. 10 MB por archivo)
-│  ├─ <slug>/Informes/         │  Informes Word (por proyecto)
-│  └─ Hojas de cálculo         │  Bitacoras, Sesiones, Pendientes,
-│     para AppSheet            │  Hitos, Puntaje
+│  └─ Proyectos/               │
+│     ├─ Bitacoras             │  Libro con las cinco hojas de datos
+│     └─ <folio>/              │  Ej.: 20271-01
+│        ├─ bitacora.json      │  Datos del proyecto
+│        ├─ Evidencias/        │  Imágenes y documentos
+│        └─ Informes/          │  Informes Word
 └──────────────────────────────┘
 ```
 
 Los seis proyectos heredados se ocultan de la lista; sus carpetas y bitácoras
-se conservan. Los proyectos nuevos se nombran `<ciclo>-<nombre>` (por ejemplo,
-`20271-prueba`) y su carpeta se crea junto a la hoja de cálculo; el índice
-central conserva su ID para localizarla.
+se conservan en su ubicación actual. Los proyectos nuevos reciben un folio
+`CICLO-NN` (por ejemplo, `20271-01`) y se guardan en
+`Bitacoras/Proyectos/<folio>/`. El libro `Bitacoras` se reutiliza si ya existe
+en Drive y queda dentro de `Bitacoras/Proyectos/`; si no existe, se crea ahí.
+El índice central conserva el ID de cada carpeta para localizarla.
 
 **Lo que NO es la v1:** el bot de WhatsApp Business (Cloud API, número dedicado, webhook) es solo **v2**. En la v1 la captura es por WhatsApp 1 a 1 con Muse.
 
@@ -119,10 +122,10 @@ Máster en texto plano (Markdown/JSON) en Drive y GitHub. Google Docs o Word sol
 - **Alcance de Muse:** permite `leer`, `leerProyecto`, `guardarSesion`, `guardarPendiente`, `cerrarPendiente`, `guardarHito`, `subirEvidencia`, `crearProyecto`, `guardar`, `verEvidencia` y `registrarPuntaje`. Rechaza cualquier otra acción; no permite login, cambio de contraseña, crear/verificar estructura, cambiar ciclo, ni las acciones dedicadas para editar o borrar sesiones/hitos. Su `guardar` de sincronización fusiona por ID; conserva registros y elementos de arreglos omitidos, así como propiedades ausentes, nulas o vacías, evitando el borrado de datos por sincronización.
 - **Escrituras con `LockService`:** dos guardados simultáneos no se pisan en `bitacora.json` ni en las hojas.
 - **Mantenimiento** (§24): crear tablas y hojas de Drive desde cero; «Verificar estructura» llama de verdad a `verificarEstructura` y muestra los faltantes.
-- **Proyectos dinámicos:** en Mantenimiento puedes agregar un proyecto con nombre y color. En modo local queda guardado en este navegador; con Apps Script se registra en Drive junto a la hoja de cálculo, con nombre `<ciclo>-<nombre>` (el folio consecutivo sigue siendo independiente). No hace falta editar `INDICE-bitacoras.json` manualmente. Para activar los cambios publicados, actualiza `index.html` en GitHub Pages y `Codigo.gs` en Apps Script; este último requiere una nueva versión del despliegue.
+- **Proyectos dinámicos:** en Mantenimiento puedes agregar un proyecto con nombre y color. En modo local queda guardado en este navegador; con Apps Script se registra en `Bitacoras/Proyectos/<folio>/`, usando el folio consecutivo `CICLO-NN`. La carpeta `Proyectos/` y el libro `Bitacoras` se buscan antes de crearse; un libro existente se reutiliza y se mueve a esa carpeta. No hace falta editar `INDICE-bitacoras.json` manualmente. Para activar los cambios publicados, actualiza `index.html` en GitHub Pages y `Codigo.gs` en Apps Script; este último requiere una nueva versión del despliegue.
 - **Sin datos precargados:** la página ya no crea sesiones de demostración al abrirse. Los archivos JSON de simulación también se retiraron; los registros heredados marcados como ejemplo se pueden limpiar desde Mantenimiento.
 - **AppSheet** (§26): acceso controlado desde Apps Script (`CUENTAS_AUTORIZADAS_APPSHEET` + acción `verificarAppSheet`) / cuenta Google; usa las mismas hojas de Drive que la web.
-- **Evidencias e informes privados (M11):** los archivos subidos a Drive son privados del dueño; sus enlaces `/view` solo los abre la cuenta propietaria. Para que alguien más los vea, hay que compartirle la carpeta `<slug>/Evidencias/` o `<slug>/Informes/` desde Drive; el programa no cambia permisos automáticamente.
+- **Evidencias e informes privados (M11):** los archivos subidos a Drive son privados del dueño; sus enlaces `/view` solo los abre la cuenta propietaria. Para que alguien más los vea, hay que compartirle la carpeta `Evidencias/` o `Informes/` dentro de la carpeta del proyecto; el programa no cambia permisos automáticamente.
 - **Colores (M14):** cada proyecto nuevo guarda su propio color en el índice central. Los colores de los registros heredados se conservan en su archivo de Drive.
 - **Proyectos heredados:** los seis proyectos de demostración se retiraron de la lista activa. Sus carpetas y bitácoras se conservan; al crear el siguiente proyecto, sus entradas del índice se guardan como archivadas.
 
@@ -170,15 +173,15 @@ Un solo modelo en página, backend, hojas y formatos; ya no hay traducción parc
 - **A5 — Informe por campos:** cada sección se renderiza según sus `campos`; sin formato propio, usa «Información» y después bitácoras cronológicas con contenido y evidencias.
 - **A6 — Sin crash:** los filtros usan `(p.responsable || '').toLowerCase()`; un responsable nulo ya no rompe la lista.
 - **A7 — localStorage:** con Apps Script, las evidencias (imágenes y documentos) se suben a Drive y en local solo queda su URL; sin Apps Script se mide el tamaño real y se avisa a partir de ~4 MB (límite ~5 MB).
-- **v2 — Documentos como evidencia:** además de imágenes, se aceptan PDF, Word (`.doc`, `.docx`) y Excel (`.xls`, `.xlsx`) como evidencia, máx. 10 MB por archivo. Las imágenes se siguen comprimiendo a máx. 1200 px (JPG); los documentos se guardan tal cual, con su nombre original y su mime real, en `<slug>/Evidencias/`. En la tarjeta y en el informe aparecen como ficha/enlace con su nombre, no como imagen.
+- **v2 — Documentos como evidencia:** además de imágenes, se aceptan PDF, Word (`.doc`, `.docx`) y Excel (`.xls`, `.xlsx`) como evidencia, máx. 10 MB por archivo. Las imágenes se siguen comprimiendo a máx. 1200 px (JPG); los documentos se guardan tal cual, con su nombre original y su mime real, en `Evidencias/` dentro de la carpeta del proyecto. En la tarjeta y en el informe aparecen como ficha/enlace con su nombre, no como imagen.
 - **Reporte sin plantilla:** empieza con la sección «Información» y después presenta cada bitácora por fecha, con su contenido y evidencias. Las evidencias nuevas se ordenan por el momento en que se adjuntaron; las antiguas, sin marca de tiempo, mantienen su orden original. Las imágenes de Drive se incrustan en Word cuando pueden leerse con la sesión iniciada; no se añadió una dependencia CDN.
 
 ## Correcciones D1–D12 y M1–M15 (2026-11-18)
 
 Decisiones tomadas en los puntos donde la auditoría daba a elegir:
 
-- **D4 — Sin IDs de Drive:** `Codigo.gs` trabaja **por nombre** de carpeta y archivo, no por ID. Se quitaron de `CONFIGURACION.md` los pasos de anotar IDs y de ponerlos en constantes: no hay dónde ponerlos y no hacen falta.
-- **D7 — Word en Drive (implementado):** el botón Word ya no es solo una descarga. Con Apps Script, el informe se sube con la acción `subirInforme` a `<slug>/Informes/` y **sobrescribe** el archivo del mismo nombre (`informe-<slug>.doc`). Sin conexión o si la subida falla, se descarga en el navegador y la página lo dice.
+- **D4 — Sin IDs manuales de Drive:** no hace falta copiar IDs a `Codigo.gs`. El programa encuentra la raíz por nombre, guarda el ID del libro en Script Properties y conserva en el índice los IDs de las carpetas de proyecto.
+- **D7 — Word en Drive (implementado):** el botón Word ya no es solo una descarga. Con Apps Script, el informe se sube con la acción `subirInforme` a `Informes/` dentro de la carpeta del proyecto y **sobrescribe** el archivo del mismo nombre (`informe-<slug>.doc`). Sin conexión o si la subida falla, se descarga en el navegador y la página lo dice.
 - **M1 — Bloqueo por cliente:** ver «Login y mantenimiento» arriba.
 - **M7 — Puntaje con interfaz:** la página ya tiene el botón «Registrar puntaje» (rubro, actividad, nivel con puntos automáticos A=25 / B=50 / C=150, alcance, constancia, periodo y categoría objetivo) que llama a `registrarPuntaje` y muestra el total en el panel «Puntaje registrado».
 - **M11 — Evidencias privadas:** solo se documenta (ver arriba); no se cambian permisos sin avisar.
@@ -199,7 +202,7 @@ Probar en este orden, con la página ya publicada y la URL de Apps Script puesta
 2. **Acuerdo → pendiente:** en la sesión, escribir un acuerdo con responsable y fecha y pulsar «→ Pendiente». Comprobar que aparece en el checklist de pendientes del proyecto, con su responsable y su fecha, y que también quedó guardado en Drive (recargar la página: el pendiente debe seguir ahí). Si se pulsa «→ Pendiente» dos veces sobre el mismo acuerdo, solo se crea un pendiente (no se duplica).
 3. **Marcar hecho:** marcar ese pendiente como hecho. Comprobar que cambia de estado y que ya no sale en los pendientes abiertos, y que tras recargar sigue marcado como hecho (se sincronizó con Drive con `cerrarPendiente`).
 4. **Calendario:** abrir el calendario y comprobar que en la cuadrícula de cada día aparecen la sesión (●), el hito (◆) y los pendientes con fecha de ese día (•, y ⚠ en rojo si están vencidos); al hacer clic en el día se ve el detalle completo.
-5. **Exportar JSON/CSV:** exportar la bitácora del proyecto en JSON y en CSV. El **JSON** trae todo (sesiones, pendientes e hitos de todos los proyectos); el **CSV** trae solo los pendientes, con las columnas Acción | Responsable | Fecha compromiso | Estado | Minuta origen | Notas. El Word, con Apps Script, se guarda en Drive en `<slug>/Informes/` sobrescribiendo el archivo del mismo nombre; sin conexión se descarga en el navegador.
+5. **Exportar JSON/CSV:** exportar la bitácora del proyecto en JSON y en CSV. El **JSON** trae todo (sesiones, pendientes e hitos de todos los proyectos); el **CSV** trae solo los pendientes, con las columnas Acción | Responsable | Fecha compromiso | Estado | Minuta origen | Notas. El Word, con Apps Script, se guarda en `Informes/` dentro de la carpeta del proyecto, sobrescribiendo el archivo del mismo nombre; sin conexión se descarga en el navegador.
 6. **Login / mantenimiento bloqueado sin sesión:** cerrar la sesión (o abrir la página en incógnito), intentar entrar a mantenimiento sin haber hecho login. Debe quedar bloqueado; con la contraseña correcta, debe dejar entrar.
 7. **Modo local sin URL:** quitar temporalmente la URL de Apps Script de `index.html` (dejar `CONFIG.appsScriptUrl` vacía) y recargar. La página sigue abriendo en modo local, pero es de **solo lectura salvo ver el ejemplo**: sin URL no se puede iniciar sesión y, sin sesión, crear, editar, borrar, exportar y Mantenimiento están bloqueados. Solo se ve la sesión de ejemplo sembrada. Volver a poner la URL al terminar la prueba.
 
@@ -214,4 +217,4 @@ Si alguna prueba falla, anotar qué proyecto, qué paso y qué mensaje apareció
 
 ## Versión
 
-**v6 — 2026-11-19.** Token de servicio Muse almacenado solo como hash con sal, con acciones permitidas explícitas, rechazo por lista permitida y revocación independiente de la sesión web de 6 horas. v5 vació el catálogo inicial y ocultó los registros heredados sin borrar sus datos.
+**v6 — 2026-11-19.** Token de servicio Muse almacenado solo como hash con sal, con acciones permitidas explícitas, rechazo por lista permitida y revocación independiente de la sesión web de 6 horas. El libro `Bitacoras` y las carpetas nuevas `CICLO-NN` quedan en `Bitacoras/Proyectos/`. v5 vació el catálogo inicial y ocultó los registros heredados sin borrar sus datos.

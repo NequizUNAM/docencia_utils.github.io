@@ -10,12 +10,11 @@
  *   - Datos: Google Drive, carpeta raíz "Bitacoras/".
  *       Bitacoras/
  *         INDICE-bitacoras.json
- *         <slug>/bitacora.json
- *         <slug>/ficha.md
- *         <slug>/plantilla-sesion.json
- *         <slug>/formato-exportacion.json
- *         <slug>/Evidencias/ (la raíz contiene proyectos iniciales;
- *         los proyectos nuevos pueden estar junto a la hoja de cálculo)
+ *         Proyectos/
+ *           Bitacoras (hoja de cálculo)
+ *           <folio>/{bitacora.json, ficha.md, plantilla-sesion.json,
+ *             formato-exportacion.json, Evidencias/}
+ *       Los proyectos heredados conservan su ubicación actual.
  *   - Hojas de cálculo: un libro "Bitacoras" con las pestañas
  *     Bitacoras, Sesiones, Pendientes, Hitos y Puntaje.
  *     Las mismas hojas las puede leer AppSheet (ver guia-configuracion-appsheet.md).
@@ -89,6 +88,7 @@
 var CONFIG = {
   // Carpeta raíz en Google Drive (se crea si no existe).
   ROOT_FOLDER: 'Bitacoras',
+  PROJECTS_FOLDER: 'Proyectos',
 
   // Nombre del libro de cálculo (se crea si no existe, o se usa el
   // existente con este mismo nombre).
@@ -241,7 +241,7 @@ function doGet(e) {
  *   eliminarHito     {slug, id} -> borra hito de bitacora.json y de la hoja (M6)
  *   subirEvidencia   {slug, nombre, base64, mime, carpeta} -> sube a Drive
  *   subirInforme     {slug, nombre, base64, mime} -> guarda el informe Word
- *                     en <slug>/Informes/, sobrescribiendo el mismo nombre (D7)
+ *                     en Informes/ dentro de la carpeta del proyecto (D7)
  *   guardarFormato   {slug, formato} -> guarda formato-exportacion.json versionado
  *   crearProyecto   {proyecto} -> registra el proyecto y crea su estructura
  *   guardarConfigCiclo {config, proyectos} -> guarda config-ciclo.json
@@ -1000,7 +1000,7 @@ function verEvidencia_(datos) {
 
 /**
  * subirInforme — recibe {slug, nombre, base64, mime}. Guarda el informe
- * Word (.doc) en <slug>/Informes/ y, si ya existe un archivo con ese
+ * Word (.doc) en la carpeta del proyecto/Informes/ y, si ya existe un archivo con ese
  * mismo nombre, LO SOBRESCRIBE (D7: es lo que promete el botón Word de
  * la página). Devuelve {ok, url, nombre, sobrescrito}.
  */
@@ -1035,7 +1035,7 @@ function subirInforme_(datos) {
 
 /**
  * subirEvidencia — recibe {slug, nombre, base64, mime}.
- * Sube el archivo a <slug>/Evidencias/ en Drive y
+ * Sube el archivo a la carpeta del proyecto/Evidencias/ en Drive y
  * devuelve {ok, id, url, nombre}. El base64 puede venir con o sin
  * prefijo data:...;base64, (se limpia antes de decodificar).
  * Genérico: vale para imágenes y para documentos (PDF, Word, Excel);
@@ -1136,11 +1136,13 @@ function registrarPuntaje_(datos) {
  *   - Carpeta raíz Bitacoras/ en Drive.
  *   - INDICE-bitacoras.json con los proyectos iniciales y los proyectos
  *     ya agregados desde la página.
- *   - Por proyecto: carpeta <slug>/, bitacora.json vacío
+ *   - Por proyecto: carpeta <folio>/ (o carpeta existente del proyecto),
+ *     bitacora.json vacío
  *     {slug, sesiones:[], pendientes:[], hitos:[]},
  *     ficha.md, plantilla-sesion.json (base + campos propios),
  *     formato-exportacion.json (formato simple por defecto),
  *     carpeta Evidencias/.
+ *   - Carpeta Bitacoras/Proyectos/ para proyectos y el libro "Bitacoras".
  *   - Libro "Bitacoras" (o usa el existente por nombre) con las pestañas
  *     Bitacoras, Sesiones, Pendientes, Hitos y Puntaje, cada una
  *     con su encabezado exacto, y una fila de ejemplo en Sesiones y
@@ -1161,6 +1163,14 @@ function crearEstructuraDesdeCero() {
     informe.existente.push('Carpeta raíz: ' + CONFIG.ROOT_FOLDER + '/ (ya existía)');
   }
 
+  var padreProyectos = getProyectosFolder_(false);
+  if (!padreProyectos) {
+    padreProyectos = getOrCreateProyectosFolder_();
+    informe.creado.push('Carpeta: ' + CONFIG.ROOT_FOLDER + '/' + CONFIG.PROJECTS_FOLDER + '/');
+  } else {
+    informe.existente.push('Carpeta: ' + CONFIG.ROOT_FOLDER + '/' + CONFIG.PROJECTS_FOLDER + '/ (ya existía)');
+  }
+
   // --- Índice central ---
   if (!buscarArchivo_(root, 'INDICE-bitacoras.json')) {
     escribirJSON_(root, 'INDICE-bitacoras.json', indicePorDefecto_(), false);
@@ -1173,47 +1183,49 @@ function crearEstructuraDesdeCero() {
   proyectosRegistrados_().forEach(function (p) {
     var carpeta = getCarpetaProyecto_(p.slug);
     if (!carpeta) {
-      carpeta = root.createFolder(p.slug);
-      informe.creado.push('Carpeta: ' + p.slug + '/');
+      var nombreCarpeta = p.folio || p.slug;
+      carpeta = padreProyectos.createFolder(nombreCarpeta);
+      informe.creado.push('Carpeta: ' + CONFIG.PROJECTS_FOLDER + '/' + nombreCarpeta + '/');
     } else {
-      informe.existente.push('Carpeta: ' + p.slug + '/ (ya existía)');
+      informe.existente.push('Carpeta: ' + carpeta.getName() + '/ (ya existía)');
     }
+    var rutaProyecto = carpeta.getName() + '/';
 
     if (!buscarArchivo_(carpeta, 'bitacora.json')) {
       escribirJSON_(carpeta, 'bitacora.json', bitacoraVacia_(p.slug), false);
-      informe.creado.push(p.slug + '/bitacora.json');
+      informe.creado.push(rutaProyecto + 'bitacora.json');
     } else {
-      informe.existente.push(p.slug + '/bitacora.json (ya existía)');
+      informe.existente.push(rutaProyecto + 'bitacora.json (ya existía)');
     }
 
     if (!buscarArchivo_(carpeta, 'ficha.md')) {
       crearArchivoTexto_(carpeta, 'ficha.md', fichaPorDefecto_(p));
-      informe.creado.push(p.slug + '/ficha.md');
+      informe.creado.push(rutaProyecto + 'ficha.md');
     } else {
-      informe.existente.push(p.slug + '/ficha.md (ya existía)');
+      informe.existente.push(rutaProyecto + 'ficha.md (ya existía)');
     }
 
     if (!buscarArchivo_(carpeta, 'plantilla-sesion.json')) {
       escribirJSON_(carpeta, 'plantilla-sesion.json', plantillaPorDefecto_(p), false);
-      informe.creado.push(p.slug + '/plantilla-sesion.json');
+      informe.creado.push(rutaProyecto + 'plantilla-sesion.json');
     } else {
-      informe.existente.push(p.slug + '/plantilla-sesion.json (ya existía)');
+      informe.existente.push(rutaProyecto + 'plantilla-sesion.json (ya existía)');
     }
 
     if (!buscarArchivo_(carpeta, 'formato-exportacion.json')) {
       escribirJSON_(carpeta, 'formato-exportacion.json', formatoPorDefecto_(p.slug), false);
-      informe.creado.push(p.slug + '/formato-exportacion.json');
+      informe.creado.push(rutaProyecto + 'formato-exportacion.json');
     } else {
-      informe.existente.push(p.slug + '/formato-exportacion.json (ya existía)');
+      informe.existente.push(rutaProyecto + 'formato-exportacion.json (ya existía)');
     }
 
     // Evidencias/
     var evidencias = buscarCarpeta_(carpeta, 'Evidencias');
     if (!evidencias) {
       evidencias = carpeta.createFolder('Evidencias');
-      informe.creado.push(p.slug + '/Evidencias/');
+      informe.creado.push(rutaProyecto + 'Evidencias/');
     } else {
-      informe.existente.push(p.slug + '/Evidencias/ (ya existía)');
+      informe.existente.push(rutaProyecto + 'Evidencias/ (ya existía)');
     }
   });
 
@@ -1259,8 +1271,8 @@ function crearEstructuraDesdeCero() {
  * verificarEstructura_()
  * Revisa carpeta raíz, índice, plantillas, formatos y hojas, y devuelve
  * la lista de faltantes: {ok, faltantes:[...], revisado:...}.
- * No crea nada: solo informa, para que crearEstructuraDesdeCero()
- * complete lo que falte.
+ * No crea archivos de datos ni pestañas. Si encuentra el libro existente
+ * fuera de Bitacoras/Proyectos/, lo mueve al contenedor estándar y reutiliza.
  */
 function verificarEstructura_() {
   var faltantes = [];
@@ -1288,6 +1300,9 @@ function verificarEstructura_() {
     }
   });
   var libro = getHojaCalculo_(false);
+  if (!getProyectosFolder_(false)) {
+    faltantes.push('Carpeta: ' + CONFIG.PROJECTS_FOLDER + '/');
+  }
   if (!libro) {
     faltantes.push('Libro de cálculo: ' + CONFIG.SPREADSHEET_NAME);
   } else {
@@ -1306,6 +1321,13 @@ function verificarEstructura_() {
 // ---------------------------------------------------------------------------
 
 /** Índice central hashtag -> slug -> carpeta (igual que INDICE-bitacoras.json). */
+function rutaCarpetaProyecto_(proyecto) {
+  if (proyecto && proyecto.drive_folder) return proyecto.drive_folder;
+  var nombreCarpeta = proyecto && (proyecto.folio || proyecto.slug);
+  return CONFIG.ROOT_FOLDER + '/' + CONFIG.PROJECTS_FOLDER + '/' +
+    nombreCarpeta + '/';
+}
+
 function indicePorDefecto_() {
   return {
     version: 1,
@@ -1317,14 +1339,14 @@ function indicePorDefecto_() {
     base_fields: ['id', 'fecha', 'titulo', 'tipo', 'texto', 'asistentes',
       'acuerdos', 'pendientes', 'hitos', 'evidencias'],
     projects: PROYECTOS.map(function (p) {
+      var rutaProyecto = rutaCarpetaProyecto_(p);
       return {
         slug: p.slug, hashtag: p.hashtag, nombre: p.nombre,
         folio: p.folio || '',
         color: p.color, campos_propios: p.campos_propios,
-        drive_folder: CONFIG.ROOT_FOLDER + '/' + p.slug + '/',
- 
-        bitacora_json: CONFIG.ROOT_FOLDER + '/' + p.slug + '/bitacora.json',
-        ficha: CONFIG.ROOT_FOLDER + '/' + p.slug + '/ficha.md',
+        drive_folder: rutaProyecto,
+        bitacora_json: rutaProyecto + 'bitacora.json',
+        ficha: rutaProyecto + 'ficha.md',
         github_repo: p.slug === 'cch-page' ? 'NequizUNAM/CCH-Page' : ''
       };
     })
@@ -1441,13 +1463,12 @@ function crearProyecto_(datos) {
   if (!Array.isArray(indice.projects)) indice.projects = [];
   var proyectosArchivados = archivarProyectosIniciales_(indice);
   var carpetaEnRaiz = buscarCarpeta_(root, slug);
-  var carpetaEnPadre = buscarCarpeta_(padreProyectos, slug);
+  var carpetaEnPadrePorSlug = buscarCarpeta_(padreProyectos, slug);
   var hashtagNormalizado = hashtag.toLowerCase();
   var duplicado = indice.projects.some(function (p) {
     return p.slug === slug || String(p.hashtag || '').toLowerCase() === hashtagNormalizado;
   });
-  var carpetaEnConflicto = carpetaEnRaiz && !carpetaEnPadre;
-  if (duplicado || carpetaEnConflicto) {
+  if (duplicado || carpetaEnRaiz || carpetaEnPadrePorSlug) {
     return { ok: false, error: 'Ya existe un proyecto o carpeta con ese nombre.' };
   }
 
@@ -1464,18 +1485,28 @@ function crearProyecto_(datos) {
   var folio = config.ciclo + '-' + String(config.siguiente).padStart(2, '0');
   config.usados.push(folio);
   config.siguiente++;
+  var carpeta = buscarCarpeta_(padreProyectos, folio);
+  if (carpeta) {
+    var bitacoraExistente = leerJSON_(carpeta, 'bitacora.json');
+    var correspondeAlProyecto = bitacoraExistente && bitacoraExistente.slug === slug;
+    if (!correspondeAlProyecto &&
+        (bitacoraExistente || carpeta.getFiles().hasNext() || carpeta.getFolders().hasNext())) {
+      return { ok: false, error: 'Ya existe una carpeta con el folio ' + folio + ' asignada a otro proyecto.' };
+    }
+  }
+  var rutaProyecto = CONFIG.ROOT_FOLDER + '/' + CONFIG.PROJECTS_FOLDER + '/' + folio + '/';
 
   var proyecto = {
     slug: slug, hashtag: hashtag, nombre: nombre, color: color,
     folio: folio, estado: 'Activo', campos_propios: [],
-    drive_folder: padreProyectos.getName() + '/' + slug + '/',
-    bitacora_json: padreProyectos.getName() + '/' + slug + '/bitacora.json',
-    ficha: padreProyectos.getName() + '/' + slug + '/ficha.md',
+    drive_folder: rutaProyecto,
+    bitacora_json: rutaProyecto + 'bitacora.json',
+    ficha: rutaProyecto + 'ficha.md',
     github_repo: ''
   };
   indice.projects.push(proyecto);
   indice.updated = ahoraISO_().slice(0, 10);
-  var carpeta = carpetaEnPadre || padreProyectos.createFolder(slug);
+  carpeta = carpeta || padreProyectos.createFolder(folio);
   proyecto.drive_folder_id = carpeta.getId();
   escribirJSON_(root, 'INDICE-bitacoras.json', indice, true);
   if (!buscarArchivo_(carpeta, 'bitacora.json')) escribirJSON_(carpeta, 'bitacora.json', bitacoraVacia_(slug), false);
@@ -1498,7 +1529,7 @@ function fichaPorDefecto_(p) {
   return '# ' + p.nombre + '\n\n' +
     '- Hashtag: ' + p.hashtag + '\n' +
     '- Slug: ' + p.slug + '\n' +
-    '- Carpeta en Drive: ' + (p.drive_folder || CONFIG.ROOT_FOLDER + '/' + p.slug + '/') + '\n' +
+    '- Carpeta en Drive: ' + rutaCarpetaProyecto_(p) + '\n' +
     '- Campos propios: ' + p.campos_propios.join(', ') + '\n\n' +
     '## Descripción\n\n' +
     '[Completar: descripción del proyecto, objetivo y responsables.]\n\n' +
@@ -1722,6 +1753,18 @@ function getOrCreateFolder_() {
   return root || DriveApp.createFolder(CONFIG.ROOT_FOLDER);
 }
 
+function getProyectosFolder_(crear) {
+  var root = crear ? getOrCreateFolder_() : getRootFolder_();
+  if (!root) return null;
+  var proyectos = buscarCarpeta_(root, CONFIG.PROJECTS_FOLDER);
+  if (!proyectos && crear) proyectos = root.createFolder(CONFIG.PROJECTS_FOLDER);
+  return proyectos;
+}
+
+function getOrCreateProyectosFolder_() {
+  return getProyectosFolder_(true);
+}
+
 /**
  * getOrCreateFolder_(padre, nombre) — subcarpeta `nombre` dentro de
  * `padre`; la crea si no existe. (Sobrecarga por número de argumentos
@@ -1737,25 +1780,34 @@ function getOrCreateSubfolder_(padre, nombre) {
 /** Carpeta registrada del proyecto, o la carpeta heredada bajo la raíz. */
 function getCarpetaProyecto_(slug) {
   var proyecto = proyectoPorSlug_(slug);
+  var root = getRootFolder_();
+  var carpetaProyectos = root
+    ? buscarCarpeta_(root, CONFIG.PROJECTS_FOLDER) : null;
   if (proyecto && proyecto.drive_folder_id) {
     try { return DriveApp.getFolderById(proyecto.drive_folder_id); }
     catch (err) {
-      var carpetaAnterior = getRootFolder_();
-      carpetaAnterior = carpetaAnterior ? buscarCarpeta_(carpetaAnterior, slug) : null;
+      var carpetaAnterior = proyecto.folio && carpetaProyectos
+        ? buscarCarpeta_(carpetaProyectos, proyecto.folio) : null;
+      if (carpetaAnterior) return carpetaAnterior;
+      carpetaAnterior = root ? buscarCarpeta_(root, slug) : null;
       if (carpetaAnterior) return carpetaAnterior;
       throw new Error('No se pudo acceder a la carpeta de ' + slug + ': ' + err.message);
     }
   }
-  var root = getRootFolder_();
+  var carpetaPorFolio = proyecto && proyecto.folio && carpetaProyectos
+    ? buscarCarpeta_(carpetaProyectos, proyecto.folio) : null;
+  if (carpetaPorFolio) return carpetaPorFolio;
   return root ? buscarCarpeta_(root, slug) : null;
 }
 
-/** Carpeta registrada del proyecto; si falta, crea la ruta heredada bajo la raíz. */
+/** Carpeta registrada del proyecto; si falta, la crea en Bitacoras/Proyectos/. */
 function getOrCreateCarpetaProyecto_(slug) {
   var carpeta = getCarpetaProyecto_(slug);
   if (carpeta) return carpeta;
-  var root = getOrCreateFolder_();
-  return getOrCreateSubfolder_(root, slug);
+  var proyecto = proyectoPorSlug_(slug);
+  var padreProyectos = getOrCreateProyectosFolder_();
+  return getOrCreateSubfolder_(padreProyectos,
+    proyecto && proyecto.folio ? proyecto.folio : slug);
 }
 
 /** Primera carpeta con ese nombre dentro de `padre`, o null. */
@@ -1829,7 +1881,7 @@ function crearArchivoTexto_(carpeta, nombre, contenido) {
 }
 
 /**
- * Sube un archivo en base64 a <slug>/Evidencias/.
+ * Sube un archivo en base64 a la carpeta Evidencias del proyecto.
  * Devuelve {ok, id, url, nombre}.
  */
 function subirArchivoADrive_(slug, carpeta, nombre, base64, mime) {
@@ -1853,39 +1905,74 @@ function subirArchivoADrive_(slug, carpeta, nombre, base64, mime) {
 // ---------------------------------------------------------------------------
 
 /**
- * Devuelve el libro "Bitacoras" (el primero con ese nombre en Drive).
- * Con crear=true lo crea si no existe; con crear=false devuelve null.
- * Al crear un libro nuevo, SpreadsheetApp trae una hoja "Hoja 1" que
- * aquí se conserva vacía (las 5 pestañas del programa se agregan aparte).
+ * Devuelve el libro "Bitacoras" dentro de Bitacoras/Proyectos/.
+ * Busca primero en esa carpeta; si encuentra el libro fuera, lo mueve ahí
+ * y lo reutiliza. Solo lo crea si no existe y `crear` es true.
  */
 function getHojaCalculo_(crear) {
-  // Paso 8d: cachear el id del libro en Script Properties (SHEET_ID) para
-  // no buscarlo por nombre en todo Drive en cada escritura.
   var props = PropertiesService.getScriptProperties();
   var idLibro = props.getProperty('SHEET_ID');
+  var libro = null;
   if (idLibro) {
-    try { return SpreadsheetApp.openById(idLibro); } catch (e) { /* seguir buscando */ }
+    try {
+      var libroCacheado = SpreadsheetApp.openById(idLibro);
+      if (libroCacheado.getName() === CONFIG.SPREADSHEET_NAME) libro = libroCacheado;
+      else props.deleteProperty('SHEET_ID');
+    } catch (e) { /* seguir buscando */ }
   }
-  var archivos = DriveApp.getFilesByName(CONFIG.SPREADSHEET_NAME);
-  while (archivos.hasNext()) {
-    var archivo = archivos.next();
-    if (archivo.getMimeType() === MimeType.GOOGLE_SHEETS) {
-      props.setProperty('SHEET_ID', archivo.getId());
-      return SpreadsheetApp.openById(archivo.getId());
+  if (!libro) {
+    var carpetaProyectos = getProyectosFolder_(false);
+    var archivo = carpetaProyectos
+      ? buscarHojaCalculoEnCarpeta_(carpetaProyectos) : null;
+    if (!archivo) {
+      var archivos = DriveApp.getFilesByName(CONFIG.SPREADSHEET_NAME);
+      while (archivos.hasNext()) {
+        var candidato = archivos.next();
+        if (candidato.getMimeType() === MimeType.GOOGLE_SHEETS) {
+          archivo = candidato;
+          break;
+        }
+      }
     }
+    if (archivo) libro = SpreadsheetApp.openById(archivo.getId());
+  }
+  if (libro) {
+    moverLibroAProyectos_(libro, getOrCreateProyectosFolder_());
+    props.setProperty('SHEET_ID', libro.getId());
+    return libro;
   }
   if (!crear) return null;
-  var libro = SpreadsheetApp.create(CONFIG.SPREADSHEET_NAME);
+  var proyectos = getOrCreateProyectosFolder_();
+  libro = SpreadsheetApp.create(CONFIG.SPREADSHEET_NAME);
+  moverLibroAProyectos_(libro, proyectos);
   props.setProperty('SHEET_ID', libro.getId());
   return libro;
 }
 
-/** Carpeta contenedora de la hoja de cálculo; usa la raíz de Drive si no tiene padre. */
-function carpetaPadreHojaCalculo_(libro) {
-  if (!libro) throw new Error('No se encontró la hoja de cálculo Bitacoras.');
+function buscarHojaCalculoEnCarpeta_(carpeta) {
+  var archivos = carpeta.getFilesByName(CONFIG.SPREADSHEET_NAME);
+  while (archivos.hasNext()) {
+    var archivo = archivos.next();
+    if (archivo.getMimeType() === MimeType.GOOGLE_SHEETS) return archivo;
+  }
+  return null;
+}
+
+function moverLibroAProyectos_(libro, carpetaProyectos) {
   var archivo = DriveApp.getFileById(libro.getId());
   var padres = archivo.getParents();
-  return padres.hasNext() ? padres.next() : DriveApp.getRootFolder();
+  while (padres.hasNext()) {
+    if (padres.next().getId() === carpetaProyectos.getId()) return;
+  }
+  archivo.moveTo(carpetaProyectos);
+}
+
+/** Devuelve el contenedor estándar del libro y las carpetas nuevas. */
+function carpetaPadreHojaCalculo_(libro) {
+  if (!libro) throw new Error('No se encontró la hoja de cálculo Bitacoras.');
+  var proyectos = getOrCreateProyectosFolder_();
+  moverLibroAProyectos_(libro, proyectos);
+  return proyectos;
 }
 
 /** Devuelve la pestaña `nombre` (creándola con su encabezado si falta). */
@@ -1928,10 +2015,10 @@ function asegurarFilaProyecto_(slug) {
   for (var i = 1; i < valores.length; i++) {
     if (valores[i][0] === slug) return; // ya tiene fila
   }
+  var rutaProyecto = rutaCarpetaProyecto_(p);
   hoja.appendRow([
     p.slug, p.hashtag, p.nombre, p.color, p.estado,
-    p.drive_folder || CONFIG.ROOT_FOLDER + '/' + p.slug + '/',
-    (p.drive_folder || CONFIG.ROOT_FOLDER + '/' + p.slug + '/') + 'bitacora.json'
+    rutaProyecto, rutaProyecto + 'bitacora.json'
   ]);
 }
 

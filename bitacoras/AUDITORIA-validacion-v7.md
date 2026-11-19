@@ -54,9 +54,17 @@ Todas las acciones fuera de la lista permitida, entre ellas `login`, `cambiarPas
 
 No se afirma que las pruebas dinámicas requeridas hayan pasado.
 
+## Addendum: organización de Drive
+
+- La estructura nueva es `Bitacoras/Proyectos/Bitacoras` para el libro y `Bitacoras/Proyectos/<folio>/` para cada proyecto nuevo (por ejemplo, `20271-01`).
+- `getProyectosFolder_()` busca `Proyectos/` antes de crearla. La creación del proyecto busca la carpeta del folio antes de crearla y valida que una carpeta existente no pertenezca a otro proyecto.
+- `getHojaCalculo_()` busca primero el libro `Bitacoras` dentro de `Proyectos/`; si lo encuentra fuera, lo mueve y reutiliza. Solo crea el libro si no encuentra uno existente. También valida el nombre del libro guardado en `SHEET_ID`.
+- Las carpetas de proyectos heredados se conservan en su ubicación actual y se siguen localizando por ID; no se movieron ni renombraron.
+- `verificarEstructura_()` reporta si falta `Proyectos/`. Node.js sigue sin estar disponible, por lo que este cambio no pudo pasar `node --check` ni pruebas con Apps Script simulado.
+
 ## Versiones y archivos ZIP
 
-No se encontraron fuentes históricas ni ZIPs v1–v5; la carpeta original disponible es `bitacoras/`. Por autorización del usuario, se crearon `programa-bitacoras-v1/` a `programa-bitacoras-v6/` como copias del snapshot actual y sus seis ZIPs. Cada ZIP abre correctamente y contiene 34 entradas, incluidos `Codigo.gs`, `index.html`, `README.md` y esta auditoría. El código y documentación principal son idénticos entre carpetas; solo cambia el marcador del README. Estos paquetes no representan históricos originales v1–v5.
+No se encontraron fuentes históricas v1–v5. En este ajuste, el cambio se conserva en `bitacoras/`; no hay carpetas `programa-bitacoras-v1/` a `-v6/` ni ZIPs en el workspace. El usuario indicó que para cambios futuros ya no se generen ZIPs, por lo que no se intentará empaquetar este ajuste.
 
 ## Líneas finales de los archivos principales
 
@@ -67,7 +75,7 @@ No se encontraron fuentes históricas ni ZIPs v1–v5; la carpeta original dispo
   </body>
   </html>
   ```
-- `Codigo.gs`: **2,049 líneas**. Final:
+- `Codigo.gs`: **2,136 líneas**. Final:
   ```js
    *    - Si falta algo, ejecutar crearEstructuraDesdeCero() de nuevo.
    * ============================================================================

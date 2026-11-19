@@ -14,29 +14,29 @@ Resumen del programa en [`README.md`](README.md). El checklist de decisiones (27
 ## 1) En Drive: crear la carpeta `Bitacoras/` y subir los archivos
 
 1. Abre [Google Drive](https://drive.google.com) con tu cuenta de Google.
-2. Crea una carpeta llamada **`Bitacoras`** en la raíz de tu Drive.
-3. No crees carpetas de proyectos a mano ni una carpeta `Evidencias/` global. Cada proyecto nuevo y su carpeta `Evidencias/` se generan desde **Mantenimiento → Agregar proyecto**.
+2. Crea una carpeta llamada **`Bitacoras`** en la raíz de tu Drive si todavía no existe.
+3. No crees `Proyectos/`, carpetas de proyectos ni una carpeta `Evidencias/` global a mano. Apps Script valida si ya existen y crea lo que falte.
 4. Sube a `Bitacoras/` estos archivos de esta entrega:
    - `INDICE-bitacoras.json` → en `Bitacoras/` (plantilla vacía; la aplicación actualiza los proyectos automáticamente)
    - `banco-peticiones.json` → en `Bitacoras/` (referencia; no lo edita la página)
    - Las seis plantillas de `plantillas/` son heredadas y opcionales; no es necesario crear proyectos ni carpetas para ellas.
    - `formato-por-defecto.json` es opcional; se aplica cuando se genera un informe sin formato propio.
 5. El índice puede iniciar sin proyectos. La página crea el registro del proyecto, su `bitacora.json`, ficha, plantilla, formato y `Evidencias/` al usar **Agregar proyecto**; no crees un `bitacoras.json` global.
-6. Crea **una hoja de cálculo por cada una** de estas 5 hojas (la hoja `Firmas` ya no existe: las firmas diarias se quitaron del programa) (pueden estar en un solo libro o en libros separados; lo recomendado es un solo libro llamado `Bitacoras`):
+6. El libro **`Bitacoras`** se crea o reutiliza automáticamente en `Bitacoras/Proyectos/` al ejecutar la creación de estructura. Debe contener estas cinco hojas (la hoja `Firmas` ya no existe):
    - `Bitacoras`
    - `Sesiones`
    - `Pendientes`
    - `Hitos`
    - `Puntaje`
    
-   Cada hoja lleva sus columnas según `../guia-configuracion-appsheet.md` (mismas hojas para la web y para AppSheet). No hace falta llenarlas: se llenan solas al usar la página.
-7. El ID de la carpeta de `Bitacoras/` sigue configurándose en Apps Script. El ID de cada carpeta de proyecto nueva se registra automáticamente en `INDICE-bitacoras.json`; no es necesario copiar IDs manualmente.
+   Cada hoja lleva sus columnas según `../guia-configuracion-appsheet.md` (mismas hojas para la web y para AppSheet). No hace falta llenarlas: se llenan solas al usar la página. Si ya hay un libro llamado `Bitacoras` fuera de `Proyectos/`, Apps Script lo mueve allí y lo reutiliza; no crea otro.
+7. No tienes que copiar IDs de Drive en Apps Script: la raíz `Bitacoras/` y `Proyectos/` se buscan por nombre. El programa guarda automáticamente el ID del libro en Script Properties y el de cada carpeta de proyecto en `INDICE-bitacoras.json`.
 
-> **Nota (M11):** los archivos que se suben a Drive (evidencias e informes Word) son **privados del dueño** por defecto: sus enlaces `/view` solo los abre la cuenta propietaria. Si alguien más debe ver las fotos o los informes, comparte con esa persona la carpeta `<slug>/Evidencias/` o `<slug>/Informes/` desde Drive. No se cambian permisos automáticamente.
+> **Nota (M11):** los archivos que se suben a Drive (evidencias e informes Word) son **privados del dueño** por defecto: sus enlaces `/view` solo los abre la cuenta propietaria. Si alguien más debe ver las fotos o los informes, comparte con esa persona la carpeta del proyecto `Proyectos/<folio>/Evidencias/` o `Proyectos/<folio>/Informes/` desde Drive. No se cambian permisos automáticamente.
 
-> **Nota (v2 — documentos como evidencia):** además de imágenes, cada sesión acepta PDF, Word (`.doc`, `.docx`) y Excel (`.xls`, `.xlsx`) como evidencia, **máx. 10 MB por archivo**. Las imágenes se comprimen a máx. 1200 px (JPG); los documentos se guardan tal cual, con su nombre original, en `<slug>/Evidencias/`. En modo local (sin Apps Script) los documentos quedan como base64 en localStorage: un solo PDF grande puede llenar el límite de ~5 MB, así que en ese modo conviene subirlos a Drive cuanto antes.
+> **Nota (v2 — documentos como evidencia):** además de imágenes, cada sesión acepta PDF, Word (`.doc`, `.docx`) y Excel (`.xls`, `.xlsx`) como evidencia, **máx. 10 MB por archivo**. Las imágenes se comprimen a máx. 1200 px (JPG); los documentos se guardan tal cual, con su nombre original, en la carpeta `Evidencias/` del proyecto. En modo local (sin Apps Script) los documentos quedan como base64 en localStorage: un solo PDF grande puede llenar el límite de ~5 MB, así que en ese modo conviene subirlos a Drive cuanto antes.
 
-> **Proyectos nuevos:** se crean desde Mantenimiento, no requieren editar el índice a mano y su carpeta se crea junto a la hoja de cálculo con nombre `<ciclo>-<nombre-normalizado>` (por ejemplo, `20271-prueba`). Los proyectos existentes se quedan en su ubicación actual bajo `Bitacoras/`. El índice guarda el ID de la carpeta nueva para que Drive pueda localizarla.
+> **Proyectos nuevos:** se crean desde Mantenimiento, no requieren editar el índice a mano y su carpeta se crea en `Bitacoras/Proyectos/` con su folio `CICLO-NN` (por ejemplo, `20271-01`). La misma carpeta contiene el libro `Bitacoras`. Los proyectos existentes conservan su ubicación y sus IDs; el índice registra el ID de cada carpeta.
 
 ## 2) En GitHub: crear el repo y activar Pages
 
@@ -106,7 +106,7 @@ Con la página publicada y la URL de Apps Script puesta:
 
 1. Abre la página en tu navegador (la URL de GitHub Pages del paso 2).
 2. Haz **login** con la contraseña del paso 5. Comprueba que sin la contraseña no entras a mantenimiento. (C5: la lectura de Drive también exige sesión; sin login la página solo muestra los datos locales.)
-3. En **Mantenimiento → Agregar proyecto**, crea un proyecto de prueba. Debe aparecer seleccionado y en el selector; comprueba en Drive la carpeta `<ciclo>-<nombre>` junto a la hoja de cálculo.
+3. En **Mantenimiento → Agregar proyecto**, crea un proyecto de prueba. Debe aparecer seleccionado y en el selector; comprueba en Drive `Bitacoras/Proyectos/<folio>/` y el libro `Bitacoras` dentro de `Proyectos/`.
 4. Crea una sesión en ese proyecto y recarga la página. Debe seguir visible; comprueba que su `bitacora.json`, la carpeta `Evidencias/` y las hojas se actualizaron.
 5. Haz la lista completa de pruebas del apartado **«Cómo probar la v1»** de `README.md` (acuerdo → pendiente, marcar hecho, calendario, exportar JSON/CSV, login bloqueado sin sesión y modo local sin URL).
 
@@ -154,9 +154,11 @@ Si algo falla, anota en qué paso, con qué proyecto y qué mensaje apareció. C
 - Sin Apps Script, el proyecto se conserva en el `localStorage` de ese
   navegador; exporta un respaldo JSON para moverlo a otro navegador.
 - Con Apps Script, se registra en `INDICE-bitacoras.json` y se crea en Drive
-  junto a la hoja de cálculo una carpeta `<ciclo>-<nombre-normalizado>` con
-  su bitácora vacía, ficha, plantilla, formato y `Evidencias/`. Los proyectos
-  heredados se ocultan, pero sus archivos no se borran. La sesión acepta el tipo `Online`, captura acuerdos
+  en `Bitacoras/Proyectos/` una carpeta `CICLO-NN` (por ejemplo, `20271-01`)
+  con su bitácora vacía, ficha, plantilla, formato y `Evidencias/`. El libro
+  `Bitacoras` queda en esa misma carpeta; si ya existía fuera, se mueve y se
+  reutiliza. Los proyectos heredados se ocultan, pero sus archivos no se
+  borran. La sesión acepta el tipo `Online`, captura acuerdos
   en un cuadro de texto y permite elegir entre cuatro prellenados editables
   para el cuadro de contenido de siete filas.
   No se edita el índice manualmente. Para habilitarlo en una instalación

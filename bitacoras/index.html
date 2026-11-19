@@ -1620,7 +1620,7 @@ async function exportar(tipo){
     w.document.close(); w.focus(); setTimeout(() => w.print(), 600);
   } else if(tipo === 'word'){
     const doc = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>' + esc(inf.titulo) + '</title></head><body>' + inf.cuerpo + '</body></html>';
-    /* D7: con Apps Script, el Word se SUBE a Drive (<slug>/Informes/) y
+    /* D7: con Apps Script, el Word se SUBE a Drive (Informes/ del proyecto) y
        sobrescribe el archivo del mismo nombre (acción subirInforme).
        Sin conexión o si la subida falla, se descarga en el navegador. */
     if(proyectoSel === 'todos'){ descargar('informe-todos.doc', doc, 'application/msword'); avisar('Word descargado en el navegador (informe de todos los proyectos, no se sube a un solo proyecto).', 'verde'); return; }
@@ -1662,7 +1662,7 @@ function abrirMantenimiento(){
   abrirModal('<h2>Mantenimiento</h2>' +
     '<p class="muted">Solo con sesión iniciada. ' + (TIENE_APPS_SCRIPT ? 'Conectado a Apps Script.' : 'Modo local: las acciones de Drive se muestran como lista, no se ejecutan.') + '</p>' +
     '<h3 style="margin-top:16px">Agregar proyecto</h3>' +
-    '<p class="muted">El proyecto se guardará en este navegador' + (TIENE_APPS_SCRIPT ? ' y su carpeta se creará junto a la hoja de cálculo' : '') + '.</p>' +
+    '<p class="muted">El proyecto se guardará en este navegador' + (TIENE_APPS_SCRIPT ? ' y su carpeta con folio CICLO-NN se creará en Bitacoras/Proyectos/' : '') + '.</p>' +
     '<label for="mProyectoNombre">Nombre del proyecto</label><input id="mProyectoNombre" maxlength="100" placeholder="p. ej. Nuevo proyecto">' +
     '<div class="grid2"><div><label for="mProyectoHashtag">Hashtag generado</label><input id="mProyectoHashtag" readonly aria-label="Hashtag generado automáticamente"></div>' +
     '<div><label for="mProyectoCarpeta">Carpeta del proyecto</label><input id="mProyectoCarpeta" readonly aria-label="Nombre generado para la carpeta"></div></div>' +

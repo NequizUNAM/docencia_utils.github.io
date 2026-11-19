@@ -41,7 +41,7 @@
 - [ ] Cada imagen con pie/descripción opcional y botón para quitarla
 - [ ] Compresión automática al guardar (máx. 1200 px por lado) para que la página no se vuelva pesada
 - [ ] Aviso si el almacenamiento local se acerca al límite; opción de exportar respaldo antes de borrar
-- [x] **v2 (2026-11-18): documentos como evidencia.** Además de imágenes, se aceptan PDF, Word (`.doc`, `.docx`) y Excel (`.xls`, `.xlsx`), máx. 10 MB por archivo. Se guardan tal cual (sin comprimir) con su nombre original y su mime real en `<slug>/Evidencias/`; en la tarjeta, el formulario y el informe aparecen como ficha/enlace con su nombre y tamaño, no como imagen. Modelo: `{url, pie, nombre, mime, tipo, tamano}`, `tipo` = `imagen` | `documento`; las evidencias viejas `{url, pie}` se normalizan al leer.
+- [x] **v2 (2026-11-18): documentos como evidencia.** Además de imágenes, se aceptan PDF, Word (`.doc`, `.docx`) y Excel (`.xls`, `.xlsx`), máx. 10 MB por archivo. Se guardan tal cual (sin comprimir) con su nombre original y su mime real en `Evidencias/` de la carpeta del proyecto; en la tarjeta, el formulario y el informe aparecen como ficha/enlace con su nombre y tamaño, no como imagen. Modelo: `{url, pie, nombre, mime, tipo, tamano}`, `tipo` = `imagen` | `documento`; las evidencias viejas `{url, pie}` se normalizan al leer.
 
 **Límite honesto de la v1:** las imágenes se guardan dentro del navegador (localStorage). Funciona en tu equipo sin servidor, pero no es para cientos de fotos en alta resolución. Para eso queda la exportación de respaldo (ver §9).
 
@@ -343,8 +343,8 @@ Bitacoras/
 ## 24. Mantenimiento — crear tablas y hojas de Drive desde cero (agregado 2026-11-18)
 
 - [ ] Apartado «Mantenimiento» en la interfaz, solo visible con la contraseña web
-- [ ] Crear desde cero, en Drive, la estructura completa: carpeta `Bitacoras/`, `INDICE-bitacoras.json`, y por proyecto `bitacora.json`, `ficha.md`, `plantilla-sesion.json`, `formato-exportacion.json` y carpeta `Evidencias/`
-- [ ] Crear desde cero las hojas de cálculo en Drive (una por tabla): Bitacoras, Sesiones, Pendientes, Hitos, Puntaje, con sus columnas y una fila de ejemplo
+- [ ] Crear desde cero, en Drive, la estructura completa: `Bitacoras/`, `INDICE-bitacoras.json`, `Proyectos/`, y por proyecto `Proyectos/<folio>/` con `bitacora.json`, `ficha.md`, `plantilla-sesion.json`, `formato-exportacion.json` y `Evidencias/`
+- [ ] Crear o reutilizar un solo libro `Bitacoras` dentro de `Bitacoras/Proyectos/`, con las cinco hojas Bitacoras, Sesiones, Pendientes, Hitos y Puntaje, sus columnas y una fila de ejemplo
 - [ ] Botón «Crear estructura desde cero» con confirmación; si ya existe, no sobrescribe sin avisar: muestra qué existe y qué falta, y crea solo lo que falta
 - [ ] Botón «Verificar estructura»: revisa que existan carpeta, índice, plantillas, hojas y permisos, y reporta lo que falta
 - [ ] Botón «Respaldar antes de recrear»: exporta JSON completo antes de borrar o recrear cualquier tabla u hoja
