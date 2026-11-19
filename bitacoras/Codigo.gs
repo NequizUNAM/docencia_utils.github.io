@@ -1978,6 +1978,13 @@ function subirArchivoADrive_(slug, carpeta, nombre, base64, mime) {
     var blob = Utilities.newBlob(bytes, mime || 'application/octet-stream', nombre);
     var carpetaProyecto = getOrCreateCarpetaProyecto_(slug);
     var evidencias = getOrCreateSubfolder_(carpetaProyecto, 'Evidencias');
+    var existente = evidencias.getFilesByName(nombre);
+    if (existente.hasNext()) {
+      var archivoExistente = existente.next();
+      return { ok: true, id: archivoExistente.getId(),
+        url: 'https://drive.google.com/file/d/' + archivoExistente.getId() + '/view',
+        nombre: archivoExistente.getName(), duplicado: true };
+    }
     var archivo = evidencias.createFile(blob);
     return { ok: true, id: archivo.getId(),
       url: 'https://drive.google.com/file/d/' + archivo.getId() + '/view',

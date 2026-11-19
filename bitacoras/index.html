@@ -27,6 +27,17 @@ h3{font-size:15px;color:var(--azul)}
 .aviso{background:#FEF3C7;border:1px solid var(--dorado);color:#78350F;padding:10px 14px;border-radius:10px;margin:10px 0;font-size:14px}
 .aviso.rojo{background:#FEE2E2;border-color:var(--rojo);color:#7F1D1D}
 .aviso.verde{background:#DCFCE7;border-color:var(--verde);color:#14532D}
+.toast-sync{position:fixed;right:18px;bottom:18px;z-index:105;display:flex;align-items:center;gap:12px;max-width:min(520px,calc(100vw - 32px));padding:14px 16px;background:#fff;border:1px solid var(--borde);border-left:4px solid var(--naranja);border-radius:12px;box-shadow:0 12px 35px rgba(17,24,39,.18)}
+.toast-sync p{font-size:13px;margin:0}
+.toast-sync .fila{flex-wrap:nowrap}
+.toast-sync .fila>*{flex:0 0 auto;min-width:0}
+.confirmacion-borrar{display:flex;gap:14px;align-items:flex-start}
+.confirmacion-borrar-icono{width:42px;height:42px;flex:0 0 auto;display:grid;place-items:center;background:#FEF2F2;color:var(--rojo);border-radius:12px;font-size:21px}
+.confirmacion-borrar .muted{margin:0}
+.confirmacion-fondo{position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(17,24,39,.42)}
+.confirmacion-dialogo{width:min(440px,100%);padding:22px;background:#fff;border:1px solid var(--borde);border-radius:14px;box-shadow:0 18px 48px rgba(17,24,39,.22)}
+.evidencia-quitar{border:0;background:transparent;color:var(--rojo);font-size:12px;font-weight:600;padding:5px 8px;border-radius:6px}
+.evidencia-quitar:hover{background:#FEF2F2}
 
 /* Encabezado */
 header{background:var(--azul);color:#fff;padding:14px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
@@ -68,6 +79,9 @@ section.contenido{flex:1;min-width:300px}
 .evidencia-accion{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--borde);border-radius:8px;background:#fff;color:var(--azul);padding:5px 8px;font-weight:600}
 .evidencia-accion:hover{background:#E3EDFB}
 .evidencia-accion svg{width:17px;height:17px;flex:0 0 auto}
+.hashtag-copiar{border:0;background:transparent;color:var(--azul);font:inherit;font-weight:700;padding:3px 5px;border-radius:6px;cursor:pointer}
+.hashtag-copiar:hover{background:#E3EDFB}
+.hashtag-copiar:focus-visible{outline:2px solid var(--azul-claro);outline-offset:2px}
 .modal.modal-amplio{max-width:1000px}
 .galeria-encabezado{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .galeria-visor{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;align-items:center;gap:8px;margin:12px 0}
@@ -163,6 +177,9 @@ details.menu summary::-webkit-details-marker{display:none}
   #listaPendientes tr{border:1px solid var(--borde);border-radius:10px;margin-bottom:10px;padding:6px}
   #listaPendientes td{border:none;padding:4px 8px}
   .agenda{display:block!important}
+  .toast-sync{left:12px;right:12px;bottom:72px;align-items:flex-start;flex-direction:column}
+  .toast-sync .fila{width:100%}
+  .toast-sync .fila>*{flex:1}
 }
 .agenda{display:none}
 @media (max-width:760px){
@@ -473,16 +490,74 @@ function normalizarFecha(t){
    La URL /file/d/ID/view es una página HTML, no una imagen, así que
    <img src> no la muestra; se pide el base64 con token y se cachea. */
 const CACHE_EV = {};
+const CACHE_EV_PROMESAS = {};
+const CACHE_EV_DB = 'bitacoras-evidencias';
+const CACHE_EV_STORE = 'imagenes';
+const CACHE_EV_TTL = 7 * 24 * 60 * 60 * 1000;
 const PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 function idDrive(url){ const s = String(url || ''), i = s.indexOf('/file/d/'); return i < 0 ? '' : s.slice(i + 8).split('/')[0].split('?')[0]; }
 function srcEvidencia(url){ const id = idDrive(url); return id ? "src='" + PIXEL + "' data-drive='" + esc(id) + "'" : "src='" + esc(url || '') + "'"; }
-async function cargarImagenDrive(id){
-  if(!CACHE_EV[id]){
+function abrirCacheEvidencias(){
+  if(!window.indexedDB) return Promise.resolve(null);
+  return new Promise(resolve => {
+    try {
+      const solicitud = indexedDB.open(CACHE_EV_DB, 1);
+      solicitud.onupgradeneeded = () => {
+        const db = solicitud.result;
+        if(!db.objectStoreNames.contains(CACHE_EV_STORE)) db.createObjectStore(CACHE_EV_STORE);
+      };
+      solicitud.onsuccess = () => resolve(solicitud.result);
+      solicitud.onerror = () => resolve(null);
+      solicitud.onblocked = () => resolve(null);
+    } catch(e){ resolve(null); }
+  });
+}
+async function leerCacheEvidencia(id){
+  const db = await abrirCacheEvidencias();
+  if(!db) return null;
+  return new Promise(resolve => {
+    try {
+      const tx = db.transaction(CACHE_EV_STORE, 'readonly');
+      const req = tx.objectStore(CACHE_EV_STORE).get(id);
+      req.onsuccess = () => {
+        const r = req.result;
+        if(r && r.expira && r.expira > Date.now() && /^data:image\//i.test(r.src || '') && r.src) resolve(r.src);
+        else resolve(null);
+      };
+      req.onerror = () => resolve(null);
+    } catch(e){ resolve(null); }
+  });
+}
+async function escribirCacheEvidencia(id, src){
+  const db = await abrirCacheEvidencias();
+  if(!db) return;
+  try {
+    const tx = db.transaction(CACHE_EV_STORE, 'readwrite');
+    tx.objectStore(CACHE_EV_STORE).put({ src, expira: Date.now() + CACHE_EV_TTL }, id);
+  } catch(e){ /* La caché temporal no debe bloquear la visualización. */ }
+}
+async function cargarImagenDrive(id, mimeFallback){
+  if(CACHE_EV[id]) return CACHE_EV[id];
+  if(CACHE_EV_PROMESAS[id]) return CACHE_EV_PROMESAS[id];
+  CACHE_EV_PROMESAS[id] = (async () => {
+    let persistente = null;
+    try { persistente = await leerCacheEvidencia(id); }
+    catch(e){ persistente = null; }
+    if(persistente){
+      CACHE_EV[id] = persistente;
+      return persistente;
+    }
     const r = await llamar('verEvidencia', { id });
     if(!r || !r.base64) throw new Error('El servidor no devolvió la imagen.');
-    CACHE_EV[id] = 'data:' + (r.mime || 'image/jpeg') + ';base64,' + r.base64;
-  }
-  return CACHE_EV[id];
+    const mime = r.mime || mimeFallback || 'image/jpeg';
+    if(!/^image\//i.test(mime)) throw new Error('Apps Script no devolvió una imagen válida.');
+    const src = 'data:' + mime + ';base64,' + r.base64;
+    CACHE_EV[id] = src;
+    escribirCacheEvidencia(id, src).catch(() => {});
+    return src;
+  })();
+  try { return await CACHE_EV_PROMESAS[id]; }
+  finally { delete CACHE_EV_PROMESAS[id]; }
 }
 async function urlImagenEvidencia(ev){
   const id = idDrive(ev.url);
@@ -645,6 +720,30 @@ function idCliente(){
   return id;
 }
 function avisar(msg, tipo){ const d = document.createElement('div'); d.className = 'aviso ' + (tipo || ''); d.textContent = msg; $('#vista-' + vistaActual).prepend(d); setTimeout(() => d.remove(), 6000); }
+async function copiarTexto(texto){
+  const valor = String(texto || '').trim();
+  if(!valor) return;
+  try {
+    let copiado = false;
+    if(navigator.clipboard && window.isSecureContext){
+      try { await navigator.clipboard.writeText(valor); copiado = true; } catch(e){}
+    }
+    if(!copiado && document.execCommand){
+      const campo = document.createElement('textarea');
+      campo.value = valor;
+      campo.setAttribute('readonly', '');
+      campo.style.position = 'fixed';
+      campo.style.opacity = '0';
+      document.body.appendChild(campo);
+      try {
+        campo.select();
+        copiado = document.execCommand('copy');
+      } finally { campo.remove(); }
+    }
+    if(!copiado) throw new Error('El navegador no permitió acceder al portapapeles.');
+    avisar(valor + ' copiado al portapapeles.', 'verde');
+  } catch(e){ avisar('No se pudo copiar el hashtag: ' + e.message, 'rojo'); }
+}
 
 /* ---------- Persistencia ---------- */
 let avisoTamanoMostrado = false;
@@ -678,6 +777,431 @@ function guardar(){
     } catch(e2){ avisar('No se pudo guardar en localStorage: ' + e.message, 'rojo'); }
   }
 }
+const COLA_DB = 'bitacoras-outbox';
+const COLA_STORE = 'operaciones';
+const COLA_ESPERA_AVISO = 5 * 60 * 1000;
+const TIEMPO_MAXIMO_APPS_SCRIPT = 4 * 60 * 1000;
+let dbColaPromesa = null;
+let colaOperaciones = [];
+let secuenciaCola = 0;
+let colaProcesando = false;
+let colaReintentoSolicitado = false;
+let colaAvisoTimer = null;
+let colaAvisoPospuestoHasta = 0;
+let toastCola = null;
+function compararOperacionesCola(a,b){
+  return (a.secuencia || a.creado) - (b.secuencia || b.creado) || a.creado - b.creado;
+}
+function abrirDBCola(){
+  if(!window.indexedDB) return Promise.resolve(null);
+  if(dbColaPromesa) return dbColaPromesa;
+  dbColaPromesa = new Promise(resolve => {
+    try {
+      const request = indexedDB.open(COLA_DB, 1);
+      request.onupgradeneeded = () => {
+        if(!request.result.objectStoreNames.contains(COLA_STORE)){
+          request.result.createObjectStore(COLA_STORE, { keyPath:'id' });
+        }
+      };
+      request.onsuccess = () => {
+        request.result.onversionchange = () => request.result.close();
+        resolve(request.result);
+      };
+      request.onerror = () => resolve(null);
+      request.onblocked = () => resolve(null);
+    } catch(e){ resolve(null); }
+  });
+  return dbColaPromesa;
+}
+async function leerColaPersistida(){
+  const db = await abrirDBCola();
+  if(!db) throw new Error('No se pudo abrir la base local de cambios.');
+  return new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction(COLA_STORE, 'readonly');
+      const request = tx.objectStore(COLA_STORE).getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error || new Error('No se pudo leer la cola de sincronización.'));
+      tx.onabort = () => reject(tx.error || new Error('No se pudo leer la cola de sincronización.'));
+    } catch(e){ reject(e); }
+  });
+}
+async function recargarColaEnMemoria(recuperarEnviando){
+  colaOperaciones = await leerColaPersistida();
+  for(const op of colaOperaciones){
+    if(op.secuencia) secuenciaCola = Math.max(secuenciaCola, op.secuencia);
+    else op.secuencia = ++secuenciaCola;
+    if(recuperarEnviando && op.estado === 'enviando') op.estado = 'pendiente';
+    if(recuperarEnviando) await guardarOperacionCola(op);
+  }
+  colaOperaciones.sort(compararOperacionesCola);
+}
+async function guardarOperacionCola(op){
+  const db = await abrirDBCola();
+  if(!db) throw new Error('Este navegador no permite guardar la cola de cambios de forma segura.');
+  return new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction(COLA_STORE, 'readwrite');
+      tx.objectStore(COLA_STORE).put(op);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('No se pudo guardar el cambio pendiente.'));
+      tx.onabort = () => reject(tx.error || new Error('No se pudo guardar el cambio pendiente.'));
+    } catch(e){ reject(e); }
+  });
+}
+async function quitarOperacionCola(id){
+  const db = await abrirDBCola();
+  if(!db) throw new Error('No se pudo abrir la cola de sincronización.');
+  return new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction(COLA_STORE, 'readwrite');
+      tx.objectStore(COLA_STORE).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('No se pudo confirmar la sincronización.'));
+      tx.onabort = () => reject(tx.error || new Error('No se pudo confirmar la sincronización.'));
+    } catch(e){ reject(e); }
+  });
+}
+function proyectarOperacionLocal(op){
+  const local = op.local || {}, id = local.id || (local.valor && local.valor.id);
+  if(local.tipo === 'bitacora'){
+    ['sesiones','pendientes','hitos','puntaje'].forEach(nombre => {
+      const lista = estado[nombre].filter(x => x.slug !== local.slug);
+      estado[nombre] = lista.concat((local.valor[nombre] || []).map(x => {
+        const registro = JSON.parse(JSON.stringify(x));
+        if(TIENE_APPS_SCRIPT) registro.sin_sync = true;
+        return registro;
+      }));
+    });
+    return;
+  }
+  if(local.tipo === 'config'){
+    const valor = JSON.parse(JSON.stringify(local.valor));
+    estado.configCiclo = valor.config || valor;
+    (valor.proyectos || []).forEach(p => {
+      const proyecto = estado.proyectos.find(x => x.slug === p.slug);
+      if(proyecto) proyecto.folio = p.folio || '';
+    });
+    return;
+  }
+  if(local.tipo === 'formato'){
+    estado.formatos[local.slug] = JSON.parse(JSON.stringify(local.valor));
+    return;
+  }
+  if(!local.tipo || !id) return;
+  const coleccion = { sesion:'sesiones', pendiente:'pendientes', hito:'hitos', puntaje:'puntaje' }[local.tipo];
+  if(!coleccion) return;
+  const lista = estado[coleccion];
+  if(local.modo === 'eliminar'){
+    estado[coleccion] = lista.filter(x => x.id !== id);
+    if(local.tipo === 'sesion') estado.pendientes = estado.pendientes.filter(x => x.sesion_id !== id);
+    return;
+  }
+  if(!local.valor) return;
+  const valor = JSON.parse(JSON.stringify(local.valor));
+  if(TIENE_APPS_SCRIPT) valor.sin_sync = true;
+  else delete valor.sin_sync;
+  const indice = lista.findIndex(x => x.id === id);
+  if(indice < 0) lista.push(valor);
+  else lista[indice] = valor;
+}
+function aplicarColaSobreEstado(){
+  colaOperaciones.slice().sort(compararOperacionesCola).forEach(proyectarOperacionLocal);
+}
+function actualizarEstadoModo(){
+  if(typeof renderEstadoModo === 'function') renderEstadoModo();
+}
+function ocultarToastCola(){
+  if(toastCola){ toastCola.remove(); toastCola = null; }
+}
+function mostrarToastCola(){
+  ocultarToastCola();
+  const toast = document.createElement('div');
+  toast.className = 'toast-sync';
+  toast.setAttribute('role', 'status');
+  toast.setAttribute('aria-live', 'polite');
+  toast.innerHTML = '<p>Hay cambios que llevan 5 minutos sin sincronizar. ¿Intentamos subirlos de nuevo?</p>' +
+    '<div class="fila"><button type="button" class="btn chico" data-reintentar>Reintentar</button><button type="button" class="btn chico blanco" data-despues>Después</button></div>';
+  toast.querySelector('[data-reintentar]').onclick = () => {
+    if(!navigator.onLine){
+      toast.querySelector('p').textContent = 'No hay conexión. Los cambios siguen guardados aquí; se reintentará al recuperar internet.';
+      return;
+    }
+    if(TIENE_APPS_SCRIPT && !sesionAutenticada()){
+      toast.querySelector('p').textContent = 'Inicia sesión para reintentar la sincronización de los cambios pendientes.';
+      return;
+    }
+    ocultarToastCola();
+    reintentarColaCambios();
+  };
+  toast.querySelector('[data-despues]').onclick = () => {
+    colaAvisoPospuestoHasta = Date.now() + COLA_ESPERA_AVISO;
+    ocultarToastCola();
+    programarAvisoCola();
+  };
+  document.body.appendChild(toast);
+  toastCola = toast;
+}
+function programarAvisoCola(){
+  clearTimeout(colaAvisoTimer);
+  if(!colaOperaciones.length){ ocultarToastCola(); return; }
+  const primero = colaOperaciones.slice().sort(compararOperacionesCola)[0];
+  const vence = Math.max(primero.creado + COLA_ESPERA_AVISO, colaAvisoPospuestoHasta);
+  colaAvisoTimer = setTimeout(() => {
+    if(colaOperaciones.length) mostrarToastCola();
+  }, Math.max(0, vence - Date.now()));
+}
+function marcarSincronizada(op, resultado){
+  const local = op.local || {};
+  if(local.tipo === 'bitacora'){
+    const otraPendiente = colaOperaciones.some(x => x.id !== op.id && x.datos && x.datos.slug === local.slug);
+    if(!otraPendiente){
+      ['sesiones','pendientes','hitos','puntaje'].forEach(nombre => {
+        estado[nombre].forEach(x => { if(x.slug === local.slug) delete x.sin_sync; });
+      });
+    }
+    return;
+  }
+  if(local.tipo === 'formato' && resultado && resultado.formato_version){
+    estado.formatos[local.slug].formato_version = resultado.formato_version;
+    guardar();
+    return;
+  }
+  const coleccion = { sesion:'sesiones', pendiente:'pendientes', hito:'hitos', puntaje:'puntaje' }[local.tipo];
+  if(!coleccion || local.modo === 'eliminar') return;
+  const registro = estado[coleccion].find(x => x.id === local.id);
+  if(!registro) return;
+  if(resultado && resultado.id && resultado.id !== registro.id){
+    const idAnterior = registro.id;
+    registro.id = resultado.id;
+    if(local.valor) local.valor.id = resultado.id;
+    colaOperaciones.forEach(otra => {
+      if(!otra.local || otra.local.tipo !== local.tipo || otra.local.id !== idAnterior) return;
+      otra.local.id = resultado.id;
+      if(otra.local.valor) otra.local.valor.id = resultado.id;
+      if(otra.datos.id === idAnterior) otra.datos.id = resultado.id;
+      if(otra.datos.pendiente && otra.datos.pendiente.id === idAnterior) otra.datos.pendiente.id = resultado.id;
+      if(otra.datos.sesion && otra.datos.sesion.id === idAnterior) otra.datos.sesion.id = resultado.id;
+      if(otra.datos.hito && otra.datos.hito.id === idAnterior) otra.datos.hito.id = resultado.id;
+      if(otra.datos.puntaje && otra.datos.puntaje.id === idAnterior) otra.datos.puntaje.id = resultado.id;
+      guardarOperacionCola(otra).catch(e => avisar('No se pudo actualizar la referencia de un cambio pendiente: ' + e.message, 'rojo'));
+    });
+  }
+  const otraPendiente = colaOperaciones.some(x => x.id !== op.id && x.local && x.local.tipo === local.tipo && x.local.id === registro.id);
+  if(!otraPendiente) delete registro.sin_sync;
+}
+async function ejecutarOperacionCola(op){
+  const datos = op.datos;
+  if(op.accion === 'guardarSesion' || op.accion === 'editarSesion'){
+    const sesion = datos.sesion;
+    for(let i = 0; i < (sesion.evidencias || []).length; i++){
+      const ev = sesion.evidencias[i];
+      if(!ev.url || !String(ev.url).startsWith('data:')) continue;
+      const urlOriginal = ev.url, nombreOriginal = ev.nombre || '', agregadaOriginal = ev.agregada_en || '';
+      const evN = normalizarEvidencia(ev, i);
+      const nombreBase = nombreArchivoEvidencia(evN, datos.slug, sesion.fecha, i);
+      const extension = extensionArchivo(nombreBase);
+      const nombre = extension
+        ? nombreBase.slice(0, -(extension.length + 1)) + '-' + op.id + '.' + extension
+        : nombreBase + '-' + op.id;
+      const r = await llamar('subirEvidencia', {
+        slug: datos.slug,
+        nombre,
+        base64: ev.url,
+        mime: evN.mime || (evN.tipo === 'documento' ? 'application/octet-stream' : 'image/jpeg')
+      });
+      if(!r || !r.url) throw new Error((r && r.error) || 'El servidor no devolvió el enlace de la evidencia.');
+      ev.url = r.url;
+      if(r.nombre) ev.nombre = r.nombre;
+      if(op.local && op.local.valor) op.local.valor.evidencias[i] = ev;
+      for(const otra of colaOperaciones){
+        if(otra.id === op.id || !otra.local || !otra.datos || !otra.datos.sesion || otra.local.tipo !== 'sesion' || otra.local.id !== op.local.id) continue;
+        const evidenciaOtra = (otra.datos.sesion.evidencias || []).find(x =>
+          x.url === urlOriginal && (x.nombre || '') === nombreOriginal && (x.agregada_en || '') === agregadaOriginal);
+        if(evidenciaOtra){
+          evidenciaOtra.url = ev.url;
+          evidenciaOtra.nombre = ev.nombre;
+          if(otra.local.valor) otra.local.valor.evidencias = otra.datos.sesion.evidencias;
+          await guardarOperacionCola(otra);
+        }
+      }
+      const registro = estado.sesiones.find(x => x.id === op.local.id);
+      if(registro){
+        const evidenciaActual = registro.evidencias.find(x =>
+          x.url === urlOriginal && (x.nombre || '') === nombreOriginal && (x.agregada_en || '') === agregadaOriginal);
+        if(evidenciaActual){ evidenciaActual.url = ev.url; evidenciaActual.nombre = ev.nombre; }
+      }
+      await guardarOperacionCola(op);
+      guardar();
+    }
+  }
+  return llamar(op.accion, Object.assign({}, datos, { operacionId: op.id }));
+}
+async function verificarOperacionAplicada(op){
+  if(op.accion === 'guardarFormato'){
+    const rFormato = await llamar('leerProyecto', { slug:op.datos.slug });
+    const remoto = rFormato && rFormato.datos && rFormato.datos.formato;
+    if(!remoto) return { aplicada:false };
+    const esperado = Object.assign({}, op.datos.formato), actual = Object.assign({}, remoto);
+    delete esperado.formato_version; delete actual.formato_version;
+    return { aplicada:JSON.stringify(actual) === JSON.stringify(esperado), formato_version:remoto.formato_version };
+  }
+  const respuesta = await llamar('leer', {});
+  if(!respuesta || !respuesta.datos || !Array.isArray(respuesta.datos.proyectos)) return { aplicada:false };
+  if(op.accion === 'guardarConfigCiclo'){
+    const actual = respuesta.datos.configCiclo || {};
+    const esperado = op.datos.config || {};
+    return { aplicada:actual.ciclo === esperado.ciclo && actual.siguiente === esperado.siguiente &&
+      JSON.stringify(actual.usados || []) === JSON.stringify(esperado.usados || []) };
+  }
+  const proyecto = respuesta.datos.proyectos.find(p => p.slug === op.datos.slug);
+  const bitacora = proyecto && proyecto.bitacora || {};
+  const local = op.local || {}, id = local.id;
+  if(op.accion === 'guardar'){
+    const esperado = op.datos.bitacora || {};
+    const colecciones = ['sesiones','pendientes','hitos','puntaje'];
+    return { aplicada:!!proyecto && colecciones.every(nombre =>
+      JSON.stringify(bitacora[nombre] || []) === JSON.stringify(esperado[nombre] || [])) };
+  }
+  if(op.accion === 'eliminarSesion') return { aplicada:!(bitacora.sesiones || []).some(x => x.id === id) };
+  if(op.accion === 'eliminarHito') return { aplicada:!(bitacora.hitos || []).some(x => x.id === id) };
+  if(op.accion === 'guardarSesion' || op.accion === 'editarSesion'){
+    const remoto = (bitacora.sesiones || []).find(x => x.id === id), esperado = op.datos.sesion;
+    const evidenciaRemota = (remoto && remoto.evidencias || []).map(x => x.url || '');
+    const evidenciaEsperada = (esperado.evidencias || []).map(x => x.url || '');
+    return { aplicada:!!remoto && remoto.titulo === esperado.titulo && remoto.tipo === esperado.tipo &&
+      normalizarFechaISO(remoto.fecha) === normalizarFechaISO(esperado.fecha) && remoto.texto === esperado.texto &&
+      JSON.stringify(remoto.asistentes || []) === JSON.stringify(esperado.asistentes || []) &&
+      JSON.stringify(remoto.acuerdos || []) === JSON.stringify(esperado.acuerdos || []) &&
+      JSON.stringify(evidenciaRemota) === JSON.stringify(evidenciaEsperada), id:remoto && remoto.id };
+  }
+  if(op.accion === 'guardarHito' || op.accion === 'editarHito'){
+    const remoto = (bitacora.hitos || []).find(x => x.id === id), esperado = op.datos.hito;
+    return { aplicada:!!remoto && remoto.titulo === esperado.titulo && remoto.fecha === esperado.fecha &&
+      remoto.descripcion === esperado.descripcion && remoto.estado === esperado.estado, id:remoto && remoto.id };
+  }
+  if(op.accion === 'guardarPendiente'){
+    const esperado = op.datos.pendiente;
+    const remoto = (bitacora.pendientes || []).find(x => x.id === id ||
+      (x.sesion_id === esperado.sesion_id && String(x.texto || '').trim().toLowerCase() === String(esperado.texto || '').trim().toLowerCase()));
+    return { aplicada:!!remoto, id:remoto && remoto.id };
+  }
+  if(op.accion === 'cerrarPendiente'){
+    const remoto = (bitacora.pendientes || []).find(x => x.id === id);
+    return { aplicada:!!remoto && remoto.estado === op.datos.estado, id:remoto && remoto.id };
+  }
+  if(op.accion === 'registrarPuntaje'){
+    const remoto = (bitacora.puntaje || []).find(x => x.id === id);
+    return { aplicada:!!remoto, id:remoto && remoto.id };
+  }
+  return { aplicada:false };
+}
+async function procesarColaCambios(){
+  if(colaProcesando || !TIENE_APPS_SCRIPT || !sesionAutenticada() || !navigator.onLine) return;
+  if(navigator.locks && navigator.locks.request){
+    try {
+      await navigator.locks.request('bitacoras-sync-outbox', { mode:'exclusive' }, () => procesarColaBajoBloqueo());
+    } catch(e){ avisar('No se pudo adquirir el turno para sincronizar: ' + e.message, 'rojo'); }
+    return;
+  }
+  await procesarColaBajoBloqueo();
+}
+async function procesarColaBajoBloqueo(){
+  if(colaProcesando) return;
+  colaProcesando = true;
+  try {
+    await recargarColaEnMemoria(true);
+    while(colaOperaciones.length){
+      await recargarColaEnMemoria(false);
+      if(!colaOperaciones.length) break;
+      const op = colaOperaciones[0];
+      if(op.estado === 'error') break;
+      op.estado = 'enviando';
+      await guardarOperacionCola(op);
+      try {
+        let resultado = null;
+        if(op.intentado){
+          const verificacion = await verificarOperacionAplicada(op);
+          if(verificacion.aplicada) resultado = verificacion;
+        }
+        if(!resultado){
+          op.intentado = true;
+          await guardarOperacionCola(op);
+          resultado = await ejecutarOperacionCola(op);
+        }
+        await quitarOperacionCola(op.id);
+        colaOperaciones = colaOperaciones.filter(x => x.id !== op.id);
+        colaReintentoSolicitado = false;
+        marcarSincronizada(op, resultado);
+        guardar();
+        renderTodo();
+      } catch(e){
+        op.estado = 'error';
+        op.error = e.message || String(e);
+        op.falloEn = Date.now();
+        await guardarOperacionCola(op);
+        if(colaReintentoSolicitado){
+          colaReintentoSolicitado = false;
+          op.estado = 'pendiente';
+          delete op.error;
+          await guardarOperacionCola(op);
+          continue;
+        }
+        avisar('Un cambio sigue pendiente de sincronizar: ' + op.error, 'rojo');
+        break;
+      }
+    }
+  } catch(e){
+    avisar('La cola no pudo continuar: ' + e.message, 'rojo');
+  } finally {
+    colaProcesando = false;
+    programarAvisoCola();
+    actualizarEstadoModo();
+  }
+}
+async function reintentarColaCambios(){
+  if(!navigator.onLine){ avisar('No hay conexión. Los cambios se conservan en este dispositivo.', 'rojo'); return; }
+  if(TIENE_APPS_SCRIPT && !sesionAutenticada()){ avisar('Inicia sesión para volver a sincronizar los cambios.', 'rojo'); return; }
+  if(colaProcesando){ colaReintentoSolicitado = true; return; }
+  const primero = colaOperaciones.slice().sort(compararOperacionesCola)[0];
+  if(primero && primero.estado === 'error'){
+    primero.estado = 'pendiente';
+    delete primero.error;
+    try { await guardarOperacionCola(primero); }
+    catch(e){ avisar('No se pudo preparar el reintento: ' + e.message, 'rojo'); return; }
+  }
+  procesarColaCambios();
+}
+async function guardarCambioEnCola(accion, datos, local){
+  const op = { id:uid('sync'), creado:Date.now(), secuencia:++secuenciaCola, accion, datos, local, estado:'pendiente' };
+  if(TIENE_APPS_SCRIPT){
+    if(!sesionAutenticada()) throw new Error('Inicia sesión antes de guardar cambios.');
+    await guardarOperacionCola(op);
+    colaOperaciones.push(op);
+    proyectarOperacionLocal(op);
+    programarAvisoCola();
+    actualizarEstadoModo();
+    guardar();
+    renderTodo();
+    procesarColaCambios();
+    return op;
+  }
+  proyectarOperacionLocal(op);
+  guardar();
+  renderTodo();
+  return op;
+}
+async function cargarColaCambios(){
+  try {
+    await recargarColaEnMemoria(false);
+    programarAvisoCola();
+    actualizarEstadoModo();
+  } catch(e){
+    colaOperaciones = [];
+    avisar('No se pudo recuperar la cola de cambios: ' + e.message, 'rojo');
+  }
+}
+window.addEventListener('online', () => { if(sesionAutenticada()) reintentarColaCambios(); });
 function cargarLocal(){
   try {
     const raw = localStorage.getItem(CONFIG.claveLocal);
@@ -739,14 +1263,19 @@ function bitacoraParaBackend(slug){
     hitos: estado.hitos.filter(h => h.slug === slug).map(hitoParaBackend),
     puntaje: estado.puntaje.filter(x => x.slug === slug) };
 }
-/* Sincroniza la bitácora completa de un proyecto con Drive (acción
-   'guardar'). Se usa al editar o borrar, porque el backend no tiene
-   acción de actualizar/borrar por id: guardarSesion_ solo agrega. */
+/* Encola una sincronización completa para operaciones de mantenimiento o
+   respaldo; las escrituras normales se encolan por registro. */
 async function sincronizarBitacora(slug){
   if(!TIENE_APPS_SCRIPT || !sesionAutenticada()) return null;
-  try {
-    return await llamar('guardar', { slug: slug, bitacora: bitacoraParaBackend(slug) });
-  } catch(e){ console.warn('No se pudo sincronizar con Drive:', e); return null; }
+  return guardarCambioEnCola('guardar', { slug, bitacora:bitacoraParaBackend(slug) }, {
+    tipo:'bitacora', slug,
+    valor:{
+      sesiones:estado.sesiones.filter(x => x.slug === slug),
+      pendientes:estado.pendientes.filter(x => x.slug === slug),
+      hitos:estado.hitos.filter(x => x.slug === slug),
+      puntaje:estado.puntaje.filter(x => x.slug === slug)
+    }
+  });
 }
 async function cargarDatos(){
   /* Auditoría v2 Paso 7f: sin sesión NO se cargan ni se muestran los datos
@@ -786,7 +1315,10 @@ async function cargarDatos(){
     } catch(e){ avisar('No se pudo leer de Apps Script; se usan los datos locales. (' + e.message + ')', 'rojo'); }
   }
   estado.configCiclo = normalizarFolios(estado.proyectos, estado.configCiclo);
-  if(conSesion) guardar();
+  if(conSesion){
+    aplicarColaSobreEstado();
+    guardar();
+  }
 }
 /* Auditoría v2, Paso 1: helper para escrituras. Lanza error si el backend
    responde ok:false; si el token venció, cierra la sesión local. Quien
@@ -808,8 +1340,20 @@ async function enviarAppsScript(accion, datos){
   if(accion !== 'login' && accion !== 'ping'){
     body.token = sessionStorage.getItem('bitacoras_token') || '';
   }
-  const r = await fetch(CONFIG.appsScriptUrl, { method:'POST', headers:{ 'Content-Type':'text/plain' }, body: JSON.stringify(body) });
-  return r.json();
+  const opciones = { method:'POST', headers:{ 'Content-Type':'text/plain' }, body: JSON.stringify(body) };
+  let temporizador = null;
+  if(typeof AbortController !== 'undefined'){
+    const controlador = new AbortController();
+    opciones.signal = controlador.signal;
+    temporizador = setTimeout(() => controlador.abort(), TIEMPO_MAXIMO_APPS_SCRIPT);
+  }
+  try {
+    const r = await fetch(CONFIG.appsScriptUrl, opciones);
+    return await r.json();
+  } catch(e){
+    if(opciones.signal && opciones.signal.aborted) throw new Error('La petición a Apps Script tardó más de 4 minutos.');
+    throw e;
+  } finally { if(temporizador) clearTimeout(temporizador); }
 }
 
 /* ---------- Limpieza de ejemplos heredados y folios (v4) ---------- */
@@ -834,20 +1378,27 @@ async function borrarDatosEjemplo(){
   const total = d.sesiones.length + d.pendientes.length + d.hitos.length + d.puntaje.length;
   if(!total) return { ok: false, mensaje: 'No hay datos de ejemplo para borrar.' };
   const resumen = d.sesiones.length + ' sesión(es), ' + d.pendientes.length + ' pendiente(s), ' + d.hitos.length + ' hito(s), ' + d.puntaje.length + ' registro(s) de puntaje';
-  if(!confirm('ADVERTENCIA: esto borra SOLO los datos de ejemplo (' + resumen + '). Tus datos reales NO se tocan. ¿Borrar los datos de ejemplo?')) return { ok: false, mensaje: 'Cancelado por el usuario.' };
-  if(!confirm('Confirmación final: los datos de ejemplo se eliminan y el dashboard queda en blanco. ¿Seguro?')) return { ok: false, mensaje: 'Cancelado por el usuario.' };
+  if(!await confirmarEliminacion('Borrar datos de ejemplo', 'Se eliminarán únicamente ' + resumen + '. Tus datos reales no se modificarán; las eliminaciones se sincronizarán en segundo plano.', 'Borrar ejemplos')) return { ok: false, mensaje: 'Cancelado por el usuario.' };
   const slugs = [...new Set([].concat(d.sesiones.map(s => s.slug), d.pendientes.map(p => p.slug), d.hitos.map(h => h.slug), d.puntaje.map(x => x.slug)).filter(Boolean))];
   const idsSes = new Set(d.sesiones.map(s => s.id));
-  if(TIENE_APPS_SCRIPT && sesionAutenticada()){
-    for(const s of d.sesiones){ try { await llamar('eliminarSesion', { slug: s.slug, id: s.id }); } catch(e){ /* puede no existir en Drive: se limpia igual en local */ } }
-    for(const h of d.hitos){ try { await llamar('eliminarHito', { slug: h.slug, id: h.id }); } catch(e){} }
-  }
+  for(const s of d.sesiones) await guardarCambioEnCola('eliminarSesion', { slug:s.slug, id:s.id }, { tipo:'sesion', modo:'eliminar', id:s.id });
+  for(const h of d.hitos) await guardarCambioEnCola('eliminarHito', { slug:h.slug, id:h.id }, { tipo:'hito', modo:'eliminar', id:h.id });
   estado.sesiones = estado.sesiones.filter(s => !esSesionEjemplo(s));
   estado.pendientes = estado.pendientes.filter(p => !esPendienteEjemplo(p) && !idsSes.has(p.sesion_id));
   estado.hitos = estado.hitos.filter(h => !esHitoEjemplo(h));
   estado.puntaje = estado.puntaje.filter(x => !esPuntajeEjemplo(x));
   if(TIENE_APPS_SCRIPT && sesionAutenticada()){
-    for(const slug of slugs){ try { await sincronizarBitacora(slug); } catch(e){} }
+    for(const slug of slugs){
+      await guardarCambioEnCola('guardar', { slug, bitacora:bitacoraParaBackend(slug) }, {
+        tipo:'bitacora', slug,
+        valor:{
+          sesiones:estado.sesiones.filter(x => x.slug === slug),
+          pendientes:estado.pendientes.filter(x => x.slug === slug),
+          hitos:estado.hitos.filter(x => x.slug === slug),
+          puntaje:estado.puntaje.filter(x => x.slug === slug)
+        }
+      });
+    }
   }
   estado.ejemploBorrado = true;
   guardar(); renderTodo();
@@ -876,7 +1427,13 @@ async function cambiarCiclo(nuevo){
 }
 async function guardarConfigCiclo(){
   if(!TIENE_APPS_SCRIPT) return null;
-  return llamar('guardarConfigCiclo', { config: estado.configCiclo, proyectos: estado.proyectos.map(p => ({ slug: p.slug, folio: p.folio || '' })) });
+  return guardarCambioEnCola('guardarConfigCiclo', {
+    config:estado.configCiclo,
+    proyectos:estado.proyectos.map(p => ({ slug:p.slug, folio:p.folio || '' }))
+  }, { tipo:'config', valor:{
+    config:estado.configCiclo,
+    proyectos:estado.proyectos.map(p => ({ slug:p.slug, folio:p.folio || '' }))
+  } });
 }
 
 /* ---------- Sesión / Login ---------- */
@@ -890,6 +1447,7 @@ function refrescarSesionUI(){
   $('#btnExportarProyecto').disabled = !ok;
 }
 async function iniciarAplicacion(){
+  await cargarColaCambios();
   refrescarSesionUI();
   if(!TIENE_APPS_SCRIPT || !sesionAutenticada()){
     await cargarDatos();
@@ -913,6 +1471,7 @@ async function iniciarAplicacion(){
       mostrarCargaPantalla('Cargando proyectos y bitácoras…');
       await cargarDatos();
       marcarLecturaReciente();
+      procesarColaCambios();
     } else if(sesionAutenticada()) cargarLocal();
     renderTodo();
   } catch(e){
@@ -944,7 +1503,7 @@ function abrirLogin(){
         marcarLecturaReciente();
         mostrarCargaPantalla('Cargando proyectos y bitácoras…');
         try {
-          await cargarDatos(); marcarLecturaReciente(); renderTodo(); avisar('Sesión iniciada.', 'verde');
+          await cargarDatos(); marcarLecturaReciente(); renderTodo(); procesarColaCambios(); avisar('Sesión iniciada.', 'verde');
         } catch(e){
           renderTodo();
           avisar('Sesión iniciada, pero no se pudieron cargar los datos: ' + e.message, 'rojo');
@@ -963,6 +1522,8 @@ function exigirSesion(){ if(!sesionAutenticada()){ avisar('Inicia sesión para r
 
 /* ---------- Modal ---------- */
 let navegarGaleria = null;
+let resolverConfirmacionModal = null;
+let focoPrevioConfirmacion = null;
 function abrirModal(html){
   navegarGaleria = null;
   $('#modalContenido').classList.remove('modal-amplio');
@@ -979,16 +1540,60 @@ document.addEventListener('keydown', e => {
   }
 });
 function cerrarModal(){
+  if(resolverConfirmacionModal){
+    const resolver = resolverConfirmacionModal;
+    resolverConfirmacionModal = null;
+    const confirmacion = document.querySelector('.confirmacion-fondo');
+    if(confirmacion) confirmacion.remove();
+    if(focoPrevioConfirmacion && focoPrevioConfirmacion.isConnected) focoPrevioConfirmacion.focus();
+    focoPrevioConfirmacion = null;
+    resolver(false);
+    return;
+  }
   navegarGaleria = null;
   $('#modalFondo').classList.remove('abierto');
   $('#modalContenido').classList.remove('modal-amplio');
   $('#modalContenido').innerHTML = '';
+}
+function confirmarEliminacion(titulo, detalle, etiquetaBoton){
+  return new Promise(resolve => {
+    resolverConfirmacionModal = resolve;
+    focoPrevioConfirmacion = document.activeElement;
+    const fondo = document.createElement('div');
+    fondo.className = 'confirmacion-fondo';
+    fondo.innerHTML = '<div class="confirmacion-dialogo" role="alertdialog" aria-modal="true" aria-labelledby="confirmacionTitulo" aria-describedby="confirmacionDetalle">' +
+      '<div class="confirmacion-borrar"><div class="confirmacion-borrar-icono" aria-hidden="true">!</div><div><h2 id="confirmacionTitulo">' + esc(titulo) + '</h2><p class="muted" id="confirmacionDetalle">' + esc(detalle) + '</p></div></div>' +
+      '<div class="fila" style="margin-top:20px"><button type="button" class="btn peligro" data-confirmar-borrado>' + esc(etiquetaBoton || 'Eliminar') + '</button><button type="button" class="btn blanco" data-cancelar-borrado>Cancelar</button></div></div>';
+    fondo.addEventListener('click', e => { if(e.target === fondo) cerrarModal(); });
+    fondo.querySelector('[data-cancelar-borrado]').onclick = cerrarModal;
+    fondo.querySelector('[data-confirmar-borrado]').onclick = () => {
+      resolverConfirmacionModal = null;
+      fondo.remove();
+      if(focoPrevioConfirmacion && focoPrevioConfirmacion.isConnected) focoPrevioConfirmacion.focus();
+      focoPrevioConfirmacion = null;
+      resolve(true);
+    };
+    document.body.appendChild(fondo);
+    fondo.querySelector('[data-confirmar-borrado]').focus();
+  });
 }
 function abrirGaleriaImagenes(sesion, indiceInicial){
   const imagenes = separarEvidencias(sesion).imagenes;
   if(!imagenes.length) return;
   let indice = Math.max(0, Math.min(Number(indiceInicial) || 0, imagenes.length - 1));
   let solicitud = 0;
+  const precargadas = new Set();
+  const precargarVecinas = () => {
+    [-1, 1].forEach(delta => {
+      const i = (indice + delta + imagenes.length) % imagenes.length;
+      const ev = imagenes[i];
+      if(!ev) return;
+      const id = idDrive(ev.url);
+      if(!id || precargadas.has(id)) return;
+      precargadas.add(id);
+      urlImagenEvidencia(ev).catch(() => {});
+    });
+  };
   abrirModal('<div class="galeria-encabezado"><h2>Imágenes de la bitácora</h2><span id="galeriaContador" class="muted"></span></div>' +
     '<div class="galeria-visor"><button type="button" class="galeria-nav" id="galeriaAnterior" aria-label="Imagen anterior">‹</button>' +
     '<div class="galeria-marco"><span id="galeriaCarga" class="muted" role="status">Cargando imagen…</span><img id="galeriaImagen" class="oculto" alt=""></div>' +
@@ -1017,6 +1622,7 @@ function abrirGaleriaImagenes(sesion, indiceInicial){
       img.src = src;
       img.classList.remove('oculto');
       carga.classList.add('oculto');
+      precargarVecinas();
     } catch(e){
       if(miSolicitud !== solicitud) return;
       carga.textContent = 'No se pudo cargar la imagen: ' + e.message;
@@ -1190,7 +1796,8 @@ function renderAtencion(){
 function renderEstadoModo(){
   const el = $('#estadoModo'); if(!el) return;
   const sinSync = [].concat(estado.sesiones, estado.pendientes, estado.hitos).filter(x => x.sin_sync).length;
-  const t = !TIENE_APPS_SCRIPT ? '● Local' : (!sesionAutenticada() ? '● Sin sesión' : (sinSync ? '● ' + sinSync + ' sin sincronizar' : '● Sincronizado'));
+  const cola = colaOperaciones.length;
+  const t = !TIENE_APPS_SCRIPT ? '● Local' : (!sesionAutenticada() ? '● Sin sesión' : (cola ? '● ' + cola + ' cambio(s) pendientes' : (sinSync ? '● ' + sinSync + ' sin sincronizar' : '● Sincronizado')));
   el.textContent = t;
 }
 
@@ -1198,14 +1805,10 @@ function renderEstadoModo(){
 async function borrarSesion(s){
   if(!exigirSesion()) return;
   if(proyectoCerrado(s.slug)){ avisar('El proyecto está cerrado y solo permite lectura y descarga.', 'rojo'); return; }
-  if(!confirm('¿Eliminar la sesión «' + s.titulo + '»? También se eliminan sus pendientes asociados.')) return;
-  if(TIENE_APPS_SCRIPT){
-    try { await llamar('eliminarSesion', { slug: s.slug, id: s.id }); }
-    catch(e){ avisar('No se pudo borrar en Drive: ' + e.message, 'rojo'); return; }
-  }
-  estado.sesiones = estado.sesiones.filter(x => x.id !== s.id);
-  estado.pendientes = estado.pendientes.filter(x => x.sesion_id !== s.id);
-  guardar(); renderTodo();
+  if(!await confirmarEliminacion('Eliminar sesión', 'Se quitará «' + s.titulo + '» y sus pendientes asociados. La acción se aplicará ahora en pantalla y se sincronizará en segundo plano.')) return;
+  try {
+    await guardarCambioEnCola('eliminarSesion', { slug:s.slug, id:s.id }, { tipo:'sesion', modo:'eliminar', id:s.id });
+  } catch(e){ avisar('No se pudo guardar la eliminación pendiente: ' + e.message, 'rojo'); }
 }
 /* Vista Tabla de Bitácoras (v2): misma lista y mismo agrupamiento por
    semana que las tarjetas, en una tabla por semana. */
@@ -1224,7 +1827,10 @@ function renderTablaBitacoras(list, cont){
         const p = estado.proyectos.find(x => x.slug === s.slug) || {};
         const soloLectura = proyectoCerrado(s.slug);
         const nPend = estado.pendientes.filter(x => x.sesion_id === s.id).length;
-        return '<tr data-sesion-id="' + esc(s.id) + '"><td>' + esc(fechaHoraBonita(s.fecha)) + '</td><td>' + esc(p.nombre || '') + (p.folio ? '<br><span class="muted">Folio ' + esc(p.folio) + '</span>' : '') + '</td>' +
+        const hashtag = String(p.hashtag || '').trim();
+        return '<tr data-sesion-id="' + esc(s.id) + '"><td>' + esc(fechaHoraBonita(s.fecha)) + '</td><td>' +
+          (hashtag ? '<button type="button" class="hashtag-copiar" data-copiar-hashtag="' + esc(hashtag) + '" aria-label="Copiar hashtag ' + esc(hashtag) + '" title="Copiar hashtag">' + esc(hashtag) + '</button>' : '<span class="muted">Sin hashtag</span>') +
+          (p.folio ? '<br><span class="muted">Folio ' + esc(p.folio) + '</span>' : '') + '</td>' +
           '<td><strong>' + esc(s.titulo) + '</strong>' + (s.sin_sync ? ' <span class="etiqueta" style="color:var(--rojo)">Sin sincronizar</span>' : '') + '</td>' +
           '<td>' + esc(s.tipo || 'Sesión') + '</td><td>' + (s.acuerdos || []).length + '</td><td>' + nPend + '</td><td>' + htmlAccionesEvidencia(s) + '</td>' +
           '<td>' + (soloLectura ? '<span class="muted">Solo lectura</span>' : '<div class="fila" style="flex-wrap:nowrap"><button class="btn chico blanco" data-editar-tabla>Editar</button><button class="btn chico blanco" style="color:var(--rojo)" data-eliminar-tabla>Eliminar</button></div>') + '</td></tr>';
@@ -1236,6 +1842,7 @@ function renderTablaBitacoras(list, cont){
       if(editar) editar.onclick = () => { if(exigirSesion()) abrirFormSesion(s); };
       if(eliminar) eliminar.onclick = () => borrarSesion(s);
     });
+    wrap.querySelectorAll('[data-copiar-hashtag]').forEach(b => b.onclick = () => copiarTexto(b.dataset.copiarHashtag));
     wrap.querySelectorAll('[data-ver-imagenes]').forEach(b => {
       const s = list.find(x => x.id === b.dataset.verImagenes);
       if(s) b.onclick = () => abrirGaleriaImagenes(s, 0);
@@ -1314,13 +1921,8 @@ function renderBitacoras(){
       }
       /* A3: si el acuerdo no trae fecha, el pendiente queda SIN fecha (''), no se inventa la de hoy. */
       const pend = { id: uid(s.slug + '-pend'), sesion_id: s.id, slug: s.slug, texto: textoAcuerdo, responsable: '', fecha_compromiso: '', prioridad:'Media', estado:'Pendiente', fecha_cierre:null, minuta_origen: s.titulo, notas:'' };
-      estado.pendientes.push(pend);
-      // C3: guardar el pendiente en Drive (guardarPendiente), no solo en local.
-      if(TIENE_APPS_SCRIPT){
-        try { const r = await llamar('guardarPendiente', { slug: s.slug, pendiente: pendienteParaBackend(pend) }); if(r && r.id) pend.id = r.id; delete pend.sin_sync; }
-        catch(e){ pend.sin_sync = true; avisar('No se guardó en Drive: ' + e.message + '. Queda solo en este navegador.', 'rojo'); }
-      }
-      guardar(); renderTodo(); if(!pend.sin_sync) avisar('Pendiente creado desde el acuerdo.', 'verde');
+      await guardarCambioEnCola('guardarPendiente', { slug:s.slug, pendiente:pendienteParaBackend(pend) }, { tipo:'pendiente', modo:'guardar', id:pend.id, valor:pend });
+      avisar(TIENE_APPS_SCRIPT ? 'Pendiente guardado en este dispositivo; sincronizando.' : 'Pendiente creado desde el acuerdo.', 'verde');
       } catch(e){ avisar('No se pudo guardar el pendiente: ' + e.message, 'rojo'); }
       finally { finalizarCarga(); }
     });
@@ -1328,18 +1930,7 @@ function renderBitacoras(){
     const editarSesion = div.querySelector('[data-editar]');
     const eliminarSesion = div.querySelector('[data-eliminar]');
     if(editarSesion) editarSesion.onclick = () => { if(exigirSesion()) abrirFormSesion(s); };
-    if(eliminarSesion) eliminarSesion.onclick = async () => {
-      if(!exigirSesion()) return;
-      if(confirm('¿Eliminar la sesión «' + s.titulo + '»? También se eliminan sus pendientes asociados.')){
-        if(TIENE_APPS_SCRIPT){
-          try { await llamar('eliminarSesion', { slug: s.slug, id: s.id }); }
-          catch(e){ avisar('No se pudo borrar en Drive: ' + e.message, 'rojo'); return; }
-        }
-        estado.sesiones = estado.sesiones.filter(x => x.id !== s.id);
-        estado.pendientes = estado.pendientes.filter(x => x.sesion_id !== s.id);
-        guardar(); renderTodo();
-      }
-    };
+    if(eliminarSesion) eliminarSesion.onclick = () => borrarSesion(s);
     cont.appendChild(div);
   });
 }
@@ -1374,19 +1965,18 @@ function renderHitos(){
     if(!finalizarCarga) return;
     try {
     const h = estado.hitos.find(x => x.id === b.dataset.hitoCompletar); if(!h) return;
-    h.estado = 'Cerrado'; h.fecha_cierre = hoyISO(); guardar();
-    if(TIENE_APPS_SCRIPT){ try { await llamar('editarHito', { slug: h.slug, hito: hitoParaBackend(h) }); delete h.sin_sync; } catch(e){ h.sin_sync = true; avisar('No se guardó en Drive: ' + e.message, 'rojo'); } }
-    guardar(); renderTodo(); if(!h.sin_sync) avisar('Hito marcado como completado.', 'verde');
+    const actualizado = Object.assign({}, h, { estado:'Cerrado', fecha_cierre:hoyISO() });
+    await guardarCambioEnCola('editarHito', { slug:actualizado.slug, hito:hitoParaBackend(actualizado) }, { tipo:'hito', modo:'guardar', id:h.id, valor:actualizado });
+    avisar(TIENE_APPS_SCRIPT ? 'Hito actualizado en pantalla; sincronizando.' : 'Hito marcado como completado.', 'verde');
     } catch(e){ avisar('No se pudo guardar el hito: ' + e.message, 'rojo'); }
     finally { finalizarCarga(); }
   });
   $$('#panelHitos [data-hito-borrar]').forEach(b => b.onclick = async () => {
     if(!exigirSesion()) return;
     const h = estado.hitos.find(x => x.id === b.dataset.hitoBorrar); if(!h) return;
-    if(!confirm('¿Borrar el hito «' + h.titulo + '»?')) return;
-    estado.hitos = estado.hitos.filter(x => x.id !== h.id); guardar();
-    if(TIENE_APPS_SCRIPT){ try { await llamar('eliminarHito', { slug: h.slug, id: h.id }); } catch(e){ avisar('No se pudo borrar en Drive: ' + e.message, 'rojo'); return; } }
-    renderTodo();
+    if(!await confirmarEliminacion('Eliminar hito', 'Se quitará «' + h.titulo + '» de la bitácora. El cambio se sincronizará en segundo plano.')) return;
+    try { await guardarCambioEnCola('eliminarHito', { slug:h.slug, id:h.id }, { tipo:'hito', modo:'eliminar', id:h.id }); }
+    catch(e){ avisar('No se pudo guardar la eliminación pendiente: ' + e.message, 'rojo'); }
   });
   $$('#panelHitos [data-hito-editar]').forEach(b => b.onclick = () => {
     if(!exigirSesion()) return;
@@ -1402,13 +1992,17 @@ function renderHitos(){
       const finalizarCarga = iniciarCargaBoton($('#hGuardar'), 'Guardando hito…');
       if(!finalizarCarga) return;
       try {
-      h.titulo = $('#hTitulo').value.trim() || h.titulo; h.fecha = $('#hFecha').value || h.fecha;
-      h.descripcion = $('#hDesc').value.trim(); h.estado = $('#hEstado').value;
-      if(h.estado === 'Cerrado' && !h.fecha_cierre) h.fecha_cierre = hoyISO();
-      if(h.estado !== 'Cerrado') h.fecha_cierre = h.fecha_cierre || '';
-      guardar();
-      if(TIENE_APPS_SCRIPT){ try { await llamar('editarHito', { slug: h.slug, hito: hitoParaBackend(h) }); delete h.sin_sync; } catch(e){ h.sin_sync = true; avisar('No se guardó en Drive: ' + e.message, 'rojo'); } }
-      cerrarModal(); renderTodo(); if(!h.sin_sync) avisar('Hito actualizado.', 'verde');
+      const actualizado = Object.assign({}, h, {
+        titulo:$('#hTitulo').value.trim() || h.titulo,
+        fecha:$('#hFecha').value || h.fecha,
+        descripcion:$('#hDesc').value.trim(),
+        estado:$('#hEstado').value
+      });
+      if(actualizado.estado === 'Cerrado' && !actualizado.fecha_cierre) actualizado.fecha_cierre = hoyISO();
+      if(actualizado.estado !== 'Cerrado') actualizado.fecha_cierre = actualizado.fecha_cierre || '';
+      await guardarCambioEnCola('editarHito', { slug:actualizado.slug, hito:hitoParaBackend(actualizado) }, { tipo:'hito', modo:'guardar', id:h.id, valor:actualizado });
+      cerrarModal(); renderTodo();
+      avisar(TIENE_APPS_SCRIPT ? 'Hito actualizado en pantalla; sincronizando.' : 'Hito actualizado.', 'verde');
       } catch(e){ avisar('No se pudo guardar el hito: ' + e.message, 'rojo'); }
       finally { finalizarCarga(); }
     };
@@ -1432,13 +2026,9 @@ function abrirFormHito(){
       if(!finalizarCarga) return;
       try {
       const hito = { id: uid('hito'), slug: $('#hProyecto').value, titulo: t, fecha: $('#hFecha').value || hoyISO(), descripcion: $('#hDesc').value.trim(), estado: $('#hEstado').value };
-      estado.hitos.push(hito);
-      // C3: guardar el hito en Drive (guardarHito).
-      if(TIENE_APPS_SCRIPT){
-        try { const r = await llamar('guardarHito', { slug: hito.slug, hito: hitoParaBackend(hito) }); if(r && r.id) hito.id = r.id; delete hito.sin_sync; }
-        catch(e){ hito.sin_sync = true; avisar('No se guardó en Drive: ' + e.message + '. Queda solo en este navegador.', 'rojo'); }
-      }
-      guardar(); cerrarModal(); renderTodo();
+      await guardarCambioEnCola('guardarHito', { slug:hito.slug, hito:hitoParaBackend(hito) }, { tipo:'hito', modo:'guardar', id:hito.id, valor:hito });
+      cerrarModal(); renderTodo();
+      if(TIENE_APPS_SCRIPT) avisar('Hito guardado en este dispositivo; sincronizando.', 'verde');
       } catch(e){ avisar('No se pudo guardar el hito: ' + e.message, 'rojo'); }
       finally { finalizarCarga(); }
     };
@@ -1525,7 +2115,22 @@ async function abrirFormSesion(sesion){
     $('#sTexto').value = textoNuevo;
   };
   if(sesion) $('#sProyecto').disabled = true;
-  const pintarMiniaturas = () => { evidenciasTemp = evidenciasTemp.map((e,i) => normalizarEvidencia(e, i)); $('#sMiniaturas').innerHTML = evidenciasTemp.map((e,i) => '<figure style="text-align:center">' + (e.tipo === 'documento' ? htmlEvidencia(e, i) : '<img ' + srcEvidencia(e.url) + ' alt="Evidencia">') + '<figcaption><input placeholder="Pie opcional" value="' + esc(e.pie || '') + '" data-pie="' + i + '" style="width:90px;font-size:12px;padding:2px"></figcaption></figure>').join(''); cargarMiniaturas($('#sMiniaturas')); };
+  const pintarMiniaturas = () => {
+    evidenciasTemp = evidenciasTemp.map((e,i) => normalizarEvidencia(e, i));
+    $('#sMiniaturas').innerHTML = evidenciasTemp.map((e,i) => '<figure style="text-align:center">' +
+      (e.tipo === 'documento' ? htmlEvidencia(e, i) : '<img ' + srcEvidencia(e.url) + ' alt="Evidencia">') +
+      '<figcaption><input placeholder="Pie opcional" value="' + esc(e.pie || '') + '" data-pie="' + i + '" style="width:90px;font-size:12px;padding:2px"></figcaption>' +
+      '<button type="button" class="evidencia-quitar" data-quitar-evidencia="' + i + '">Quitar</button></figure>').join('');
+    cargarMiniaturas($('#sMiniaturas'));
+    $$('#sMiniaturas [data-quitar-evidencia]').forEach(b => b.onclick = async () => {
+      const indice = Number(b.dataset.quitarEvidencia), evidencia = evidenciasTemp[indice];
+      if(!evidencia) return;
+      const nombre = evidencia.nombre || 'este archivo';
+      if(!await confirmarEliminacion('Quitar evidencia', '«' + nombre + '» se quitará de esta sesión al guardar. Si ya se subió a Drive, el archivo original se conservará allí.')) return;
+      evidenciasTemp.splice(indice, 1);
+      pintarMiniaturas();
+    });
+  };
   pintarMiniaturas();
   $('#sProyecto').onchange = async () => {
     const p2 = estado.proyectos.find(p => p.slug === $('#sProyecto').value);
@@ -1556,49 +2161,19 @@ async function abrirFormSesion(sesion){
     $$('#sMiniaturas [data-pie]').forEach(inp => { evidenciasTemp[parseInt(inp.dataset.pie,10)].pie = inp.value.trim(); });
     const datos = { slug: sesion ? sesion.slug : $('#sProyecto').value, titulo, tipo: $('#sTipo').value, fecha: $('#sFecha').value || ahoraLocalISO(), asistentes: $('#sAsistentes').value.split(',').map(x => x.trim()).filter(Boolean), texto: $('#sTexto').value.trim(), acuerdos, evidencias: evidenciasTemp, campos: (sesion && sesion.campos) || {}, plantilla_version: (plantillaActiva && plantillaActiva.plantilla_version) || (sesion && sesion.plantilla_version) || 1 };
     if(!datos.slug){ alert('Elige un proyecto antes de guardar.'); return; }
-    const boton = $('#sGuardar'), finalizarCarga = iniciarCargaBoton(boton, 'Guardando sesión…');
+    const boton = $('#sGuardar'), finalizarCarga = iniciarCargaBoton(boton, 'Guardando localmente…');
     if(!finalizarCarga) return;
     try {
-    // C4: subirEvidencia usa los nombres del backend {slug, nombre, base64, mime}.
-    /* A7: con Apps Script la imagen se sube a Drive y en el estado solo
-       queda su URL; el base64 NO se guarda en localStorage (ver guardar()). */
-    if(TIENE_APPS_SCRIPT){
-      let numeroSubida = 0;
-      for(let i = 0; i < evidenciasTemp.length; i++){
-        const ev = evidenciasTemp[i];
-        if(!ev.url || !String(ev.url).startsWith('data:')) continue;
-        numeroSubida++;
-        actualizarTextoCargaBoton(boton, 'Subiendo evidencia ' + numeroSubida + '…');
-        try {
-          const evN = normalizarEvidencia(ev, i);
-          const r = await llamar('subirEvidencia', { slug: datos.slug, nombre: nombreArchivoEvidencia(evN, datos.slug, datos.fecha, i), base64: ev.url, mime: evN.mime || (evN.tipo === 'documento' ? 'application/octet-stream' : 'image/jpeg') });
-          if(!r || !r.url) throw new Error((r && r.error) || 'El servidor no devolvió el enlace del archivo.');
-          ev.url = r.url; if(r.nombre) ev.nombre = r.nombre;
-        } catch(e){
-          avisar('No se pudo subir «' + ev.nombre + '»: ' + e.message + '. La sesión no se guardó y el archivo sigue adjunto en el formulario.', 'rojo');
-          return;
-        }
-      }
-    }
-    actualizarTextoCargaBoton(boton, 'Guardando sesión…');
-    datos.evidencias = evidenciasTemp;
-    if(sesion){
-      Object.assign(sesion, datos);
-      if(TIENE_APPS_SCRIPT){
-        try { await llamar('editarSesion', { slug: sesion.slug, sesion: sesionParaBackend(sesion) }); delete sesion.sin_sync; }
-        catch(e){ sesion.sin_sync = true; avisar('No se guardó en Drive: ' + e.message, 'rojo'); }
-      }
-      guardar();
-    } else {
-      const nueva = Object.assign({ id: uid(datos.slug + '-' + datos.fecha.split('T')[0].replace(/-/g,'')) }, datos);
-      estado.sesiones.push(nueva);
-      if(TIENE_APPS_SCRIPT){
-        try { const r = await llamar('guardarSesion', { slug: datos.slug, sesion: sesionParaBackend(nueva) }); if(r && r.id) nueva.id = r.id; delete nueva.sin_sync; guardar(); }
-        catch(e){ nueva.sin_sync = true; avisar('No se guardó en Drive: ' + e.message + '. Queda solo en este navegador.', 'rojo'); }
-      }
-      guardar();
-    }
-    cerrarModal(); renderTodo(); if(!(sesion ? sesion.sin_sync : estado.sesiones.some(x => x.sin_sync))) avisar('Sesión guardada.', 'verde');
+    datos.evidencias = evidenciasTemp.slice();
+    const registro = Object.assign({}, sesion || {
+      id:uid(datos.slug + '-' + datos.fecha.split('T')[0].replace(/-/g,''))
+    }, datos);
+    await guardarCambioEnCola(sesion ? 'editarSesion' : 'guardarSesion',
+      { slug:datos.slug, sesion:sesionParaBackend(registro) },
+      { tipo:'sesion', modo:'guardar', id:registro.id, valor:registro });
+    cerrarModal();
+    if(TIENE_APPS_SCRIPT) avisar('Sesión guardada en este dispositivo; sincronizando en segundo plano.', 'verde');
+    else avisar('Sesión guardada.', 'verde');
     } catch(e){ avisar('No se pudo guardar la sesión: ' + e.message, 'rojo'); }
     finally { finalizarCarga(); }
   };
@@ -1682,12 +2257,9 @@ function abrirFormPuntaje(){
       nivel: $('#pNivel').value, puntos: Number($('#pPuntos').value) || 0, alcance: $('#pAlcance').value.trim(),
       constancia: $('#pConstancia').value.trim(), dictamen: '', periodo: $('#pPeriodo').value.trim(),
       categoria_objetivo: $('#pCategoria').value.trim() };
-    estado.puntaje.push(reg); guardar();
-    if(TIENE_APPS_SCRIPT){
-      try { const r = await llamar('registrarPuntaje', { slug: reg.slug, puntaje: reg }); if(r && r.id) reg.id = r.id; delete reg.sin_sync; guardar(); }
-      catch(e){ reg.sin_sync = true; avisar('No se guardó en Drive: ' + e.message + '. Queda solo en este navegador.', 'rojo'); }
-    }
-    cerrarModal(); renderTodo(); if(!reg.sin_sync) avisar('Actividad de puntaje registrada (' + reg.puntos + ' pts).', 'verde');
+    await guardarCambioEnCola('registrarPuntaje', { slug:reg.slug, puntaje:reg }, { tipo:'puntaje', modo:'guardar', id:reg.id, valor:reg });
+    cerrarModal(); renderTodo();
+    avisar(TIENE_APPS_SCRIPT ? 'Actividad registrada en este dispositivo; sincronizando.' : 'Actividad de puntaje registrada (' + reg.puntos + ' pts).', 'verde');
     } catch(e){ avisar('No se pudo guardar el puntaje: ' + e.message, 'rojo'); }
     finally { finalizarCarga(); }
   };
@@ -1827,28 +2399,19 @@ function renderPendientes(){
     if(!exigirSesion()){ cb.checked = !cb.checked; return; }
     const p = estado.pendientes.find(x => x.id === cb.dataset.hecho);
     if(p){
-      p.estado = cb.checked ? 'Cerrado' : 'Pendiente'; p.fecha_cierre = cb.checked ? hoyISO() : null;
-      guardar();
-      if(TIENE_APPS_SCRIPT){
-        mostrarCargaPantalla('Guardando pendiente…');
-        try { await llamar('cerrarPendiente', { slug: p.slug, id: p.id, estado: p.estado }); delete p.sin_sync; }
-        catch(e){ p.sin_sync = true; avisar('No se guardó en Drive: ' + e.message, 'rojo'); }
-        finally { ocultarCargaPantalla(); }
-      }
-      renderTodo();
+      const actualizado = Object.assign({}, p, { estado:cb.checked ? 'Cerrado' : 'Pendiente', fecha_cierre:cb.checked ? hoyISO() : null });
+      try {
+        await guardarCambioEnCola('cerrarPendiente', { slug:p.slug, id:p.id, estado:actualizado.estado }, { tipo:'pendiente', modo:'guardar', id:p.id, valor:actualizado });
+      } catch(e){ cb.checked = !cb.checked; avisar('No se pudo guardar el cambio pendiente: ' + e.message, 'rojo'); }
     }
   });
   cont.querySelectorAll('[data-estado]').forEach(sel2 => sel2.onchange = async () => {
     if(!exigirSesion()) return;
     const p = estado.pendientes.find(x => x.id === sel2.dataset.estado); if(!p) return;
-    p.estado = sel2.value; p.fecha_cierre = sel2.value === 'Cerrado' ? hoyISO() : null; guardar();
-    if(TIENE_APPS_SCRIPT){
-      mostrarCargaPantalla('Guardando pendiente…');
-      try { await llamar('cerrarPendiente', { slug: p.slug, id: p.id, estado: p.estado }); delete p.sin_sync; }
-      catch(e){ p.sin_sync = true; avisar('No se guardó en Drive: ' + e.message, 'rojo'); }
-      finally { ocultarCargaPantalla(); }
-    }
-    renderTodo();
+    const actualizado = Object.assign({}, p, { estado:sel2.value, fecha_cierre:sel2.value === 'Cerrado' ? hoyISO() : null });
+    try {
+      await guardarCambioEnCola('cerrarPendiente', { slug:p.slug, id:p.id, estado:actualizado.estado }, { tipo:'pendiente', modo:'guardar', id:p.id, valor:actualizado });
+    } catch(e){ sel2.value = p.estado; avisar('No se pudo guardar el cambio pendiente: ' + e.message, 'rojo'); }
   });
 }
 
@@ -1915,14 +2478,8 @@ async function imagenComoDataURL(ev){
   if(/^data:image\//i.test(ev.url)) return ev.url;
   const id = idDrive(ev.url);
   if(id){
-    if(!CACHE_EV[id]){
-      if(!TIENE_APPS_SCRIPT) throw new Error('Inicia sesión con Apps Script para obtener la imagen de Drive.');
-      const r = await llamar('verEvidencia', { id });
-      const mime = r && (r.mime || ev.mime) || '';
-      if(!r || !r.base64 || !/^image\//i.test(mime)) throw new Error('Apps Script no devolvió una imagen válida.');
-      CACHE_EV[id] = 'data:' + mime + ';base64,' + r.base64;
-    }
-    return CACHE_EV[id];
+    if(!TIENE_APPS_SCRIPT) throw new Error('Inicia sesión con Apps Script para obtener la imagen de Drive.');
+    return cargarImagenDrive(id, ev.mime);
   }
   if(!ev.url) throw new Error('La evidencia no tiene una URL de imagen.');
   const respuesta = await fetch(ev.url);
@@ -2533,9 +3090,7 @@ $('#inputFormato').addEventListener('change', async e => {
     const jNorm = normalizarFormato(j);
     const vAnterior = (estado.formatos[slug] && estado.formatos[slug].formato_version) || 0;
     jNorm.formato_version = vAnterior + 1;
-    estado.formatos[slug] = jNorm;
-    // C4: guardarFormato usa el nombre del backend: {slug, formato}.
-    if(TIENE_APPS_SCRIPT){ try { const r = await llamar('guardarFormato', { slug: slug, formato: jNorm }); if(r && r.formato_version){ jNorm.formato_version = r.formato_version; } } catch(err){ avisar('No se guardó el formato en Drive: ' + err.message, 'rojo'); } }
+    await guardarCambioEnCola('guardarFormato', { slug, formato:jNorm }, { tipo:'formato', slug, valor:jNorm });
     guardar(); avisar('Formato cargado para ' + slug + ' (v' + jNorm.formato_version + '). El informe usará sus campos y orden.', 'verde');
   } catch(err){ alert('JSON no válido: ' + err.message); }
   e.target.value = '';
@@ -2576,7 +3131,17 @@ $('#inputImportar').addEventListener('change', async e => {
       if(TIENE_APPS_SCRIPT){
         for(const pr of estado.proyectos){
           if(proyectoCerrado(pr)) continue;
-          try { await llamar('guardar', { slug: pr.slug, bitacora: bitacoraParaBackend(pr.slug) }); }
+          try {
+            await guardarCambioEnCola('guardar', { slug:pr.slug, bitacora:bitacoraParaBackend(pr.slug) }, {
+              tipo:'bitacora', slug:pr.slug,
+              valor:{
+                sesiones:estado.sesiones.filter(x => x.slug === pr.slug),
+                pendientes:estado.pendientes.filter(x => x.slug === pr.slug),
+                hitos:estado.hitos.filter(x => x.slug === pr.slug),
+                puntaje:estado.puntaje.filter(x => x.slug === pr.slug)
+              }
+            });
+          }
           catch(err){ avisar('No se pudo subir ' + pr.slug + ': ' + err.message, 'rojo'); }
         }
       }
@@ -2585,10 +3150,13 @@ $('#inputImportar').addEventListener('change', async e => {
   } catch(err){ alert('No se pudo importar: ' + err.message); }
   e.target.value = '';
 });
-function borrarLocal(){
+async function borrarLocal(){
   if(!exigirSesion()) return;
-  if(!confirm('Esto borra la copia de este navegador; los datos de Drive no se tocan. ¿Borrar la copia local (sesiones, pendientes e hitos)?')) return;
-  if(!confirm('Confirmación final: esta acción no se puede deshacer. ¿Seguro?')) return;
+  if(colaOperaciones.length){
+    avisar('No se puede borrar la copia local mientras haya cambios pendientes de sincronizar.', 'rojo');
+    return;
+  }
+  if(!await confirmarEliminacion('Borrar copia local', 'Se quitarán de este navegador las sesiones, pendientes e hitos. Los datos guardados en Drive no se borrarán.', 'Borrar copia')) return;
   estado = { proyectos: PROYECTOS_BASE, sesiones: [], pendientes: [], hitos: [], formatos: {}, puntaje: [], configCiclo: configCicloPorDefecto(), ejemploBorrado: false };
   localStorage.removeItem(CONFIG.claveLocal); renderTodo(); avisar('Todos los datos fueron borrados.', 'rojo');
 }
