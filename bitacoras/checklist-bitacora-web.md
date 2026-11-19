@@ -411,7 +411,7 @@ Bitacoras/
 - **Paso 4:** fechas con espacio (`AAAA-MM-DD HH:MM`) se normalizan a `T` al leer; editar ya no vacía la fecha.
 - **Paso 5:** IDs de sesión con `uid()` (únicos); el backend rechaza duplicados.
 - **Paso 6:** «Importar respaldo» sube cada proyecto a Drive; «Borrar todo» es ahora «Borrar copia local» (Drive no se toca); el puntaje se guarda en `bitacora.json` y se lee al recargar.
-- **Paso 7:** contraseña mínima 12 caracteres; sal con `Utilities.getUuid()`; freno global 100 fallos/hora + 2 s por intento fallido (`limpiarBloqueos()` lo libera desde el editor); época de sesión: cambiar la contraseña invalida todos los tokens; «Cerrar sesión» revoca el token; lecturas por POST con token en el body (nada de token en la URL); sin sesión no se muestran los datos locales; en GitHub Pages solo suben `index.html` y `protocolo-puntaje-cch-v2.json`.
+- **Paso 7:** contraseña mínima 12 caracteres; sal con `Utilities.getUuid()`; freno global 100 fallos/hora + 2 s por intento fallido (`limpiarBloqueos()` lo libera desde el editor); época de sesión: cambiar la contraseña invalida todos los tokens; «Cerrar sesión» revoca el token; lecturas por POST, token web en el body y nada de token en GET; sin sesión no se muestran los datos locales; en GitHub Pages solo suben `index.html` y `protocolo-puntaje-cch-v2.json`.
 - **Paso 8:** acuerdos con fecha `AAAA-MM-DD` o `DD/MM/AAAA` (inválida se rechaza); separador ` | ` (se sigue leyendo el ` — ` viejo); en «Todos» no se adivina proyecto (nueva sesión exige elegirlo; el Word de todos se descarga, no se sube a estadistica-2); `leerTodo_` lee solo `bitacora.json`; `SHEET_ID` cacheado; hoja Pendientes con `fecha_cierre` y `notas`; estado «En proceso» elegible en la tabla; PDF/Docs con ventana bloqueada avisada y `print()` a los 600 ms; HEIC avisa «Usa JPG o PNG».
 - **Paso 9:** modal con `role="dialog"` y Escape; tabs con ARIA; días del calendario como `<button>`; filtro de proyectos reconstruido; hitos con hashtag + nombre.
 - **Glosario v2 duplicado:** la página lee `protocolo-puntaje-cch-v2.json` de la **raíz** (canónica); la copia en `protocolo-puntaje-cch/` es idéntica (mismo SHA-256) y se conserva como respaldo de esa carpeta, no se borró.
@@ -492,12 +492,13 @@ Bitacoras/
 - **Resultado: 0 hallazgos Alta.** 1 Media (V5-1, corregida: historial de usados por ciclo), 4 Baja (V5-2 a V5-5, pendientes con motivo). Informe completo en `AUDITORIA-validacion-v5.md`.
 - **Pendiente contra Apps Script real:** escritura/lectura de `config-ciclo.json` y folios en el índice, borrado real de la sesión de ejemplo en Drive, y prueba visual en Chromium real (390/1440 px).
 
-## Token de servicio para Muse (v6, 2026-11-19)
+## Token de servicio para Muse (v7, 2026-11-19)
 
 - `MUSE_SERVICE_TOKEN_HASH` guarda solo `hashConSal_()` del token; el token generado se muestra una sola vez en el log y nunca se incorpora al HTML, JSON o documentación.
 - `generarTokenServicioMuse()` emite dos UUID unidos; generar otro reemplaza al anterior. `fijarTokenServicioMuse()` es alternativa temporal y su valor debe borrarse del código después de ejecutarla. `revocarTokenServicioMuse()` elimina la propiedad inmediatamente.
 - `verificarToken_()` distingue `sesion` y `servicio`. El token de sesión mantiene vigencia de 6 horas y época; el de servicio no caduca por tiempo ni depende de la época.
 - Alcance permitido: `leer`, `leerProyecto`, `guardarSesion`, `guardarPendiente`, `cerrarPendiente`, `guardarHito`, `subirEvidencia`, `crearProyecto`, `guardar`, `verEvidencia`, `registrarPuntaje`.
 - Todo lo demás se rechaza para el token de servicio antes de ejecutar la acción, incluyendo login/cambio de contraseña, `crearEstructura`, `guardarConfigCiclo`, `verificarEstructura` y las acciones dedicadas para editar o borrar. La sesión web normal no usa el token de servicio.
+- `doPost` acepta el token del body JSON o de `e.parameter.token` como alternativa de integración. El query string puede filtrarse en registros/historiales: no compartas ni registres URLs con el token. `doGet` no valida acciones con este token; la web sigue enviándolo en el body.
 - En `guardar`, Muse sincroniza sin borrar: agrega o fusiona por ID, conserva registros/elementos omitidos y no reemplaza valores anteriores con propiedades ausentes, nulas o vacías. Los registros sin ID o colecciones con tipo inválido se rechazan.
 - `#nuevaBitacora` por WhatsApp solo propone: requiere autorización explícita del usuario aunque Muse tenga el token.

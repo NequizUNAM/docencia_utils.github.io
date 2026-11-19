@@ -188,6 +188,12 @@ abajo. No lo pegues en esta guía, en un chat, ni en ningún archivo del repo.
 5. Entrega el token a Muse únicamente por el mecanismo seguro de secretos
    configurado para el asistente; **nunca por chat ni en una petición normal
    de WhatsApp**.
+   `doPost` acepta el token en el cuerpo JSON o, para integraciones que no
+   pueden enviar cuerpo/cabecera, en el parámetro de consulta `?token=...`.
+   Los tokens en URL pueden quedar en registros o historiales; usa esa vía solo
+   mediante un gestor seguro de secretos y evita copiar, registrar o compartir
+   la URL. `doGet` no autentica acciones con ese parámetro; la web sigue
+   enviando su token en el cuerpo.
 6. Para revocarlo, selecciona `revocarTokenServicioMuse` en el editor y pulsa
    **Run / Ejecutar**. La revocación es inmediata. Generar otro token también
    reemplaza e invalida el anterior.

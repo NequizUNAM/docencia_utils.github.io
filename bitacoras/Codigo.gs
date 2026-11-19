@@ -57,8 +57,9 @@
  * carpetas y bitácoras se conservan.
  *
  * ACCIONES GET  (doGet, auditoría v2 Paso 7e: las lecturas de datos ya NO
- *   van por GET — el token en la URL quedaba en historial y logs —, van
- *   por POST con el token en el body: leer, leerProyecto, verificarEstructura.
+ *   van por GET — el token en una URL GET quedaba en historial y logs —,
+ *   van por POST. La web envía el token en el body; solo integraciones de
+ *   servicio pueden usar ?token= en POST como alternativa.
  *   Por GET solo queda ping y el HTML mínimo de estado.)
  *   ping
  *   Sin acción: devuelve un HTML mínimo de estado.
@@ -190,8 +191,9 @@ var ENCABEZADOS = {
 
 // ---------------------------------------------------------------------------
 // doGet — Solo ping y el HTML mínimo de estado son públicos (auditoría v2
-// Paso 7e: las lecturas leer/leerProyecto/verificarEstructura van por POST
-// con el token en el body; el token ya no viaja en la URL.)
+// Paso 7e: las lecturas leer/leerProyecto/verificarEstructura van por POST;
+// doGet no autentica con token. La web usa el body y solo POST admite el
+// parámetro de consulta como alternativa para integraciones de servicio.)
 // ---------------------------------------------------------------------------
 
 /**
@@ -267,7 +269,8 @@ function doPost(e) {
       datos = JSON.parse(e.postData.contents);
     }
     var accion = datos.accion || '';
-    var tipoToken = datos.token ? verificarToken_(datos.token) : null;
+    var token = datos.token || ((e && e.parameter && e.parameter.token) || '');
+    var tipoToken = token ? verificarToken_(token) : null;
 
     if (tipoToken === 'servicio' && MUSE_SERVICE_ALLOWED_ACTIONS.indexOf(accion) === -1) {
       return responder_({ ok: false, error: 'Acción no permitida con token de servicio' });
